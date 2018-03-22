@@ -8,7 +8,7 @@ go:
 services:
 - docker
 
-install:
+script:
 - docker build -t peripli/service-broker-proxy-k8s .
 
 notifications:
