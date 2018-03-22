@@ -9,17 +9,21 @@ RUN mkdir /go/src/app
 ADD . /go/src/app
 WORKDIR /go/src/app
 
-# Static code checks
+# Install and update tools for static code checks and tests
 RUN go get github.com/alecthomas/gometalinter && \
     go get github.com/GoASTScanner/gas/cmd/gas/...
 RUN gometalinter --install --update
 
-RUN /go/bin/gometalinter  ./...
-RUN /go/bin/gas -skip=vendor ./...
-
-# Fetch dependencies and build
+# Fetch dependencies
 RUN go get -u github.com/golang/dep/...
 RUN dep ensure
+
+# Run static code checks and tests
+RUN /go/bin/gometalinter  ./...
+RUN /go/bin/gas -skip=vendor ./...
+RUN go test
+
+# Trigger the build
 RUN go build -o /main .
 
 #########################################################
