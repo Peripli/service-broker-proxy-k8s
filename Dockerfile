@@ -5,26 +5,23 @@
 FROM golang:1.10.0 AS build-env
 ENV GOBIN /go/bin
 
-RUN mkdir /go/src/app
-ADD . /go/src/app
-WORKDIR /go/src/app
+RUN go get -u golang.org/x/lint/golint && \
+    go get github.com/GoASTScanner/gas/cmd/gas/... && \
+    go get github.com/alecthomas/gometalinter && \
+    gometalinter --install --update && \
+    go get -u github.com/golang/dep/...
 
-# Install and update tools for static code checks and tests
-RUN go get github.com/alecthomas/gometalinter && \
-    go get github.com/GoASTScanner/gas/cmd/gas/...
-RUN gometalinter --install --update
+RUN mkdir -p /go/src/github.com/Peripli/service-broker-proxy-k8s
+    WORKDIR /go/src/github.com/Peripli/service-broker-proxy-k8s
+    ADD . .
 
-# Fetch dependencies
-RUN go get -u github.com/golang/dep/...
-RUN dep ensure
+RUN dep ensure && \
+    /go/bin/gometalinter --disable=gotype  ./... && \
+    /go/bin/gas -skip=vendor ./... && \
+    go test && \
+    go build -o /main .
 
-# Run static code checks and tests
-RUN /go/bin/gometalinter  ./...
-RUN /go/bin/gas -skip=vendor ./...
-RUN go test
-
-# Trigger the build
-RUN go build -o /main .
+ENTRYPOINT /main
 
 #########################################################
 # Build the runtime container
