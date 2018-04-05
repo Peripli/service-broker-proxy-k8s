@@ -4,6 +4,7 @@ import (
 	"os"
 	"strconv"
 	"log"
+	"io/ioutil"
 )
 // Env holds all environment variables that can be used to configure the service broker proxy
 type Env struct {
@@ -28,11 +29,21 @@ func getEnvInt(name string) int64 {
 	envString := getEnv(name)
 	result, err := strconv.ParseInt(envString, 10, 64)
 	if err != nil {
-		msg := "Environment variable " + name + " is not an integer."
+		msg := "Environment variable " + name + " cannot be converted to an integer."
 		log.Fatal(msg)
 		panic(msg)
 	}
 	return result
+}
+
+func getSecret(name string) string {
+	secret, err := ioutil.ReadFile("/etc/service-manager-secrets/" + name)
+	if err != nil {
+		msg := "Secret " + name + " cannot read from the volume."
+		log.Fatal(msg)
+		panic(msg)
+	}
+	return string(secret)
 }
 
 // EnvConfig creates a new struct Env containing all environment configuration for the service broker proxy
@@ -40,8 +51,8 @@ func EnvConfig() Env {
 	return Env{
 		getEnv("namespace"),
 		int(getEnvInt("service_manager_timeout")),
-		getEnv("service_manager_url"),
-		getEnv("service_manager_user"),
-		getEnv("service_manager_password"),
+		getSecret("url"),
+		getSecret("user"),
+		getSecret("password"),
 	}
 }
