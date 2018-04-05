@@ -16,8 +16,8 @@ spec:
         ports:
         - containerPort: 8080
       imagePullSecrets:
-      - name: ${DOCKER_IMAGE_PULL_SECRET}
+      - name: service-broker-proxy-image-secret
       volumes:
       - name: service-manager-secrets
         secret:
-          secretName: ${SERVICE_MANAGER_SECRET}
+          secretName: service-manager-secret
