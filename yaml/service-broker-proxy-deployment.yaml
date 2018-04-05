@@ -35,8 +35,6 @@ spec:
         - name: service-manager-secrets
           mountPath: "/etc/service-manager-secrets"
           readOnly: true
-      imagePullSecrets:
-      - name: service-broker-proxy-image-secret
       volumes:
       - name: service-manager-secrets
         secret:
