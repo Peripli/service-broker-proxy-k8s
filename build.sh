@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Example usage:
+# ./build.sh cp-enablement.docker.repositories.sap.ondemand.com service-broker-proxy dev
+
 REPOSITORY=$1
 PROJECT=$2
 VERSION=$3
