@@ -7,6 +7,22 @@ import (
 	"log"
 )
 
+type loggingRoundTripper struct {
+
+}
+
+func (d *loggingRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
+	requestDump, _ := httputil.DumpRequest(request, true)
+	log.Println("### Request ### \n" + string(requestDump))
+
+	response, err := http.DefaultTransport.RoundTrip(request)
+
+	responseDump, _ := httputil.DumpResponse(response, true)
+	fmt.Println("### Response ###\n" + string(responseDump))
+
+	return response, err
+}
+
 func stringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
@@ -14,14 +30,4 @@ func stringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
-}
-
-func printRequest(request *http.Request) {
-	requestDump, _ := httputil.DumpRequest(request, true)
-	log.Println("###\nReqeust\n" + string(requestDump))
-}
-
-func printResponse(request *http.Response) {
-	responseDump, _ := httputil.DumpResponse(request, true)
-	fmt.Println("###\nResponse\n" + string(responseDump))
 }

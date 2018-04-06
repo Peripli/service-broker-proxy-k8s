@@ -24,6 +24,7 @@ func New() Proxy {
 		env.serviceManagerPassword,
 	}
 }
+
 // Start starts the service broker proxy on port 8080. This function runs as long as the server is up and running.
 func (proxy Proxy) Start() error {
 	http.HandleFunc("/", proxy.listen)
@@ -69,12 +70,14 @@ func (proxy Proxy) listen(writer http.ResponseWriter, request *http.Request) {
 	//TODO error handling
 	client := &http.Client{
 		Timeout: time.Duration(proxy.config.timeoutSeconds) * time.Second,
+		Transport: &loggingRoundTripper{},
 	}
 	smRequest, _ := http.NewRequest(request.Method, brokerURL, request.Body)
 	proxy.copyAndFilterHeaders(request, smRequest)
 	proxy.setBrokerHeaders(smRequest)
 
-	printRequest(smRequest)
-	smResponse, _ := client.Do(smRequest)
-	printResponse(smResponse)
+	_, err := client.Do(smRequest)
+	if err != nil {
+		log.Fatal("Request to service manager failed: ", err.Error())
+	}
 }
