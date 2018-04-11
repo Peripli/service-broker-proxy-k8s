@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"os"
 	"strconv"
 	"log"
 	"io/ioutil"
@@ -15,21 +14,21 @@ type Env struct {
 	serviceManagerPassword string
 }
 
-func getEnv(name string) string {
-	result := os.Getenv(name)
-	if len(result) == 0 {
-		msg := "Environment variable " + name + " not set."
+func getConfiguration(name string) string {
+	result, err := ioutil.ReadFile("/etc/configuration/" + name)
+	if err != nil {
+		msg := "Configuration " + name + " cannot be read from the volume."
 		log.Fatal(msg)
 		panic(msg)
 	}
-	return result
+	return string(result)
 }
 
-func getEnvInt(name string) int64 {
-	envString := getEnv(name)
+func getConfigurationInt(name string) int64 {
+	envString := getConfiguration(name)
 	result, err := strconv.ParseInt(envString, 10, 64)
 	if err != nil {
-		msg := "Environment variable " + name + " cannot be converted to an integer."
+		msg := "Configuration " + name + " cannot be converted to an integer."
 		log.Fatal(msg)
 		panic(msg)
 	}
@@ -39,7 +38,7 @@ func getEnvInt(name string) int64 {
 func getSecret(name string) string {
 	secret, err := ioutil.ReadFile("/etc/service-manager-secrets/" + name)
 	if err != nil {
-		msg := "Secret " + name + " cannot read from the volume."
+		msg := "Secret " + name + " cannot be read from the volume."
 		log.Fatal(msg)
 		panic(msg)
 	}
@@ -49,8 +48,8 @@ func getSecret(name string) string {
 // EnvConfig creates a new struct Env containing all environment configuration for the service broker proxy
 func EnvConfig() Env {
 	return Env{
-		getEnv("namespace"),
-		int(getEnvInt("service_manager_timeout")),
+		getConfiguration("namespace"),
+		int(getConfigurationInt("service_manager_timeout")),
 		getSecret("url"),
 		getSecret("user"),
 		getSecret("password"),
