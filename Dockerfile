@@ -27,7 +27,7 @@ WORKDIR "/go/src/github.com/Peripli/service-broker-proxy-k8s"
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go get github.com/golang/dep/cmd/dep && \
     dep ensure -v && \
 #    /go/bin/gometalinter --disable=gotype  ./... && \
-    CGO_ENABLED=0 /go/bin/gometalinter --disable=gotype  ./...  && \
+    CGO_ENABLED=0 /go/bin/gometalinter --exclude "vendor" --disable=gotype  ./...  && \
     go test && \
     go build -o /main .
 
