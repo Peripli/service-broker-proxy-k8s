@@ -1,14 +1,13 @@
 package proxy
 
 import (
-	"net/http/httputil"
-	"fmt"
-	"net/http"
 	"log"
+	"net/http"
+	"net/http/httputil"
+	"time"
 )
 
 type loggingRoundTripper struct {
-
 }
 
 func (d *loggingRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
@@ -18,7 +17,7 @@ func (d *loggingRoundTripper) RoundTrip(request *http.Request) (*http.Response, 
 	response, err := http.DefaultTransport.RoundTrip(request)
 
 	responseDump, _ := httputil.DumpResponse(response, true)
-	fmt.Println("### Response ###\n" + string(responseDump))
+	log.Println("### Response ###\n" + string(responseDump))
 
 	return response, err
 }
@@ -30,4 +29,11 @@ func stringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
+}
+
+func pingServiceManager(seconds int) {
+	d := time.Duration(seconds) * time.Second
+	for range time.Tick(d) {
+		log.Println("Request service manager")
+	}
 }
