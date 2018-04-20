@@ -11,7 +11,7 @@ docker build -f Dockerfile -t "$REPOSITORY"/"$PROJECT":"$VERSION"  .
 docker push "$REPOSITORY"/"$PROJECT":"$VERSION"
 
 cat yaml/service-broker-proxy-deployment.yaml \
-    | sed -e "s/\${REPOSITORY}/"$REPOSITORY"/" \
-    | sed -e "s/\${PROJECT}/"$PROJECT"/" \
-    | sed -e "s/\${VERSION}/"$VERSION"/" \
+    | sed -e "s#\${REPOSITORY}#"$REPOSITORY"#" \
+    | sed -e "s#\${PROJECT}#"$PROJECT"#" \
+    | sed -e "s#\${VERSION}#"$VERSION"#" \
     | kubectl apply -f -
