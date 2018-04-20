@@ -9,7 +9,7 @@ import (
 func main() {
 	log.Println("[main.go; main()] Staring Kubernetes Service Broker Proxy")
 
-	p := proxy.New()
+	p := proxy.NewProxy()
 	err := p.Start()
 	if err != nil {
 		log.Fatal("[main.go; main()] Kubernetes Service Broker Proxy Error")
