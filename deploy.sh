@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
 
 # Example usage:
-# ./build.sh cp-enablement.docker.repositories.sap.ondemand.com service-broker-proxy dev
+# ./deploy.sh eu.gcr.io gardener-project/test/service-broker-proxy-k8s 0.0.1-3f5b12c019af61a4ff90e09bf042ec331edf92df
 
 REPOSITORY=$1
 PROJECT=$2
 VERSION=$3
-
-docker build -f Dockerfile -t "$REPOSITORY"/"$PROJECT":"$VERSION"  .
-docker push "$REPOSITORY"/"$PROJECT":"$VERSION"
 
 cat yaml/service-broker-proxy-deployment.yaml \
     | sed -e "s#\${REPOSITORY}#"$REPOSITORY"#" \

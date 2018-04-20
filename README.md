@@ -34,3 +34,11 @@ data:
 EOF
 ```
 
+## Docker Images
+Docker Images are available on 
+https://console.cloud.google.com/gcr/images/gardener-project/EU/test/service-broker-proxy-k8s
+
+## Deployment on your kubernetes cluster
+```
+./deploy.sh eu.gcr.io gardener-project/test/service-broker-proxy-k8s <version>
+```
