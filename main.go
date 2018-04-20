@@ -1,12 +1,12 @@
 package main
 
-
 import (
-	"fmt"
-	"github.com/kubernetes-incubator/service-catalog/pkg/svcat"
 	"flag"
+	"fmt"
 	"time"
+
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
+	"github.com/kubernetes-incubator/service-catalog/pkg/svcat"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -32,14 +32,13 @@ func main() {
 	for _, b := range brokers {
 		fmt.Println(b.Name)
 	}
-	fmt.Println("----------------------\n\n")
-
+	fmt.Println("----------------------")
 
 	// Register a new Broker
 	//
-	request :=&v1beta1.ClusterServiceBroker{
+	request := &v1beta1.ClusterServiceBroker{
 		ObjectMeta: v1.ObjectMeta{
-			Name:     brokerName,
+			Name:      brokerName,
 			Namespace: "default",
 		},
 		Spec: v1beta1.ClusterServiceBrokerSpec{
@@ -53,7 +52,7 @@ func main() {
 	fmt.Println("----------------------")
 	a.ServiceCatalog().ClusterServiceBrokers().Create(request)
 	fmt.Println("new Broker registered")
-	fmt.Println("----------------------\n\n")
+	fmt.Println("----------------------")
 
 	fmt.Println("----------------------")
 	fmt.Println("Current listed brokers")
@@ -62,15 +61,13 @@ func main() {
 	for _, b := range brokers {
 		fmt.Println(b.Name)
 	}
-	fmt.Println("----------------------\n\n")
-
+	fmt.Println("----------------------")
 
 	a.ServiceCatalog().ClusterServiceBrokers().Delete(brokerName, &v1.DeleteOptions{})
 	// just wait some secinds until kubernetes has removed the ServiceBroker resource
 	time.Sleep(2 * time.Second)
 	fmt.Println("Broker deleted")
-	fmt.Println("----------------------\n\n")
-
+	fmt.Println("----------------------")
 
 	fmt.Println("Current listed brokers")
 	fmt.Println("----------------------")
@@ -78,6 +75,6 @@ func main() {
 	for _, b := range brokers {
 		fmt.Println(b.Name)
 	}
-	fmt.Println("----------------------\n\n")
+	fmt.Println("----------------------")
 
 }
