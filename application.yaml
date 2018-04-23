@@ -1,0 +1,31 @@
+# these are env vars + config file properties + flag options (flag > env > config)
+# the application.yml file should be part of the wrapper module
+
+# Any of the below config properties can be provided via Environment Variables prefixed  by PROXY_
+# If any of the provided env variables are supposed to be "Unmarshaled" via viper, they need to have default values
+# specified here so that viper may know for these env vars' existence and use them during unmarshaling
+
+app:
+  port: 8081
+  logLevel: debug
+  logFormat: text
+  timeoutSeconds: 5
+  host: http://localhost:8081
+sm:
+  user: admin
+  password: admin
+  host: https://sm-dummy.cfapps.eu10.hana.ondemand.com
+  osbApi: /v1/osb
+  timeoutSeconds: 10
+#cf:
+#  api:
+#  username: admin
+#  password: admin
+##  clientID: sm-client
+##  clientSecret: sm-secret
+#  skipSSLVerify: true
+#  timeoutSeconds: 10
+#  # Reg contains info about the credentials that will be used when proxy registers itself as a broker
+#  reg:
+#    user: admin
+#    password: admin

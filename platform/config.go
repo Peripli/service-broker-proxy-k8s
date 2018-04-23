@@ -6,11 +6,8 @@ import (
 
 	"time"
 
-	"errors"
-
-	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/cloudfoundry-community/go-cfclient"
-	"github.com/spf13/viper"
+	"github.com/Peripli/service-broker-proxy/pkg/env"
 )
 
 type RegistrationDetails struct {
@@ -29,31 +26,25 @@ type PlatformClientConfiguration struct {
 	Reg *RegistrationDetails
 }
 
-var _ platform.ClientConfiguration = &PlatformClientConfiguration{}
-
-func (c *PlatformClientConfiguration) CreateFunc() (platform.Client, error) {
-	return NewClient(c)
-}
-
 func (c *PlatformClientConfiguration) Validate() error {
-	if c.cfClientCreateFunc == nil {
-		return errors.New("CF ClientCreateFunc missing")
-	}
-	if c.Config == nil {
-		return errors.New("CF client configuration missing")
-	}
-	if len(c.Config.ApiAddress) == 0 {
-		return errors.New("CF client configuration ApiAddress missing")
-	}
-	if c.Reg == nil {
-		return errors.New("CF client configuration Registration credentials missing")
-	}
-	if len(c.Reg.User) == 0 {
-		return errors.New("CF client configuration Registration details user missing")
-	}
-	if len(c.Reg.Password) == 0 {
-		return errors.New("CF client configuration Registration details password missing")
-	}
+	//if c.cfClientCreateFunc == nil {
+	//	return errors.New("CF ClientCreateFunc missing")
+	//}
+	//if c.Config == nil {
+	//	return errors.New("CF client configuration missing")
+	//}
+	//if len(c.Config.ApiAddress) == 0 {
+	//	return errors.New("CF client configuration ApiAddress missing")
+	//}
+	//if c.Reg == nil {
+	//	return errors.New("CF client configuration Registration credentials missing")
+	//}
+	//if len(c.Reg.User) == 0 {
+	//	return errors.New("CF client configuration Registration details user missing")
+	//}
+	//if len(c.Reg.Password) == 0 {
+	//	return errors.New("CF client configuration Registration details password missing")
+	//}
 	return nil
 }
 
@@ -68,14 +59,14 @@ type settings struct {
 	Reg            *RegistrationDetails
 }
 
-func DefaultConfig() (*PlatformClientConfiguration, error) {
+func NewConfig(env env.Environment) (*PlatformClientConfiguration, error) {
+
 	platformSettings := &struct {
 		Cf *settings
 	}{
 		Cf: &settings{},
 	}
-	//TODO BindEnv
-	if err := viper.Unmarshal(platformSettings); err != nil {
+	if err := env.Unmarshal(platformSettings); err != nil {
 		return nil, err
 	}
 

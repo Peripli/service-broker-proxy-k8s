@@ -6,17 +6,22 @@ import (
 	"flag"
 	"github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
 	"github.com/kubernetes-incubator/service-catalog/pkg/svcat/kube"
+	"github.com/sirupsen/logrus"
+	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
+
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type PlatformClient struct {
-	app 	 *svcat.App
+	app *svcat.App
 }
 
 var _ platform.Client = &PlatformClient{}
 var _ platform.Fetcher = &PlatformClient{}
 
-func NewClient(config *PlatformClientConfiguration) (platform.Client, error) {
+func NewClient() (platform.Client, error) {
 	kubeconfig := flag.String("kubeconfig", "", "Path to a kubeconfig file")
+	flag.Parse()
 	kube := kube.GetConfig("shoot-garden-cpet-peripli", *kubeconfig)
 	restConfig, _ := kube.ClientConfig()
 	appClient, _ := clientset.NewForConfig(restConfig)
@@ -28,97 +33,88 @@ func NewClient(config *PlatformClientConfiguration) (platform.Client, error) {
 }
 
 func (b PlatformClient) GetBrokers() ([]platform.ServiceBroker, error) {
-	//logrus.Debug("Getting brokers via k8s client...")
-	//
-	//brokers, err := serviceCatalog.app.RetrieveBrokers()
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//var clientBrokers []platform.ServiceBroker
-	//for _, broker := range brokers {
-	//	serviceBroker := platform.ServiceBroker{
-	//		Guid:      broker.Guid,
-	//		Name:      broker.Name,
-	//		BrokerURL: broker.BrokerURL,
-	//	}
-	//	clientBrokers = append(clientBrokers, serviceBroker)
-	//}
-	//logrus.Debugf("Successfully got %d brokers via CF client", len(clientBrokers))
+	logrus.Debug("Getting brokers via k8s client...")
+	brokers, err := b.app.RetrieveBrokers()
+	if err != nil {
+		return nil, err
+	}
 
-	//return clientBrokers, nil
-	return nil, nil
+	var clientBrokers []platform.ServiceBroker
+	for _, broker := range brokers {
+		serviceBroker := platform.ServiceBroker{
+			Guid:      string(broker.ObjectMeta.UID),
+			Name:      broker.Name,
+			BrokerURL: broker.Spec.URL,
+		}
+		clientBrokers = append(clientBrokers, serviceBroker)
+	}
+	logrus.Debugf("Successfully got %d brokers via CF client", len(clientBrokers))
+
+	return clientBrokers, nil
 }
 
 func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	//logrus.Debugf("Creating broker via CF Client with name [%s]...", r.Name)
-	//
-	//request := cfclient.CreateServiceBrokerRequest{
-	//	Username:  b.reg.User,
-	//	Password:  b.reg.Password,
-	//	Name:      r.Name,
-	//	BrokerURL: r.BrokerURL,
-	//}
-	//
-	//broker, err := b.cfClient.CreateServiceBroker(request)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//response := &platform.ServiceBroker{
-	//	Guid:      broker.Guid,
-	//	Name:      broker.Name,
-	//	BrokerURL: broker.BrokerURL,
-	//}
-	//logrus.Debugf("Successfully created broker via CF Client with name [%s]...", r.Name)
+	logrus.Debugf("Creating broker via CF Client with name [%s]...", r.Name)
 
-	//return response, nil
-	return nil, nil
+	request := &v1beta1.ClusterServiceBroker{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      r.Name,
+		},
+		Spec: v1beta1.ClusterServiceBrokerSpec{
+			CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
+				URL:            r.BrokerURL,
+				RelistBehavior: "Manual",
+			},
+		},
+	}
+
+	csb, err := b.app.ServiceCatalog().ClusterServiceBrokers().Create(request)
+	if err != nil {
+		logrus.Fatal("[client.go; RegisterBroker()] Registering a broker at the service catalog failed: " + err.Error())
+		return nil, err
+	}
+	logrus.Println("[client.go; RegisterBroker()] New service broker successfully registered")
+	return &platform.ServiceBroker{
+		Guid:      string(csb.UID),
+		Name:      r.Name,
+		BrokerURL: r.BrokerURL,
+	}, nil
 }
 
 func (b PlatformClient) DeleteBroker(r *platform.DeleteServiceBrokerRequest) error {
-	//logrus.Debugf("Deleting broker via CF Client with guid [%s] ", r.Guid)
-	//
-	//if err := b.cfClient.DeleteServiceBroker(r.Guid); err != nil {
-	//	return err
-	//}
-	//logrus.Debugf("Successfully deleted broker via CF Client with guid [%s] ", r.Guid)
-	//
-	//return nil
+	logrus.Debugf("Deleting broker via CF Client with guid [%s] ", r.Guid)
+
+	err := b.app.ServiceCatalog().ClusterServiceBrokers().Delete(r.Name, &v1.DeleteOptions{})
+	if err != nil {
+		return err
+	}
+	logrus.Debugf("Successfully deleted broker via CF Client with guid [%s] ", r.Guid)
+
 	return nil
 }
 
 func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	//logrus.Debugf("Updating broker with name [%s] and guid [%s]...", r.Name, r.Guid)
-	//
-	//request := cfclient.UpdateServiceBrokerRequest{
-	//	Username:  b.reg.User,
-	//	Password:  b.reg.Password,
-	//	Name:      r.Name,
-	//	BrokerURL: r.BrokerURL,
-	//}
-	//
-	//broker, err := b.cfClient.UpdateServiceBroker(r.Guid, request)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//response := &platform.ServiceBroker{
-	//	Guid:      broker.Guid,
-	//	Name:      broker.Name,
-	//	BrokerURL: broker.BrokerURL,
-	//}
-	//logrus.Debugf("Successfully updated broker with name [%s] and guid [%s]...", r.Name, r.Guid)
-	//
-	//return response, nil
-	return nil, nil
+	logrus.Debugf("Updating broker via CF Client with guid [%s] ", r.Guid)
+
+	broker := &v1beta1.ClusterServiceBroker{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      r.Name,
+		},
+	}
+
+	updatedBroker, err := b.app.ServiceCatalog().ClusterServiceBrokers().Update(broker)
+	if err != nil {
+		return nil, err
+	}
+	logrus.Debugf("Successfully updated broker via CF Client with guid [%s] ", r.Guid)
+
+	return &platform.ServiceBroker{
+		Guid:      string(updatedBroker.ObjectMeta.UID),
+		Name:      updatedBroker.Name,
+		BrokerURL: updatedBroker.Spec.URL,
+	}, nil
 }
 
 func (b PlatformClient) Fetch(serviceBroker *platform.ServiceBroker) error {
-	//_, err := b.UpdateBroker(&platform.UpdateServiceBrokerRequest{
-	//	Guid:      serviceBroker.Guid,
-	//	Name:      serviceBroker.Name,
-	//	BrokerURL: serviceBroker.BrokerURL,
-	//})
-	//return err
-	return nil
+	return b.app.Sync(serviceBroker.Name, 3)
 }
