@@ -33,7 +33,7 @@ func NewClient() (platform.Client, error) {
 }
 
 func (b PlatformClient) GetBrokers() ([]platform.ServiceBroker, error) {
-	logrus.Debug("Getting brokers via k8s client...")
+	logrus.Debug("Getting all brokers registered in the k8s service-catalog...")
 	brokers, err := b.app.RetrieveBrokers()
 	if err != nil {
 		return nil, err
@@ -48,13 +48,13 @@ func (b PlatformClient) GetBrokers() ([]platform.ServiceBroker, error) {
 		}
 		clientBrokers = append(clientBrokers, serviceBroker)
 	}
-	logrus.Debugf("Successfully got %d brokers via CF client", len(clientBrokers))
+	logrus.Debugf("Successfully got %d brokers via k8s client", len(clientBrokers))
 
 	return clientBrokers, nil
 }
 
 func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	logrus.Debugf("Creating broker via CF Client with name [%s]...", r.Name)
+	logrus.Debugf("Creating broker via k8s client with name [%s]...", r.Name)
 
 	request := &v1beta1.ClusterServiceBroker{
 		ObjectMeta: v1.ObjectMeta{
@@ -70,10 +70,10 @@ func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*p
 
 	csb, err := b.app.ServiceCatalog().ClusterServiceBrokers().Create(request)
 	if err != nil {
-		logrus.Fatal("[client.go; RegisterBroker()] Registering a broker at the service catalog failed: " + err.Error())
+		logrus.Fatal("Registering a broker at the service catalog failed: " + err.Error())
 		return nil, err
 	}
-	logrus.Println("[client.go; RegisterBroker()] New service broker successfully registered")
+	logrus.Println("New service broker successfully registered in k8s")
 	return &platform.ServiceBroker{
 		Guid:      string(csb.UID),
 		Name:      r.Name,
@@ -82,19 +82,19 @@ func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*p
 }
 
 func (b PlatformClient) DeleteBroker(r *platform.DeleteServiceBrokerRequest) error {
-	logrus.Debugf("Deleting broker via CF Client with guid [%s] ", r.Guid)
+	logrus.Debugf("Deleting broker via k8s client with guid [%s] ", r.Guid)
 
 	err := b.app.ServiceCatalog().ClusterServiceBrokers().Delete(r.Name, &v1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
-	logrus.Debugf("Successfully deleted broker via CF Client with guid [%s] ", r.Guid)
+	logrus.Debugf("Successfully deleted broker via k8s client with guid [%s] ", r.Guid)
 
 	return nil
 }
 
 func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	logrus.Debugf("Updating broker via CF Client with guid [%s] ", r.Guid)
+	logrus.Debugf("Updating broker via k8s client with guid [%s] ", r.Guid)
 
 	broker := &v1beta1.ClusterServiceBroker{
 		ObjectMeta: v1.ObjectMeta{
@@ -106,7 +106,7 @@ func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*p
 	if err != nil {
 		return nil, err
 	}
-	logrus.Debugf("Successfully updated broker via CF Client with guid [%s] ", r.Guid)
+	logrus.Debugf("Successfully updated broker via k8s Client with guid [%s] ", r.Guid)
 
 	return &platform.ServiceBroker{
 		Guid:      string(updatedBroker.ObjectMeta.UID),
