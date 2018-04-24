@@ -7,9 +7,10 @@ REPOSITORY=$1
 PROJECT=$2
 VERSION=$3
 
-docker build -f Dockerfile -t "$REPOSITORY"/"$PROJECT":"$VERSION"  .
-docker push "$REPOSITORY"/"$PROJECT":"$VERSION"
+docker build  -t "$REPOSITORY"/"$PROJECT":"$VERSION"  .
+#docker push "$REPOSITORY"/"$PROJECT":"$VERSION"
 
+exit 1
 cat yaml/service-broker-proxy-deployment.yaml \
     | sed -e "s#\${REPOSITORY}#"$REPOSITORY"#" \
     | sed -e "s#\${PROJECT}#"$PROJECT"#" \

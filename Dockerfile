@@ -12,11 +12,6 @@ ENV GOPATH /go
 # We need so that dep can fetch it's dependencies
 RUN apk --no-cache add git
 
-# Install linters
-RUN go get -u golang.org/x/lint/golint && \
-    go get github.com/GoASTScanner/gas/cmd/gas/... && \
-    go get github.com/alecthomas/gometalinter && \
-    gometalinter --install --update
 
 # Directory in workspace
 RUN mkdir -p "/go/src/github.com/Peripli/service-broker-proxy-k8s"
@@ -26,9 +21,6 @@ WORKDIR "/go/src/github.com/Peripli/service-broker-proxy-k8s"
 # Install dep, dependencies, lint, run tests and build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go get github.com/golang/dep/cmd/dep && \
     dep ensure -v && \
-#    /go/bin/gometalinter --disable=gotype  ./... && \
-    CGO_ENABLED=0 /go/bin/gometalinter --exclude "vendor" --disable=gotype  ./...  && \
-    go test && \
     go build -o /main .
 
 #########################################################

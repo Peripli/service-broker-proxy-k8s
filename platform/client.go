@@ -8,7 +8,7 @@ import (
 	"github.com/kubernetes-incubator/service-catalog/pkg/svcat/kube"
 	"github.com/sirupsen/logrus"
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
-
+	. "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -20,12 +20,15 @@ var _ platform.Client = &PlatformClient{}
 var _ platform.Fetcher = &PlatformClient{}
 
 func NewClient() (platform.Client, error) {
-	kubeconfig := flag.String("kubeconfig", "", "Path to a kubeconfig file")
+	kubeconfig := flag.String(RecommendedConfigPathFlag, "", "Path to a kubeconfig file")
 	flag.Parse()
-	kube := kube.GetConfig("shoot-garden-cpet-peripli", *kubeconfig)
+	if(*kubeconfig==""){
+		logrus.Println("No kubeconfig given in argument. Trying to load 'inCluster' configuration ")
+	}
+	kube := kube.GetConfig("", *kubeconfig)
 	restConfig, _ := kube.ClientConfig()
 	appClient, _ := clientset.NewForConfig(restConfig)
-	a, _ := svcat.NewApp(appClient, "shoot-garden-cpet-peripli")
+	a, _ := svcat.NewApp(appClient, "")
 
 	return &PlatformClient{
 		a,
