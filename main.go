@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
 	"github.com/sirupsen/logrus"
-	"github.com/Peripli/service-broker-proxy-k8s/platform"
 	"github.com/Peripli/service-broker-proxy/pkg/env"
+	"github.com/service-broker-proxy-k8s/platform"
 )
 const env_prefix = "PROXY"
 
