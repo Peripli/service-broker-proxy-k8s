@@ -17,19 +17,5 @@ spec:
         image: ${REPOSITORY}/${PROJECT}:${VERSION}
         ports:
         - containerPort: 8080
-        volumeMounts:
-        - name: service-manager-secrets
-          mountPath: "/etc/service-manager-secrets"
-          readOnly: true
-        - name: service-broker-proxy-configuration
-          mountPath: "/etc/configuration"
-          readOnly: true
       imagePullSecrets:
       - name: service-broker-proxy-image-secret
-      volumes:
-      - name: service-manager-secrets
-        secret:
-          secretName: service-manager-secret
-      - name: service-broker-proxy-configuration
-        configMap:
-          name: service-broker-proxy-configuration
