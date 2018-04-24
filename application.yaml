@@ -14,7 +14,7 @@ app:
 sm:
   user: admin
   password: admin
-  host: https://sm-dummy.cfapps.eu10.hana.ondemand.com
+  host: https://service-manager-core-enablement.cfapps.eu10.hana.ondemand.com
   osbApi: /v1/osb
   timeoutSeconds: 10
 #cf:
