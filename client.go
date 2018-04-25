@@ -1,15 +1,17 @@
-package platform
+package main
 
 import (
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/kubernetes-incubator/service-catalog/pkg/svcat"
 	"flag"
 	"github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
-	"github.com/kubernetes-incubator/service-catalog/pkg/svcat/kube"
 	"github.com/sirupsen/logrus"
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
 	. "k8s.io/client-go/tools/clientcmd"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/rest"
 )
 
 type PlatformClient struct {
@@ -19,16 +21,37 @@ type PlatformClient struct {
 var _ platform.Client = &PlatformClient{}
 var _ platform.Fetcher = &PlatformClient{}
 
+func GetClientConfig(kubeconfig string) (*rest.Config, error) {
+	if kubeconfig != "" {
+		logrus.Println("Load configuration from kubeconfig")
+		return clientcmd.BuildConfigFromFlags("", kubeconfig)
+	}
+	logrus.Println("Load 'inCluster' configuration ")
+	return rest.InClusterConfig()
+}
+
 func NewClient() (platform.Client, error) {
+
 	kubeconfig := flag.String(RecommendedConfigPathFlag, "", "Path to a kubeconfig file")
 	flag.Parse()
-	if(*kubeconfig==""){
-		logrus.Println("No kubeconfig given in argument. Trying to load 'inCluster' configuration ")
+
+	// Build the client config - optionally using a provided kubeconfig file.
+	config, err := GetClientConfig(*kubeconfig)
+	if err != nil {
+		logrus.Fatalf("Failed to load client config: %v", err)
 	}
-	kube := kube.GetConfig("", *kubeconfig)
-	restConfig, _ := kube.ClientConfig()
-	appClient, _ := clientset.NewForConfig(restConfig)
-	a, _ := svcat.NewApp(appClient, "")
+
+	appClient, err := clientset.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	k8sClient, err := k8sclient.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	a, _ := svcat.NewApp(k8sClient, appClient, "")
 
 	return &PlatformClient{
 		a,
@@ -73,7 +96,7 @@ func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*p
 
 	csb, err := b.app.ServiceCatalog().ClusterServiceBrokers().Create(request)
 	if err != nil {
-		logrus.Fatal("Registering a broker at the service catalog failed: " + err.Error())
+		logrus.Warn("Registering a broker at the service catalog failed: " + err.Error())
 		return nil, err
 	}
 	logrus.Println("New service broker successfully registered in k8s")
@@ -121,3 +144,4 @@ func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*p
 func (b PlatformClient) Fetch(serviceBroker *platform.ServiceBroker) error {
 	return b.app.Sync(serviceBroker.Name, 3)
 }
+
