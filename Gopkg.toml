@@ -25,12 +25,9 @@
 #   unused-packages = true
 
 [[constraint]]
-  version = "v0.1.13"
+  branch = "master"
   name = "github.com/kubernetes-incubator/service-catalog"
 
-[prune]
-  go-tests = true
-  unused-packages = true
 
 [[constraint]]
   name = "github.com/Peripli/service-broker-proxy"

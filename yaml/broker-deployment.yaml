@@ -2,6 +2,8 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
+  labels:
+    addon: service-broker-proxy
   name: service-broker-proxy
 spec:
   selector:
@@ -12,10 +14,11 @@ spec:
       labels:
         app: service-broker-proxy
     spec:
+      serviceAccountName: service-broker-account
       containers:
       - name: service-broker-proxy
         image: ${REPOSITORY}/${PROJECT}:${VERSION}
         ports:
-        - containerPort: 8080
+        - containerPort: 8081
       imagePullSecrets:
-      - name: service-broker-proxy-image-secret
+      - name: artifactory

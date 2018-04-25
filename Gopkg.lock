@@ -32,13 +32,7 @@
     "pkg/sbproxy/server",
     "pkg/sm"
   ]
-  revision = "f38217ebc4d3805c2e261bb0708060aadf0dc074"
-
-[[projects]]
-  branch = "dev"
-  name = "github.com/Peripli/service-broker-proxy-k8s"
-  packages = ["platform"]
-  revision = "c35275766decec2e8c99f6b26bd89145ad12e4e7"
+  revision = "4fd6eac182ad922af491f99b3378dbb6994ae390"
 
 [[projects]]
   branch = "master"
@@ -137,7 +131,7 @@
     "openstack/utils",
     "pagination"
   ]
-  revision = "d240260ea5048753e7c2f7afffd13ee6979ac179"
+  revision = "e25975f29734719dc6071b3683ca40dbb1937cc1"
 
 [[projects]]
   name = "github.com/gorilla/context"
@@ -199,6 +193,7 @@
   version = "1.1.3"
 
 [[projects]]
+  branch = "master"
   name = "github.com/kubernetes-incubator/service-catalog"
   packages = [
     "pkg/apis/servicecatalog",
@@ -209,12 +204,12 @@
     "pkg/client/clientset_generated/clientset/scheme",
     "pkg/client/clientset_generated/clientset/typed/servicecatalog/v1beta1",
     "pkg/client/clientset_generated/clientset/typed/settings/v1alpha1",
+    "pkg/filter",
     "pkg/svcat",
     "pkg/svcat/kube",
     "pkg/svcat/service-catalog"
   ]
-  revision = "32b71e19f745fc65091121fb016bb3285ab8fc1d"
-  version = "v0.1.15"
+  revision = "d48eecaddb6fac63055abbc973a1ecf7fa9318bf"
 
 [[projects]]
   name = "github.com/magiconair/properties"
@@ -267,8 +262,8 @@
 [[projects]]
   name = "github.com/pmorie/go-open-service-broker-client"
   packages = ["v2"]
-  revision = "dca737037ce636eb282e84e3a1c7479c9692e884"
-  version = "0.0.10"
+  revision = "e8aa16c9036317bd59ced8921e9da6197ab577e3"
+  version = "0.0.5"
 
 [[projects]]
   name = "github.com/pmorie/osb-broker-lib"
@@ -366,7 +361,7 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "2b6c08872f4b66da917bb4ce98df4f0307330f78"
+  revision = "b0697eccbea9adec5b7ba8008f4c33d98d733388"
 
 [[projects]]
   branch = "master"
@@ -542,7 +537,36 @@
   name = "k8s.io/client-go"
   packages = [
     "discovery",
+    "kubernetes",
     "kubernetes/scheme",
+    "kubernetes/typed/admissionregistration/v1alpha1",
+    "kubernetes/typed/admissionregistration/v1beta1",
+    "kubernetes/typed/apps/v1",
+    "kubernetes/typed/apps/v1beta1",
+    "kubernetes/typed/apps/v1beta2",
+    "kubernetes/typed/authentication/v1",
+    "kubernetes/typed/authentication/v1beta1",
+    "kubernetes/typed/authorization/v1",
+    "kubernetes/typed/authorization/v1beta1",
+    "kubernetes/typed/autoscaling/v1",
+    "kubernetes/typed/autoscaling/v2beta1",
+    "kubernetes/typed/batch/v1",
+    "kubernetes/typed/batch/v1beta1",
+    "kubernetes/typed/batch/v2alpha1",
+    "kubernetes/typed/certificates/v1beta1",
+    "kubernetes/typed/core/v1",
+    "kubernetes/typed/events/v1beta1",
+    "kubernetes/typed/extensions/v1beta1",
+    "kubernetes/typed/networking/v1",
+    "kubernetes/typed/policy/v1beta1",
+    "kubernetes/typed/rbac/v1",
+    "kubernetes/typed/rbac/v1alpha1",
+    "kubernetes/typed/rbac/v1beta1",
+    "kubernetes/typed/scheduling/v1alpha1",
+    "kubernetes/typed/settings/v1alpha1",
+    "kubernetes/typed/storage/v1",
+    "kubernetes/typed/storage/v1alpha1",
+    "kubernetes/typed/storage/v1beta1",
     "pkg/apis/clientauthentication",
     "pkg/apis/clientauthentication/v1alpha1",
     "pkg/version",
@@ -561,6 +585,7 @@
     "tools/clientcmd/api/latest",
     "tools/clientcmd/api/v1",
     "tools/metrics",
+    "tools/reference",
     "transport",
     "util/cert",
     "util/flowcontrol",
@@ -574,6 +599,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b54b105d8f61fa7c633dd3ef24b35c42b65dff0119c7894359affc43186549da"
+  inputs-digest = "ea69c491ec34c48026d879513d6de069ac68428dd4ff55901a05d21f99108bed"
   solver-name = "gps-cdcl"
   solver-version = 1

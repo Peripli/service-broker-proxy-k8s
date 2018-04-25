@@ -4,7 +4,6 @@ import (
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
 	"github.com/sirupsen/logrus"
 	"github.com/Peripli/service-broker-proxy/pkg/env"
-	"github.com/service-broker-proxy-k8s/platform"
 )
 const env_prefix = "PROXY"
 
@@ -20,7 +19,7 @@ func main() {
 		logrus.WithError(err).Fatal("Error loading configuration")
 	}
 
-	platformClient, err := platform.NewClient()
+	platformClient, err := NewClient()
 	if err != nil {
 		logrus.WithError(err).Fatal("Error creating platform client")
 	}

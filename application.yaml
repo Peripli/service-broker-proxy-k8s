@@ -10,22 +10,10 @@ app:
   logLevel: debug
   logFormat: text
   timeoutSeconds: 5
-  host: http://localhost:8081
+  host: http://service-broker-proxy:8081
 sm:
   user: admin
   password: admin
   host: https://service-manager-core-enablement.cfapps.eu10.hana.ondemand.com
   osbApi: /v1/osb
   timeoutSeconds: 10
-#cf:
-#  api:
-#  username: admin
-#  password: admin
-##  clientID: sm-client
-##  clientSecret: sm-secret
-#  skipSSLVerify: true
-#  timeoutSeconds: 10
-#  # Reg contains info about the credentials that will be used when proxy registers itself as a broker
-#  reg:
-#    user: admin
-#    password: admin
