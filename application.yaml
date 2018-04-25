@@ -10,7 +10,7 @@ app:
   logLevel: debug
   logFormat: text
   timeoutSeconds: 5
-  host: http://service-broker-proxy:8081
+  host: http://service-broker-proxy.broker:8081
 sm:
   user: admin
   password: admin
