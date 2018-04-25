@@ -8,11 +8,11 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: service-broker-proxy
+      addon: service-broker-proxy
   template:
     metadata:
       labels:
-        app: service-broker-proxy
+        addon: service-broker-proxy
     spec:
       serviceAccountName: service-broker-account
       containers:
