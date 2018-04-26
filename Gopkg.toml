@@ -19,15 +19,15 @@
 #   name = "github.com/x/y"
 #   version = "2.4.0"
 #
-# [prune]
-#   non-go = false
-#   go-tests = true
-#   unused-packages = true
+[prune]
+  [[prune.project]]
+    name = "github.com/kubernetes-incubator/service-catalog"
+    # service catalog has some wierd files that are too long on Windows
+    non-go = true
 
 [[constraint]]
   branch = "master"
   name = "github.com/kubernetes-incubator/service-catalog"
-
 
 [[constraint]]
   name = "github.com/Peripli/service-broker-proxy"

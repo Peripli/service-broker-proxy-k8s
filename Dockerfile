@@ -15,10 +15,7 @@ COPY . "/go/src/github.com/Peripli/service-broker-proxy-k8s"
 WORKDIR "/go/src/github.com/Peripli/service-broker-proxy-k8s"
 
 # Install dep, dependencies and build the main (without any testing at the moment)
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go get github.com/golang/dep/cmd/dep && \
-    rm -rf vendor && \
-    dep ensure -vendor-only -v && \
-    go build -o /main .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /main .
 
 #########################################################
 # Build the runtime container
