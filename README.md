@@ -6,39 +6,42 @@
 
 K8S Specific Implementation for Service Broker Proxy Module
 
-## [WIP] Installation of the service broker proxy
-Create a configuration file *proxy.properties* and create a configmap from these properties with the name *service-broker-proxy-configuration*. Replace the service manager credentials and configurations accordingly.
-
-```
-namespace=<namespace>
-service_manager_timeout=<timeout_in_seconds>
-```
-
-```sh
-kubectl create configmap service-broker-proxy-configuration --from-env-file=proxy.properties
-```
-
-Then create a secret *service-manager-secret* containing the coordinates of the the service manager.
-*url*, *user*, and *password* are base64 encoded.
-```yaml
-cat <<EOF | kubectl create -f -
-apiVersion: v1
-kind: Secret
-metadata:
-  name: service-manager-secret
-type: Opaque
-data:
-  url: <base64-encoded-url>
-  user: <base64-encoded-user>
-  password: <base64-encoded-password>
-EOF
-```
-
 ## Docker Images
-Docker Images are available on 
+
+Docker Images are available on
 https://console.cloud.google.com/gcr/images/gardener-project/EU/test/service-broker-proxy-k8s
 
-## Deployment on your kubernetes cluster
+## [WIP] Installation of the service broker proxy
+
+Install [Helm](https://github.com/kubernetes/helm/releases)
+
+```bash
+$ kubectl -n kube-system create serviceaccount tiller
+serviceaccount "tiller" created
+
+$ kubectl create clusterrolebinding addon-tiller --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+clusterrolebinding "addon-tiller" created
+
+$ helm init --service-account tiller
 ```
-./deploy.sh eu.gcr.io gardener-project/test/service-broker-proxy-k8s <version>
+
+Install service-catalog:
+
+```bash
+helm install charts/catalog --name catalog --namespace catalog
+```
+
+```bash
+helm install charts/service-broker-proxy --name service-broker-proxy --namespace service-broker-proxy
+# --set image.repository=fooo-repository # optional override of proxy's image
+```
+
+You can optionally create an override `values.yaml` file and override some of the default values:
+
+```bash
+helm install charts/service-broker-proxy \
+  --name service-broker-proxy \
+  --namespace service-broker-proxy \
+  --values=charts/service-broker-proxy/values.yaml \
+  --values=YOUR-OVERRIDE-FILE-HERE.yaml
 ```
