@@ -7,13 +7,14 @@ import (
 	"github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
 	"github.com/sirupsen/logrus"
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
-	. "k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/rest"
 )
 
+// PlatformClient implements all broker specific functions, like create/update/delete/list a service broker
+// in kubernetes.
 type PlatformClient struct {
 	app *svcat.App
 }
@@ -21,7 +22,7 @@ type PlatformClient struct {
 var _ platform.Client = &PlatformClient{}
 var _ platform.Fetcher = &PlatformClient{}
 
-func GetClientConfig(kubeconfig string) (*rest.Config, error) {
+func getClientConfig(kubeconfig string) (*rest.Config, error) {
 	if kubeconfig != "" {
 		logrus.Println("Load configuration from kubeconfig")
 		return clientcmd.BuildConfigFromFlags("", kubeconfig)
@@ -30,13 +31,14 @@ func GetClientConfig(kubeconfig string) (*rest.Config, error) {
 	return rest.InClusterConfig()
 }
 
+// NewClient can be used to create a service-catalog client to communicate with the kubernetes service-catalog.
 func NewClient() (platform.Client, error) {
 
-	kubeconfig := flag.String(RecommendedConfigPathFlag, "", "Path to a kubeconfig file")
+	kubeconfig := flag.String(clientcmd.RecommendedConfigPathFlag, "", "Path to a kubeconfig file")
 	flag.Parse()
 
 	// Build the client config - optionally using a provided kubeconfig file.
-	config, err := GetClientConfig(*kubeconfig)
+	config, err := getClientConfig(*kubeconfig)
 	if err != nil {
 		logrus.Fatalf("Failed to load client config: %v", err)
 	}
@@ -57,7 +59,7 @@ func NewClient() (platform.Client, error) {
 		a,
 	}, nil
 }
-
+// GetBrokers returns all service-brokers currently registered in kubernetes
 func (b PlatformClient) GetBrokers() ([]platform.ServiceBroker, error) {
 	logrus.Debug("Getting all brokers registered in the k8s service-catalog...")
 	brokers, err := b.app.RetrieveBrokers()
@@ -79,6 +81,7 @@ func (b PlatformClient) GetBrokers() ([]platform.ServiceBroker, error) {
 	return clientBrokers, nil
 }
 
+// CreateBroker registers a new broker in kubernetes
 func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
 	logrus.Debugf("Creating broker via k8s client with name [%s]...", r.Name)
 
@@ -107,6 +110,7 @@ func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*p
 	}, nil
 }
 
+// DeleteBroker deletes an existing broker in from kubernetes
 func (b PlatformClient) DeleteBroker(r *platform.DeleteServiceBrokerRequest) error {
 	logrus.Debugf("Deleting broker via k8s client with guid [%s] ", r.Guid)
 
@@ -119,6 +123,7 @@ func (b PlatformClient) DeleteBroker(r *platform.DeleteServiceBrokerRequest) err
 	return nil
 }
 
+// UpdateBroker updates a broker in kubernetes
 func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
 	logrus.Debugf("Updating broker via k8s client with guid [%s] ", r.Guid)
 
@@ -141,6 +146,8 @@ func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*p
 	}, nil
 }
 
+// Fetch the new catalog information from reach service-broker registered in kubernetes,
+// so that it is visible in the kubernetes service-catalog
 func (b PlatformClient) Fetch(serviceBroker *platform.ServiceBroker) error {
 	return b.app.Sync(serviceBroker.Name, 3)
 }

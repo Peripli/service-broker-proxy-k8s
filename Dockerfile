@@ -18,6 +18,7 @@ WORKDIR "/go/src/github.com/Peripli/service-broker-proxy-k8s"
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go get github.com/golang/dep/cmd/dep && \
     rm -rf vendor && \
     dep ensure -vendor-only -v && \
+    go test && \
     go build -o /main .
 
 #########################################################
