@@ -1,3 +1,17 @@
+FROM golang:1.10.1 AS linter-env
+
+# Install linters
+RUN go get -u golang.org/x/lint/golint && \
+    go get github.com/GoASTScanner/gas/cmd/gas/... && \
+    go get github.com/alecthomas/gometalinter && \
+    gometalinter --install --update
+
+# Directory in workspace
+RUN mkdir -p "/go/src/github.com/Peripli/service-broker-proxy-k8s"
+COPY . "/go/src/github.com/Peripli/service-broker-proxy-k8s"
+
+RUN /go/bin/gometalinter --deadline=300s --disable=gotype  /go/src/github.com/Peripli/service-broker-proxy-k8s
+
 #########################################################
 # Build the sources and provide the result in a multi stage
 # docker container. The alpine build image has to match
