@@ -1,18 +1,35 @@
 package main
 
 import (
-	"github.com/Peripli/service-broker-proxy-k8s/proxy"
-	"log"
+	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
+	"github.com/sirupsen/logrus"
+	"github.com/Peripli/service-broker-proxy/pkg/env"
 )
+const envPrefix = "PROXY"
 
 func main() {
-	log.Println("Staring Kubernetes Service Broker Proxy")
 
-	p := proxy.New()
-	err := p.Start()
-	if err != nil {
-		log.Fatal("Kubernetes Service Broker Proxy Error")
-		log.Fatal(err)
-		panic(err)
+	env := env.Default(envPrefix)
+	if err := env.Load(); err != nil {
+		logrus.WithError(err).Fatal("Error loading environment")
 	}
+
+	proxyConfig, err := sbproxy.NewConfigFromEnv(env)
+	if err != nil {
+		logrus.WithError(err).Fatal("Error loading configuration")
+	}
+
+	platformClient, err := NewClient()
+	if err != nil {
+		logrus.WithError(err).Fatal("Error creating platform client")
+	}
+
+	sbProxy, err := sbproxy.New(proxyConfig, platformClient)
+	if err != nil {
+		logrus.WithError(err).Fatal("Error creating SB Proxy")
+	}
+
+	//sbProxy.Use(middleware.BasicAuth(platformConfig.Reg.User, platformConfig.Reg.Password))
+
+	sbProxy.Run()
 }

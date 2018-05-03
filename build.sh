@@ -1,17 +1,74 @@
 #!/usr/bin/env bash
 
-# Example usage:
-# ./build.sh cp-enablement.docker.repositories.sap.ondemand.com service-broker-proxy dev
+########################################################################################################################
+# JUST FOR LOCAL DEVELOPMENT and deployment to kubernetes. Not for CI/CD pipeline
+########################################################################################################################
+#
+# - ensure that you have a valid Artifactory or other Docker registry account
+# - Create your image pull secret in your namespace
+#   kubectl create secret docker-registry artifactory --docker-server=<YOUR-REGISTRY>.docker.repositories.sap.ondemand.com --docker-username=<USERNAME> --docker-password=<PASSWORD> --docker-email=<EMAIL> -n <NAMESPACE>
+# - change the settings below arcording your settings
+#
+# usage:
+# Call this script with the version to build and push to the registry. After build/push the
+# yaml/* files are deployed into your cluster
+#
+#  ./build.sh 1.0
+#
 
-REPOSITORY=$1
-PROJECT=$2
-VERSION=$3
+VERSION=$1
+PROJECT=service-broker-proxy-k8s
+REPOSITORY=cp-enablement.docker.repositories.sap.ondemand.com
+NAMESPACE=broker
 
-docker build -f Dockerfile -t "$REPOSITORY"/"$PROJECT":"$VERSION"  .
-docker push "$REPOSITORY"/"$PROJECT":"$VERSION"
+# causes the shell to exit if any subcommand or pipeline returns a non-zero status.
+set -e
+# set debug mode
+set -x
 
-cat yaml/service-broker-proxy-deployment.yaml \
+
+########################################################################################################################
+# build the new docker image
+########################################################################################################################
+#
+echo '>>> Building new image'
+# Due to a bug in Docker we need to analyse the log to find out if build passed (see https://github.com/dotcloud/docker/issues/1875)
+docker build --no-cache=true -t $REPOSITORY/$PROJECT:$VERSION . | tee /tmp/docker_build_result.log
+RESULT=$(cat /tmp/docker_build_result.log | tail -n 1)
+if [[ "$RESULT" != *Successfully* ]];
+then
+  exit -1
+fi
+
+########################################################################################################################
+# push the docker image to your registry
+########################################################################################################################
+#
+echo '>>> Push new image'
+docker push $REPOSITORY/$PROJECT:$VERSION
+
+
+########################################################################################################################
+# deploy your YAML files into your kubernetes cluster
+########################################################################################################################
+#
+# (and replace some placeholder in the yaml files...
+# It is recommended to use HELM for bigger projects and more dynamic deployments
+#
+# Apply the YAML passed into stdin and replace the version string first
+# ....next step - HELM  :-)
+#
+cat ./yaml/broker-namespace.yaml \
+    | sed -e "s#\${NAMESPACE}#"$NAMESPACE"#" \
+    | kubectl apply -f -
+kubectl apply -f ./yaml/broker-service.yaml -n $NAMESPACE
+kubectl apply -f ./yaml/broker-account.yaml -n $NAMESPACE
+kubectl apply -f ./yaml/broker-role.yaml
+cat ./yaml/broker-rolebinding.yaml \
+    | sed -e "s#\${NAMESPACE}#"$NAMESPACE"#" \
+    | kubectl apply -f -
+cat ./yaml/broker-deployment.yaml \
     | sed -e "s#\${REPOSITORY}#"$REPOSITORY"#" \
     | sed -e "s#\${PROJECT}#"$PROJECT"#" \
     | sed -e "s#\${VERSION}#"$VERSION"#" \
-    | kubectl apply -f -
+    | kubectl apply -n $NAMESPACE -f -
