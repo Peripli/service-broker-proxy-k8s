@@ -1,0 +1,20 @@
+# Default values for service-broker-proxy.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: eu.gcr.io/gardener-project/test/service-broker-proxy-k8s
+  tag: 0.0.1-7c799a78c734866bdd2702c6b2958d4eb3dda49f
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 80
+
+config:
+  serviceManager:
+    host: https://service-manager-core-test.cfapps.eu10.hana.ondemand.com
+    user: admin
+    password: admin

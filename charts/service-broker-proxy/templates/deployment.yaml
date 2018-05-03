@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "service-broker-proxy.fullname" . }}
+  labels:
+    app: {{ template "service-broker-proxy.name" . }}
+    chart: {{ template "service-broker-proxy.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "service-broker-proxy.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "service-broker-proxy.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ template "service-broker-proxy.fullname" . }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: PROXY_APP_HOST
+          value: http://{{ template "service-broker-proxy.name" . }}.{{ .Release.Namespace }}:{{ .Values.service.port }}
+        - name: PROXY_SM_HOST
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "service-broker-proxy.fullname" . }}
+              key: host
+        - name: PROXY_SM_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "service-broker-proxy.fullname" . }}
+              key: user
+        - name: PROXY_SM_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "service-broker-proxy.fullname" . }}
+              key: password
+        ports:
+        - name: http
+          containerPort: 8081
+          protocol: TCP
+
+
