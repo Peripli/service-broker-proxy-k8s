@@ -5,20 +5,13 @@
 #########################################################
 FROM golang:1.10.1-alpine3.7 AS build-env
 
-# We need so that dep can fetch it's dependencies
-RUN apk --no-cache add git
-
-
 # Directory in workspace
 RUN mkdir -p "/go/src/github.com/Peripli/service-broker-proxy-k8s"
 COPY . "/go/src/github.com/Peripli/service-broker-proxy-k8s"
 WORKDIR "/go/src/github.com/Peripli/service-broker-proxy-k8s"
 
-# Install dep, dependencies and build the main (without any testing at the moment)
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go get github.com/golang/dep/cmd/dep && \
-    rm -rf vendor && \
-    dep ensure -vendor-only -v && \
-    go test && \
+# Run tests and build the main (without any testing at the moment)
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go test && \
     go build -o /main .
 
 #########################################################
