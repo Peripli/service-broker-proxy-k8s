@@ -31,4 +31,4 @@
 
 [[constraint]]
   name = "github.com/Peripli/service-broker-proxy"
-  branch = "initial"
+  revision = "4fd6eac182ad922af491f99b3378dbb6994ae390"
