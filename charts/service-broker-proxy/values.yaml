@@ -5,8 +5,8 @@
 replicaCount: 1
 
 image:
-  repository: cp-enablement.docker.repositories.sap.ondemand.com
-  tag: latest
+  repository: eu.gcr.io/gardener-project/test/service-broker-proxy-k8s
+  tag: 0.0.1-7c799a78c734866bdd2702c6b2958d4eb3dda49f
   pullPolicy: Always
 
 service:
