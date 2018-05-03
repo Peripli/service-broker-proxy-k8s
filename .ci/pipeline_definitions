@@ -1,0 +1,21 @@
+service-broker-proxy:
+  template: 'default'
+  base_definition:
+    repo: ~
+    traits:
+      version: ~
+      publish:
+        dockerimages:
+          vpn-seed:
+            inputs:
+              repos:
+                source: ~ # default
+            registry: 'gcr-readwrite'
+            image: 'eu.gcr.io/gardener-project/test/service-broker-proxy-k8s'
+            dockerfile: 'Dockerfile'
+    steps: ~
+  variants:
+    head-update: ~
+    pull-request:
+      traits:
+        pull-request: ~
