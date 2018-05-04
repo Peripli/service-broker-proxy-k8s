@@ -1,8 +1,8 @@
 package platform
 
 // Client provides the logic for calling into the underlying platform and performing platform specific operations
+//go:generate counterfeiter . Client
 type Client interface {
-
 	// GetBrokers obtains the registered brokers in the platform
 	GetBrokers() ([]ServiceBroker, error)
 

@@ -20,7 +20,7 @@ type PlatformClient struct {
 }
 
 var _ platform.Client = &PlatformClient{}
-var _ platform.Fetcher = &PlatformClient{}
+var _ platform.CatalogFetcher = &PlatformClient{}
 
 func getClientConfig(kubeconfig string) (*rest.Config, error) {
 	if kubeconfig != "" {

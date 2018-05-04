@@ -15,6 +15,10 @@ type AppConfiguration struct {
 	Host       string
 }
 
+type Settings struct {
+	App *AppConfiguration
+}
+
 func (c *AppConfiguration) Validate() error {
 	if c.Port == 0 {
 		return errors.New("application configuration Port missing")
@@ -53,9 +57,7 @@ func DefaultConfig() *AppConfiguration {
 
 func NewConfig(env env.Environment) (*AppConfiguration, error) {
 	config := DefaultConfig()
-	appConfig := &struct {
-		App *AppConfiguration
-	}{
+	appConfig := &Settings{
 		App: config,
 	}
 

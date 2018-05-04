@@ -14,6 +14,10 @@ type ClientConfiguration struct {
 	CreateFunc     func(config *ClientConfiguration) (Client, error)
 }
 
+type Settings struct {
+	Sm *ClientConfiguration
+}
+
 func (c *ClientConfiguration) Validate() error {
 	if len(c.User) == 0 {
 		return errors.New("SM configuration User missing")
@@ -49,9 +53,7 @@ func DefaultConfig() *ClientConfiguration {
 func NewConfig(env env.Environment) (*ClientConfiguration, error) {
 	config := DefaultConfig()
 
-	smConfig := &struct {
-		Sm *ClientConfiguration
-	}{
+	smConfig := &Settings{
 		Sm: config,
 	}
 	if err := env.Unmarshal(smConfig); err != nil {
