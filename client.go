@@ -32,7 +32,7 @@ func getClientConfig(kubeconfig string) (*rest.Config, error) {
 }
 
 // NewClient can be used to create a service-catalog client to communicate with the kubernetes service-catalog.
-func NewClient() (platform.Client, error) {
+func NewClient() (*PlatformClient, error) {
 
 	kubeconfig := flag.String(clientcmd.RecommendedConfigPathFlag, "", "Path to a kubeconfig file")
 	flag.Parse()
