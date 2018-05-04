@@ -7,30 +7,16 @@ import (
 	"github.com/Peripli/service-broker-proxy/pkg/sm"
 )
 
-func NewConfig(
-	AppConfig *server.AppConfiguration,
-	OsbConfig *osb.ClientConfiguration,
-	SmConfig *sm.ClientConfiguration,
-) (*Configuration, error) {
-	config := &Configuration{
-		App: AppConfig,
-		Osb: OsbConfig,
-		Sm:  SmConfig,
-	}
-
-	return config, nil
-}
-
 func NewConfigFromEnv(env env.Environment) (*Configuration, error) {
 	appConfig, err := server.NewConfig(env)
 	if err != nil {
 		return nil, err
 	}
-	osbConfig, err := osb.NewConfig(env)
+	smConfig, err := sm.NewConfig(env)
 	if err != nil {
 		return nil, err
 	}
-	smConfig, err := sm.NewConfig(env)
+	osbConfig, err := osb.NewConfig(smConfig)
 	if err != nil {
 		return nil, err
 	}

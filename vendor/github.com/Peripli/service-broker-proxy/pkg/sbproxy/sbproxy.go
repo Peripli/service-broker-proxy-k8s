@@ -19,6 +19,8 @@ import (
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/server"
 	"github.com/Peripli/service-broker-proxy/pkg/sm"
 	"github.com/gorilla/mux"
+	"github.com/onrik/logrus/filename"
+	"github.com/onrik/logrus/formatter"
 	"github.com/pkg/errors"
 	"github.com/pmorie/osb-broker-lib/pkg/metrics"
 	"github.com/pmorie/osb-broker-lib/pkg/rest"
@@ -62,7 +64,7 @@ func New(config *Configuration, client platform.Client) (*SBProxy, error) {
 
 	cronScheduler := cron.New()
 
-	regJob, err := defaultRegJob(&group, client, config.Sm, config.App.Host + ApiPrefix)
+	regJob, err := defaultRegJob(&group, client, config.Sm, config.App.Host+ApiPrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +130,7 @@ func defaultOSBServer(config *osb.ClientConfiguration) (*osbserver.Server, error
 	osbServer := osbserver.New(api, reg)
 	router := mux.NewRouter()
 
-	err = moveRoutes(Path, osbServer.Router, router)
+	err = registerRoutes(Path, osbServer.Router, router)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +139,7 @@ func defaultOSBServer(config *osb.ClientConfiguration) (*osbserver.Server, error
 	return osbServer, nil
 }
 
-func moveRoutes(prefix string, fromRouter *mux.Router, toRouter *mux.Router) error {
+func registerRoutes(prefix string, fromRouter *mux.Router, toRouter *mux.Router) error {
 	subRouter := toRouter.PathPrefix(prefix).Subrouter()
 	return fromRouter.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 
@@ -150,7 +152,7 @@ func moveRoutes(prefix string, fromRouter *mux.Router, toRouter *mux.Router) err
 		if err != nil {
 			return errors.Wrap(err, "error getting route methods")
 		}
-		logrus.Info("Adding route with methods: ", methods, " and path: ", path)
+		logrus.Info("Registering route with methods: ", methods, " and path: ", path)
 		subRouter.Handle(path, route.GetHandler()).Methods(methods...)
 		return nil
 	})
@@ -169,7 +171,9 @@ func defaultRegJob(group *sync.WaitGroup, platformClient platform.Client, smConf
 //TODO: should happen earlier (ideally in sbproxy init(), logger.DefaultConfig()?)
 func setUpLogging(logLevel string, logFormat string) {
 	logrus.AddHook(&logger.ErrorLocationHook{})
-	logrus.AddHook(&logger.LogLocationHook{})
+	hook := filename.NewHook()
+	hook.Field = "logsource"
+	logrus.AddHook(hook)
 	level, err := logrus.ParseLevel(logLevel)
 	if err != nil {
 		logrus.SetLevel(logrus.DebugLevel)
@@ -180,7 +184,8 @@ func setUpLogging(logLevel string, logFormat string) {
 	if logFormat == "json" {
 		logrus.SetFormatter(&logrus.JSONFormatter{})
 	} else {
-		logrus.SetFormatter(&logrus.TextFormatter{})
+		textFormatter := formatter.New()
+		logrus.SetFormatter(textFormatter)
 	}
 }
 

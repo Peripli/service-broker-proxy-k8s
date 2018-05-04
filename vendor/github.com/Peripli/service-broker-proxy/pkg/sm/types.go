@@ -1,7 +1,5 @@
 package sm
 
-//TODO: once SM changes are merged we should import the rest types from SM here and use them to avoid double maintance
-
 // BrokerList broker struct
 type BrokerList struct {
 	Brokers []Broker `json:"brokers"`
