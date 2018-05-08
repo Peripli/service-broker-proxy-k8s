@@ -1,3 +1,9 @@
+#########################################################
+# The gometalinter currently does not work properly on
+# alpine images, so we add an additional layer with a
+# debian image just for the gometalinter.
+# Github issue: https://github.com/alecthomas/gometalinter/issues/149
+#########################################################
 FROM golang:1.10.1 AS linter-env
 
 # Install linters
@@ -35,9 +41,6 @@ FROM alpine:3.7
 
 # required to use x.509 certs (HTTPS)
 RUN apk update && apk add ca-certificates
-
-# ENV KUBERNETES_MASTER https://api.s3.cpet.k8s.sapcloud.io
-# ENV KUBECONFIG /app/kubeconfig.yaml
 
 WORKDIR /app
 COPY --from=build-env /main .

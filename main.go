@@ -1,10 +1,11 @@
 package main
 
 import (
+	"github.com/Peripli/service-broker-proxy/pkg/env"
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
 	"github.com/sirupsen/logrus"
-	"github.com/Peripli/service-broker-proxy/pkg/env"
 )
+
 const envPrefix = "PROXY"
 
 func main() {
@@ -28,8 +29,6 @@ func main() {
 	if err != nil {
 		logrus.WithError(err).Fatal("Error creating SB Proxy")
 	}
-
-	//sbProxy.Use(middleware.BasicAuth(platformConfig.Reg.User, platformConfig.Reg.Password))
 
 	sbProxy.Run()
 }

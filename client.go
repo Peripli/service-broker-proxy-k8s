@@ -22,6 +22,8 @@ type PlatformClient struct {
 var _ platform.Client = &PlatformClient{}
 var _ platform.CatalogFetcher = &PlatformClient{}
 
+// getClientConfig returns the kubeconfig either set via env variable KUBERNETES_MASTER or via in-cluster configuration
+// via a specified service-account.
 func getClientConfig(kubeconfig string) (*rest.Config, error) {
 	if kubeconfig != "" {
 		logrus.Println("Load configuration from kubeconfig")
@@ -59,7 +61,8 @@ func NewClient() (*PlatformClient, error) {
 		a,
 	}, nil
 }
-// GetBrokers returns all service-brokers currently registered in kubernetes
+
+// GetBrokers returns all service-brokers currently registered in kubernetes service-catalog.
 func (b PlatformClient) GetBrokers() ([]platform.ServiceBroker, error) {
 	logrus.Debug("Getting all brokers registered in the k8s service-catalog...")
 	brokers, err := b.app.RetrieveBrokers()
@@ -81,13 +84,13 @@ func (b PlatformClient) GetBrokers() ([]platform.ServiceBroker, error) {
 	return clientBrokers, nil
 }
 
-// CreateBroker registers a new broker in kubernetes
+// CreateBroker registers a new broker in kubernetes service-catalog.
 func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
 	logrus.Debugf("Creating broker via k8s client with name [%s]...", r.Name)
 
 	request := &v1beta1.ClusterServiceBroker{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      r.Name,
+			Name: r.Name,
 		},
 		Spec: v1beta1.ClusterServiceBrokerSpec{
 			CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
@@ -110,7 +113,7 @@ func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*p
 	}, nil
 }
 
-// DeleteBroker deletes an existing broker in from kubernetes
+// DeleteBroker deletes an existing broker in from kubernetes service-catalog.
 func (b PlatformClient) DeleteBroker(r *platform.DeleteServiceBrokerRequest) error {
 	logrus.Debugf("Deleting broker via k8s client with guid [%s] ", r.Guid)
 
@@ -123,13 +126,13 @@ func (b PlatformClient) DeleteBroker(r *platform.DeleteServiceBrokerRequest) err
 	return nil
 }
 
-// UpdateBroker updates a broker in kubernetes
+// UpdateBroker updates a service broker in the kubernetes service-catalog.
 func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
 	logrus.Debugf("Updating broker via k8s client with guid [%s] ", r.Guid)
 
 	broker := &v1beta1.ClusterServiceBroker{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      r.Name,
+			Name: r.Name,
 		},
 	}
 
@@ -147,8 +150,7 @@ func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*p
 }
 
 // Fetch the new catalog information from reach service-broker registered in kubernetes,
-// so that it is visible in the kubernetes service-catalog
+// so that it is visible in the kubernetes service-catalog.
 func (b PlatformClient) Fetch(serviceBroker *platform.ServiceBroker) error {
 	return b.app.Sync(serviceBroker.Name, 3)
 }
-

@@ -3,12 +3,6 @@
 ########################################################################################################################
 # JUST FOR LOCAL DEVELOPMENT and deployment to kubernetes. Not for CI/CD pipeline
 ########################################################################################################################
-#
-# - ensure that you have a valid Artifactory or other Docker registry account
-# - Create your image pull secret in your namespace
-#   kubectl create secret docker-registry artifactory --docker-server=<YOUR-REGISTRY>.docker.repositories.sap.ondemand.com --docker-username=<USERNAME> --docker-password=<PASSWORD> --docker-email=<EMAIL> -n <NAMESPACE>
-# - change the settings below arcording your settings
-#
 # usage:
 # Call this script with the version to build and push to the registry. After build/push the
 # yaml/* files are deployed into your cluster
@@ -24,7 +18,7 @@ NAMESPACE=broker
 # causes the shell to exit if any subcommand or pipeline returns a non-zero status.
 set -e
 # set debug mode
-set -x
+#set -x
 
 
 ########################################################################################################################
@@ -49,15 +43,9 @@ docker push $REPOSITORY/$PROJECT:$VERSION
 
 
 ########################################################################################################################
-# deploy your YAML files into your kubernetes cluster
+# deploy your YAML files into your kubernetes cluster via helm
 ########################################################################################################################
-#
-# (and replace some placeholder in the yaml files...
-# It is recommended to use HELM for bigger projects and more dynamic deployments
-#
-# Apply the YAML passed into stdin and replace the version string first
-# ....next step - HELM  :-)
-#
+
 cat ./yaml/broker-namespace.yaml \
     | sed -e "s#\${NAMESPACE}#"$NAMESPACE"#" \
     | kubectl apply -f -
