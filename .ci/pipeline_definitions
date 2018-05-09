@@ -19,3 +19,6 @@ service-broker-proxy:
     pull-request:
       traits:
         pull-request: ~
+    dev:
+      repo:
+        branch: 'dev'
