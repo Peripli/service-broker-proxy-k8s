@@ -13,7 +13,7 @@
 VERSION=$1
 PROJECT=service-broker-proxy-k8s
 REPOSITORY=cp-enablement.docker.repositories.sap.ondemand.com
-NAMESPACE=broker
+NAMESPACE=service-broker-proxy
 
 # causes the shell to exit if any subcommand or pipeline returns a non-zero status.
 set -e
@@ -46,17 +46,8 @@ docker push $REPOSITORY/$PROJECT:$VERSION
 # deploy your YAML files into your kubernetes cluster via helm
 ########################################################################################################################
 
-cat ./yaml/broker-namespace.yaml \
-    | sed -e "s#\${NAMESPACE}#"$NAMESPACE"#" \
-    | kubectl apply -f -
-kubectl apply -f ./yaml/broker-service.yaml -n $NAMESPACE
-kubectl apply -f ./yaml/broker-account.yaml -n $NAMESPACE
-kubectl apply -f ./yaml/broker-role.yaml
-cat ./yaml/broker-rolebinding.yaml \
-    | sed -e "s#\${NAMESPACE}#"$NAMESPACE"#" \
-    | kubectl apply -f -
-cat ./yaml/broker-deployment.yaml \
-    | sed -e "s#\${REPOSITORY}#"$REPOSITORY"#" \
-    | sed -e "s#\${PROJECT}#"$PROJECT"#" \
-    | sed -e "s#\${VERSION}#"$VERSION"#" \
-    | kubectl apply -n $NAMESPACE -f -
+helm upgrade --install service-broker-proxy \
+  charts/service-broker-proxy \
+  --set image.repository=$REPOSITORY/$PROJECT \
+  --set image.tag=$VERSION \
+  --namespace $NAMESPACE
