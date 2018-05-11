@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
@@ -61,6 +62,19 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				Expect(createdBroker.Name).To(Equal("fake-broker"))
 				Expect(createdBroker.BrokerURL).To(Equal("http://fake.broker.url"))
 				Expect(err).To(BeNil())
+			})
+
+			It("with an error", func() {
+				platformClient, _ := NewClient()
+				createClusterServiceBroker = func(app *svcat.App, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
+					return nil, errors.New("Error from service-catalog")
+				}
+
+				requestBroker := &platform.CreateServiceBrokerRequest{}
+				createdBroker, err := platformClient.CreateBroker(requestBroker)
+
+				Expect(createdBroker).To(BeNil())
+				Expect(err).To(Equal(errors.New("Error from service-catalog")))
 			})
 		})
 
