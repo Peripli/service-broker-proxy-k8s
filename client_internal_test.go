@@ -30,7 +30,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			restInClusterConfig = func() (*rest.Config, error) {
 				return &rest.Config{
 					Host:            "https://fakeme",
-					BearerToken:     string("1234token"),
+					BearerToken:     string("faketoken"),
 					TLSClientConfig: rest.TLSClientConfig{},
 				}, nil
 			}
@@ -53,13 +53,13 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				}
 
 				requestBroker := &platform.CreateServiceBrokerRequest{
-					Name:      "test-broker",
-					BrokerURL: "http://google.com",
+					Name:      "fake-broker",
+					BrokerURL: "http://fake.broker.url",
 				}
 				createdBroker, err := platformClient.CreateBroker(requestBroker)
 
-				Expect(createdBroker.Name).To(Equal("test-broker"))
-				Expect(createdBroker.BrokerURL).To(Equal("http://google.com"))
+				Expect(createdBroker.Name).To(Equal("fake-broker"))
+				Expect(createdBroker.BrokerURL).To(Equal("http://fake.broker.url"))
 				Expect(err).To(BeNil())
 			})
 		})
@@ -118,16 +118,16 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 				requestBroker := &platform.UpdateServiceBrokerRequest{
 					Guid:      "1234",
-					Name:      "test-broker",
-					BrokerURL: "http://google.com",
+					Name:      "fake-broker",
+					BrokerURL: "http://fake.broker.url",
 				}
 
 				broker, err := platformClient.UpdateBroker(requestBroker)
 
 				Expect(err).To(BeNil())
 				Expect(broker.Guid).To(Equal("1234"))
-				Expect(broker.Name).To(Equal("test-broker-updated"))
-				Expect(broker.BrokerURL).To(Equal("http://google.com-updated"))
+				Expect(broker.Name).To(Equal("fake-broker-updated"))
+				Expect(broker.BrokerURL).To(Equal("http://fake.broker.url-updated"))
 			})
 		})
 
@@ -136,8 +136,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				platformClient, _ := NewClient()
 				requestBroker := &platform.ServiceBroker{
 					Guid:      "1234",
-					Name:      "test-broker",
-					BrokerURL: "http://google.com",
+					Name:      "fake-broker",
+					BrokerURL: "http://fake.broker.url",
 				}
 
 				syncClusterServiceBroker = func(app *svcat.App, name string, retries int) error {
