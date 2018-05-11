@@ -169,6 +169,20 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				Expect(broker.Name).To(Equal("fake-broker-updated"))
 				Expect(broker.BrokerURL).To(Equal("http://fake.broker.url-updated"))
 			})
+
+			It("with an error", func() {
+				platformClient, _ := NewClient()
+				updateClusterServiceBroker = func(app *svcat.App, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
+					return nil, errors.New("Error updating clusterservicebroker")
+				}
+
+				requestBroker := &platform.UpdateServiceBrokerRequest{}
+
+				broker, err := platformClient.UpdateBroker(requestBroker)
+
+				Expect(broker).To(BeNil())
+				Expect(err).To(Equal(errors.New("Error updating clusterservicebroker")))
+			})
 		})
 
 		Context("Fetches the catalog information of a service broker", func() {
