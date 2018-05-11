@@ -119,8 +119,21 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				}
 
 				brokers, err := platformClient.GetBrokers()
+
 				Expect(err).To(BeNil())
 				Expect(brokers).ToNot(BeNil())
+			})
+
+			It("with an error", func() {
+				platformClient, _ := NewClient()
+				retrieveClusterServiceBrokers = func(app *svcat.App) ([]v1beta1.ClusterServiceBroker, error) {
+					return nil, errors.New("Error getting clusterservicebrokers")
+				}
+
+				brokers, err := platformClient.GetBrokers()
+
+				Expect(brokers).To(BeNil())
+				Expect(err).To(Equal(errors.New("Error getting clusterservicebrokers")))
 			})
 		})
 
