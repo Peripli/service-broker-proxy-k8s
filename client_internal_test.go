@@ -202,6 +202,18 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 				Expect(err).To(BeNil())
 			})
+
+			It("with an error", func() {
+				platformClient, _ := NewClient()
+				requestBroker := &platform.ServiceBroker{}
+				syncClusterServiceBroker = func(app *svcat.App, name string, retries int) error {
+					return errors.New("Error syncing service broker")
+				}
+
+				err := platformClient.Fetch(requestBroker)
+
+				Expect(err).To(Equal(errors.New("Error syncing service broker")))
+			})
 		})
 	})
 })
