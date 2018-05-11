@@ -5,8 +5,6 @@ import (
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 
-	"fmt"
-	"io"
 	"os"
 
 	. "github.com/onsi/ginkgo"
@@ -17,37 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 )
-
-var fs fileSystem = osFS{}
-
-type fileSystem interface {
-	Open(name string) (file, error)
-	Stat(name string) (os.FileInfo, error)
-}
-
-type file interface {
-	io.Closer
-	io.Reader
-	io.ReaderAt
-	io.Seeker
-	Stat() (os.FileInfo, error)
-}
-
-// osFS implements fileSystem using the local disk.
-type osFS struct{}
-
-func (osFS) Open(name string) (file, error) {
-	fmt.Println("##### 1")
-	if name == "/var/run/secrets/kubernetes.io/serviceaccount/token" {
-		file, _ := os.Open("VERSION")
-		return file, nil
-	}
-	return nil, nil
-}
-func (osFS) Stat(name string) (os.FileInfo, error) { return os.Stat(name) }
-
-type MockSvcatApp struct {
-}
 
 func TestClient(t *testing.T) {
 	RegisterFailHandler(Fail)
