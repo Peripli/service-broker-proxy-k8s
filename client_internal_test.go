@@ -94,6 +94,19 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 				Expect(err).To(BeNil())
 			})
+
+			It("with an error", func() {
+				platformClient, _ := NewClient()
+				deleteClusterServiceBroker = func(app *svcat.App, name string, options *v1.DeleteOptions) error {
+					return errors.New("Error deleting clusterservicebroker")
+				}
+
+				requestBroker := &platform.DeleteServiceBrokerRequest{}
+
+				err := platformClient.DeleteBroker(requestBroker)
+
+				Expect(err).To(Equal(errors.New("Error deleting clusterservicebroker")))
+			})
 		})
 
 		Context("Gets all service brokers", func() {
