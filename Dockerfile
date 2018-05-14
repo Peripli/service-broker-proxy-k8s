@@ -31,7 +31,9 @@ COPY . "/go/src/github.com/Peripli/service-broker-proxy-k8s"
 WORKDIR "/go/src/github.com/Peripli/service-broker-proxy-k8s"
 
 # Run tests and build the main (without any testing at the moment)
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go test -cover -ginkgo.v && \
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go test -ginkgo.v -coverprofile=coverage.out && \
+    go tool cover -func=coverage.out && \
     go build -o /main .
 
 #########################################################
