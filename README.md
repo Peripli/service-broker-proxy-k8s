@@ -1,8 +1,6 @@
 # service-broker-proxy-k8s
 
-[![Build Status](https://travis-ci.org/Peripli/service-broker-proxy-k8s.svg?branch=master)](https://travis-ci.org/Peripli/service-broker-proxy-k8s)
-
-[![Coverage Status](https://coveralls.io/repos/github/Peripli/service-broker-proxy-k8s/badge.svg)](https://coveralls.io/github/Peripli/service-broker-proxy-k8s)
+[![Build Status](https://travis-ci.org/Peripli/service-broker-proxy-k8s.svg?branch=master)](https://travis-ci.org/Peripli/service-broker-proxy-k8s)[![Coverage Status](https://coveralls.io/repos/github/Peripli/service-broker-proxy-k8s/badge.svg?branch=master)](https://coveralls.io/github/Peripli/service-broker-proxy-k8s?branch=master)[![Go Report Card](https://goreportcard.com/badge/github.com/Peripli/service-broker-proxy-k8s)](https://goreportcard.com/report/github.com/Peripli/service-broker-proxy-k8s)
 
 K8S Specific Implementation for Service Broker Proxy Module
 
@@ -48,10 +46,10 @@ We first have to install helm and can then install the service-catalog and the s
     ```
 
     Here is an example how the configuraiton can look like to connect the service-broker-proxy-k8s to the service-manager.
-    
+
     Please double check the [values.yaml](charts/service-broker-proxy/values.yaml) to see which are the default values and which properties you can override in addition.
     Soon, there will be a "latest" tag and better versioned docker images.
-    
+
     Check our current [docker registry](https://console.cloud.google.com/gcr/images/gardener-project/EU/test/service-broker-proxy-k8s) for all available images.
     ```yaml
     image:
