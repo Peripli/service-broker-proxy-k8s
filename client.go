@@ -47,6 +47,7 @@ func NewClient() (*PlatformClient, error) {
 	config, err := restInClusterConfig()
 	if err != nil {
 		logrus.Fatalf("Failed to load client config: " + err.Error())
+		return nil, err
 	}
 
 	appClient, err := clientset.NewForConfig(config)
