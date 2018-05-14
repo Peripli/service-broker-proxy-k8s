@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-htmlreport="$PWD/test-coverage-report.html.out"
+htmlreport="$PWD/test-coverage-report.out.html"
 coveragefile="$(mktemp /tmp/coverage.XXXXXXXXX)"
 
 go test -coverprofile="$coveragefile"
