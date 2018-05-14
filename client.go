@@ -74,11 +74,11 @@ func (b PlatformClient) GetBrokers() ([]platform.ServiceBroker, error) {
 	logrus.Debug("Getting all brokers registered in the k8s service-catalog...")
 	brokers, err := retrieveClusterServiceBrokers(b.app)
 	if err != nil {
-		logrus.Warn("Getting all brokers at the service catalog failed: " + err.Error())
+		logrus.Error("Getting all brokers at the service catalog failed: " + err.Error())
 		return nil, err
 	}
 
-	var clientBrokers []platform.ServiceBroker
+	var clientBrokers = make([]platform.ServiceBroker, 0)
 	for _, broker := range brokers {
 		serviceBroker := platform.ServiceBroker{
 			Guid:      string(broker.ObjectMeta.UID),
@@ -110,7 +110,7 @@ func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*p
 
 	csb, err := createClusterServiceBroker(b.app, request)
 	if err != nil {
-		logrus.Warn("Registering new broker with name '" + r.Name + "' at the service catalog failed: " + err.Error())
+		logrus.Error("Registering new broker with name '" + r.Name + "' at the service catalog failed: " + err.Error())
 		return nil, err
 	}
 	logrus.Debugf("New service broker successfully registered in k8s")
@@ -128,7 +128,7 @@ func (b PlatformClient) DeleteBroker(r *platform.DeleteServiceBrokerRequest) err
 
 	err := deleteClusterServiceBroker(b.app, r.Name, &v1.DeleteOptions{})
 	if err != nil {
-		logrus.Warn("Deleting broker '" + r.Guid + "' at the service catalog failed: " + err.Error())
+		logrus.Error("Deleting broker '" + r.Guid + "' at the service catalog failed: " + err.Error())
 		return err
 	}
 	logrus.Debugf("Successfully deleted broker via k8s client with guid [%s] ", r.Guid)
@@ -154,7 +154,7 @@ func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*p
 
 	updatedBroker, err := updateClusterServiceBroker(b.app, broker)
 	if err != nil {
-		logrus.Warn("Updating broker '" + r.Guid + "' at the service catalog failed: " + err.Error())
+		logrus.Error("Updating broker '" + r.Guid + "' at the service catalog failed: " + err.Error())
 		return nil, err
 	}
 	logrus.Debugf("Successfully updated broker via k8s Client with guid [%s] ", r.Guid)
@@ -172,7 +172,7 @@ func (b PlatformClient) Fetch(serviceBroker *platform.ServiceBroker) error {
 	logrus.Debugf("Updating catalog information of service-broker with guid [%s] ", serviceBroker.Guid)
 	err := syncClusterServiceBroker(b.app, serviceBroker.Name, 3)
 	if err != nil {
-		logrus.Warn("Syncing broker '" + serviceBroker.Guid + "' at the service catalog failed: " + err.Error())
+		logrus.Error("Syncing broker '" + serviceBroker.Guid + "' at the service catalog failed: " + err.Error())
 	}
 	return err
 }

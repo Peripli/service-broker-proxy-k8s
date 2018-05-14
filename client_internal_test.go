@@ -43,6 +43,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				createClusterServiceBroker = func(app *svcat.App, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
 					return &v1beta1.ClusterServiceBroker{
 						ObjectMeta: v1.ObjectMeta{
+							UID:  "1234",
 							Name: broker.Name,
 						},
 						Spec: v1beta1.ClusterServiceBrokerSpec{
@@ -59,6 +60,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				}
 				createdBroker, err := platformClient.CreateBroker(requestBroker)
 
+				Expect(createdBroker.Guid).To(Equal("1234"))
 				Expect(createdBroker.Name).To(Equal("fake-broker"))
 				Expect(createdBroker.BrokerURL).To(Equal("http://fake.broker.url"))
 				Expect(err).To(BeNil())
@@ -114,7 +116,34 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				platformClient, _ := NewClient()
 				retrieveClusterServiceBrokers = func(app *svcat.App) ([]v1beta1.ClusterServiceBroker, error) {
 					brokers := make([]v1beta1.ClusterServiceBroker, 0)
-					brokers = append(brokers, v1beta1.ClusterServiceBroker{})
+					brokers = append(brokers, v1beta1.ClusterServiceBroker{
+						ObjectMeta: v1.ObjectMeta{
+							UID:  "1234",
+							Name: "fake-broker",
+						},
+						Spec: v1beta1.ClusterServiceBrokerSpec{
+							CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
+								URL: "http://fake.broker.url",
+							},
+						},
+					})
+					return brokers, nil
+				}
+
+				brokers, err := platformClient.GetBrokers()
+
+				Expect(err).To(BeNil())
+				Expect(brokers).ToNot(BeNil())
+				Expect(len(brokers)).To(Equal(1))
+				Expect(brokers[0].Guid).To(Equal("1234"))
+				Expect(brokers[0].Name).To(Equal("fake-broker"))
+				Expect(brokers[0].BrokerURL).To(Equal("http://fake.broker.url"))
+			})
+
+			It("when no service broker is registered", func() {
+				platformClient, _ := NewClient()
+				retrieveClusterServiceBrokers = func(app *svcat.App) ([]v1beta1.ClusterServiceBroker, error) {
+					brokers := make([]v1beta1.ClusterServiceBroker, 0)
 					return brokers, nil
 				}
 
