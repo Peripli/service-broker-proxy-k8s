@@ -15,6 +15,6 @@ service:
 
 config:
   serviceManager:
-    host: https://service-manager-core-test.cfapps.eu10.hana.ondemand.com
-    user: admin
-    password: admin
+    host: <host-of-the-service-manager>
+    user: <username-of-the-service-manager>
+    password: <password-of-the-service-manager>
