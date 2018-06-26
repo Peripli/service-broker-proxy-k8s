@@ -1,16 +1,10 @@
 #########################################################
-# Build the sources and provide the result in a multi stage
-# docker container. The alpine build image has to match
-# the alpine image in the referencing runtime container.
+# The gometalinter currently does not work properly on
+# alpine images, so we add an additional layer with a
+# debian image just for the gometalinter.
+# Github issue: https://github.com/alecthomas/gometalinter/issues/149
 #########################################################
-FROM golang:1.10.1-alpine3.7 AS build-env
-
-# Set all env variables needed for go
-ENV GOBIN /go/bin
-ENV GOPATH /go
-
-# We need so that dep can fetch it's dependencies
-RUN apk --no-cache add git
+FROM golang:1.10.1 AS linter-env
 
 # Install linters
 RUN go get -u golang.org/x/lint/golint && \
@@ -21,22 +15,37 @@ RUN go get -u golang.org/x/lint/golint && \
 # Directory in workspace
 RUN mkdir -p "/go/src/github.com/Peripli/service-broker-proxy-k8s"
 COPY . "/go/src/github.com/Peripli/service-broker-proxy-k8s"
+
+RUN /go/bin/gometalinter --deadline=300s --disable=gotype  /go/src/github.com/Peripli/service-broker-proxy-k8s
+
+#########################################################
+# Build the sources and provide the result in a multi stage
+# docker container. The alpine build image has to match
+# the alpine image in the referencing runtime container.
+#########################################################
+FROM golang:1.10.1-alpine3.7 AS build-env
+
+# Directory in workspace
+RUN mkdir -p "/go/src/github.com/Peripli/service-broker-proxy-k8s"
+COPY . "/go/src/github.com/Peripli/service-broker-proxy-k8s"
 WORKDIR "/go/src/github.com/Peripli/service-broker-proxy-k8s"
 
-# Install dep, dependencies, lint, run tests and build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go get github.com/golang/dep/cmd/dep && \
-    dep ensure -v && \
-#    /go/bin/gometalinter --disable=gotype  ./... && \
-    CGO_ENABLED=0 /go/bin/gometalinter --disable=gotype  ./...  && \
-    go test && \
+# Run tests and build the main (without any testing at the moment)
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go test -ginkgo.v -coverprofile=coverage.out && \
+    go tool cover -func=coverage.out && \
     go build -o /main .
 
 #########################################################
 # Build the runtime container
 #########################################################
 FROM alpine:3.7
-WORKDIR /app
-COPY --from=build-env /main /app/
 
+# required to use x.509 certs (HTTPS)
+RUN apk update && apk add ca-certificates
+
+WORKDIR /app
+COPY --from=build-env /main .
+COPY application.yaml ./
 ENTRYPOINT ./main
-EXPOSE 8080
+EXPOSE 8081

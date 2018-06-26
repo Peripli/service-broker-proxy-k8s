@@ -19,11 +19,24 @@
 #   name = "github.com/x/y"
 #   version = "2.4.0"
 #
-# [prune]
-#   non-go = false
-#   go-tests = true
-#   unused-packages = true
-
 [prune]
-  go-tests = true
-  unused-packages = true
+  [[prune.project]]
+    name = "github.com/kubernetes-incubator/service-catalog"
+    # service catalog has some wierd files that are too long on Windows
+    non-go = true
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/kubernetes-incubator/service-catalog"
+
+[[constraint]]
+  name = "github.com/Peripli/service-broker-proxy"
+  revision = "dedc9c2cd4a97e6a160bcbccff6b3d4f0c92c845"
+
+[[constraint]]
+  name = "github.com/onsi/ginkgo"
+  version = "1.5.0"
+
+[[constraint]]
+  name = "github.com/onsi/gomega"
+  version = "1.3.0"
