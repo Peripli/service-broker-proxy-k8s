@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Peripli/service-broker-proxy-k8s/k8sclient"
 	"github.com/Peripli/service-broker-proxy/pkg/env"
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
 	"github.com/sirupsen/logrus"
@@ -20,7 +21,7 @@ func main() {
 		logrus.WithError(err).Fatal("Error loading configuration")
 	}
 
-	platformClient, err := NewClient()
+	platformClient, err := k8sclient.NewClient()
 	if err != nil {
 		logrus.WithError(err).Fatal("Error creating platform client")
 	}

@@ -10,10 +10,10 @@ app:
   logLevel: debug
   logFormat: text
   timeoutSeconds: 5
-  host: http://service-broker-proxy.broker:8081
+  host: http://localhost:8081
 sm:
   user: admin
   password: admin
-  host: https://service-manager-core-enablement.cfapps.eu10.hana.ondemand.com
+  host: http://localhost:8080
   osbApi: /v1/osb
   timeoutSeconds: 10

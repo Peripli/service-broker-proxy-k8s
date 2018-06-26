@@ -5,8 +5,8 @@
 replicaCount: 1
 
 image:
-  repository: eu.gcr.io/gardener-project/test/service-broker-proxy-k8s
-  tag: 0.0.1-7c799a78c734866bdd2702c6b2958d4eb3dda49f
+  repository: quay.io/service-manager/sb-proxy-k8s
+  tag: latest
   pullPolicy: Always
 
 service:
@@ -16,5 +16,5 @@ service:
 config:
   serviceManager:
     host: <host-of-the-service-manager>
-    user: <username-of-the-service-manager>
-    password: <password-of-the-service-manager>
+    user: admin
+    password: admin

@@ -1,4 +1,4 @@
-package main
+package k8sclient
 
 import (
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
