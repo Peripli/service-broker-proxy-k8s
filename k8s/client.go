@@ -1,13 +1,11 @@
-package k8sclient
+package k8s
 
 import (
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
-	"github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
 	"github.com/kubernetes-incubator/service-catalog/pkg/svcat"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8sclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
@@ -42,31 +40,16 @@ var syncClusterServiceBroker = func(app *svcat.App, name string, retries int) er
 	return app.Sync(name, 3)
 }
 
-// NewClient can be used to create a service-catalog client to communicate with the kubernetes service-catalog.
-func NewClient() (*PlatformClient, error) {
-	config, err := restInClusterConfig()
-	if err != nil {
-		logrus.Error("Failed to load client config: " + err.Error())
+// NewClient create a client to communicate with the kubernetes service-catalog.
+func NewClient(config *ClientConfiguration) (*PlatformClient, error) {
+	if err := config.Validate(); err != nil {
 		return nil, err
 	}
-
-	appClient, err := clientset.NewForConfig(config)
+	app, err := config.K8sClientCreateFunc(config.LibraryConfig)
 	if err != nil {
-		logrus.Error("Failed to create new ClientSet: " + err.Error())
 		return nil, err
 	}
-
-	k8sClient, err := k8sclient.NewForConfig(config)
-	if err != nil {
-		logrus.Error("Failed to create new k8sClient: " + err.Error())
-		return nil, err
-	}
-
-	a, _ := svcat.NewApp(k8sClient, appClient, "")
-
-	return &PlatformClient{
-		a,
-	}, nil
+	return &PlatformClient{app}, nil
 }
 
 // GetBrokers returns all service-brokers currently registered in kubernetes service-catalog.

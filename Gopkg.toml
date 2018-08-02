@@ -31,7 +31,7 @@
 
 [[constraint]]
   name = "github.com/Peripli/service-broker-proxy"
-  revision = "dedc9c2cd4a97e6a160bcbccff6b3d4f0c92c845"
+  revision = "master"
 
 [[constraint]]
   name = "github.com/onsi/ginkgo"
