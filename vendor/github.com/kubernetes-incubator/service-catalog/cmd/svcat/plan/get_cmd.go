@@ -29,28 +29,27 @@ import (
 
 type getCmd struct {
 	*command.Context
+	*command.Formatted
 	lookupByUUID bool
 	uuid         string
 	name         string
 
-	classFilter  string
-	classUUID    string
-	className    string
-	outputFormat string
-}
-
-func (c *getCmd) SetFormat(format string) {
-	c.outputFormat = format
+	classFilter string
+	classUUID   string
+	className   string
 }
 
 // NewGetCmd builds a "svcat get plans" command
 func NewGetCmd(cxt *command.Context) *cobra.Command {
-	getCmd := &getCmd{Context: cxt}
+	getCmd := &getCmd{
+		Context:   cxt,
+		Formatted: command.NewFormatted(),
+	}
 	cmd := &cobra.Command{
-		Use:     "plans [name]",
+		Use:     "plans [NAME]",
 		Aliases: []string{"plan", "pl"},
 		Short:   "List plans, optionally filtered by name or class",
-		Example: `
+		Example: command.NormalizeExamples(`
   svcat get plans
   svcat get plan PLAN_NAME
   svcat get plan CLASS_NAME/PLAN_NAME
@@ -59,7 +58,7 @@ func NewGetCmd(cxt *command.Context) *cobra.Command {
   svcat get plan --class CLASS_NAME PLAN_NAME
   svcat get plans --uuid --class CLASS_UUID
   svcat get plan --uuid --class CLASS_UUID PLAN_UUID
-`,
+`),
 		PreRunE: command.PreRunE(getCmd),
 		RunE:    command.RunE(getCmd),
 	}
@@ -77,7 +76,7 @@ func NewGetCmd(cxt *command.Context) *cobra.Command {
 		"",
 		"Filter plans based on class. When --uuid is specified, the class name is interpreted as a uuid.",
 	)
-	command.AddOutputFlags(cmd.Flags())
+	getCmd.AddOutputFlags(cmd.Flags())
 	return cmd
 }
 
@@ -117,20 +116,23 @@ func (c *getCmd) Run() error {
 
 func (c *getCmd) getAll() error {
 
-	var opts *servicecatalog.FilterOptions
-
 	// Retrieve the classes as well because plans don't have the external class name
-	classes, err := c.App.RetrieveClasses()
+	// TODO: When we implement ns-scoped support for get plans, we need to pass in the current namespace
+	classOpts := servicecatalog.ScopeOptions{
+		Scope: servicecatalog.AllScope,
+	}
+	classes, err := c.App.RetrieveClasses(classOpts)
 	if err != nil {
 		return fmt.Errorf("unable to list classes (%s)", err)
 	}
 
+	var opts *servicecatalog.FilterOptions
 	if c.classFilter != "" {
 		if !c.lookupByUUID {
 			// Map the external class name to the class name.
 			for _, class := range classes {
-				if c.className == class.Spec.ExternalName {
-					c.classUUID = class.Name
+				if c.className == class.GetExternalName() {
+					c.classUUID = class.GetName()
 					break
 				}
 			}
@@ -145,7 +147,7 @@ func (c *getCmd) getAll() error {
 		return fmt.Errorf("unable to list plans (%s)", err)
 	}
 
-	output.WritePlanList(c.Output, c.outputFormat, plans, classes)
+	output.WritePlanList(c.Output, c.OutputFormat, plans, classes)
 	return nil
 }
 
@@ -172,7 +174,7 @@ func (c *getCmd) get() error {
 		return err
 	}
 
-	output.WritePlan(c.Output, c.outputFormat, *plan, *class)
+	output.WritePlan(c.Output, c.OutputFormat, *plan, *class)
 
 	return nil
 }

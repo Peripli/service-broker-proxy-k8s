@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/Peripli/service-broker-proxy/pkg/httputils"
+	"github.com/Peripli/service-manager/pkg/util"
 	"github.com/sirupsen/logrus"
 )
 
@@ -12,16 +12,20 @@ const (
 	errorMessage  = "Unauthorized resource access"
 )
 
+// BasicAuth is a middleware for basic authorization
 func BasicAuth(username, password string) func(handler http.Handler) http.Handler {
 	return func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !authorized(r, username, password) {
 				logrus.WithField("username", username).Debug(errorMessage)
-				httputils.WriteResponse(w, http.StatusUnauthorized, httputils.HTTPErrorResponse{
-					ErrorKey:     notAuthorized,
-					ErrorMessage: errorMessage,
-				},
-				)
+				err := util.WriteJSON(w, http.StatusUnauthorized, &util.HTTPError{
+					ErrorType:   notAuthorized,
+					Description: errorMessage,
+					StatusCode:  http.StatusUnauthorized,
+				})
+				if err != nil {
+					logrus.Error(err)
+				}
 				return
 			}
 			handler.ServeHTTP(w, r)

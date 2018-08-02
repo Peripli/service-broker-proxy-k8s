@@ -1,14 +1,16 @@
 package middleware
 
 import (
+	"net/http"
+	"net/http/httptest"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
-	"net/http"
-	"net/http/httptest"
-
 	"encoding/json"
+
+	"github.com/Peripli/service-manager/pkg/util"
 )
 
 var _ = Describe("Basic Authentication wrapper", func() {
@@ -39,16 +41,18 @@ var _ = Describe("Basic Authentication wrapper", func() {
 
 	DescribeTable("when given a request with basic authorization",
 		func(expectedStatus int, expectedError, username, password string) {
+
 			request := newRequest(username, password)
 			wrappedHandler.ServeHTTP(httpRecorder, request)
 
 			Expect(httpRecorder.Code).To(Equal(expectedStatus))
 			if expectedError != "" {
-				var body map[string]string
-				err := json.Unmarshal(httpRecorder.Body.Bytes(), &body)
+				var body util.HTTPError
+				decoder := json.NewDecoder(httpRecorder.Body)
+				err := decoder.Decode(&body)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(body["error"]).To(Equal(expectedError))
-				Expect(body["description"]).To(Not(BeEmpty()))
+				Expect(body.ErrorType).To(Equal(expectedError))
+				Expect(body.Description).To(Not(BeEmpty()))
 			}
 		},
 		Entry("returns 401 for empty username", http.StatusUnauthorized, "Not Authorized", "", validPassword),

@@ -75,6 +75,8 @@ const (
 	testClusterServiceClassName             = "test-clusterserviceclass"
 	testClusterServicePlanName              = "test-clusterserviceplan"
 	testNonExistentClusterServiceClassName  = "nothere"
+	testNonExistentClusterServicePlanName   = "nothere"
+	testNonExistentServicePlanName          = "nothere"
 	testNonbindableClusterServiceClassName  = "test-unbindable-clusterserviceclass"
 	testNonbindableClusterServicePlanName   = "test-unbindable-clusterserviceplan"
 	testRemovedClusterServiceClassName      = "removed-test-clusterserviceclass"
@@ -526,7 +528,8 @@ func getTestClusterServiceBrokerWithAuth(authInfo *v1beta1.ClusterServiceBrokerA
 
 // a bindable service class wired to the result of getTestClusterServiceBroker()
 func getTestClusterServiceClass() *v1beta1.ClusterServiceClass {
-	return &v1beta1.ClusterServiceClass{
+	broker := getTestClusterServiceBroker()
+	class := &v1beta1.ClusterServiceClass{
 		ObjectMeta: metav1.ObjectMeta{Name: testClusterServiceClassGUID},
 		Spec: v1beta1.ClusterServiceClassSpec{
 			ClusterServiceBrokerName: testClusterServiceBrokerName,
@@ -538,10 +541,13 @@ func getTestClusterServiceClass() *v1beta1.ClusterServiceClass {
 			},
 		},
 	}
+	markAsServiceCatalogManagedResource(class, broker)
+	return class
 }
 
 func getTestMarkedAsRemovedClusterServiceClass() *v1beta1.ClusterServiceClass {
-	return &v1beta1.ClusterServiceClass{
+	broker := getTestClusterServiceBroker()
+	class := &v1beta1.ClusterServiceClass{
 		ObjectMeta: metav1.ObjectMeta{Name: testRemovedClusterServiceClassGUID},
 		Spec: v1beta1.ClusterServiceClassSpec{
 			ClusterServiceBrokerName: testClusterServiceBrokerName,
@@ -553,15 +559,18 @@ func getTestMarkedAsRemovedClusterServiceClass() *v1beta1.ClusterServiceClass {
 			},
 		},
 		Status: v1beta1.ClusterServiceClassStatus{
-			v1beta1.CommonServiceClassStatus{
+			CommonServiceClassStatus: v1beta1.CommonServiceClassStatus{
 				RemovedFromBrokerCatalog: true,
 			},
 		},
 	}
+	markAsServiceCatalogManagedResource(class, broker)
+	return class
 }
 
 func getTestRemovedClusterServiceClass() *v1beta1.ClusterServiceClass {
-	return &v1beta1.ClusterServiceClass{
+	broker := getTestClusterServiceBroker()
+	class := &v1beta1.ClusterServiceClass{
 		ObjectMeta: metav1.ObjectMeta{Name: testRemovedClusterServiceClassGUID},
 		Spec: v1beta1.ClusterServiceClassSpec{
 			ClusterServiceBrokerName: testClusterServiceBrokerName,
@@ -573,6 +582,8 @@ func getTestRemovedClusterServiceClass() *v1beta1.ClusterServiceClass {
 			},
 		},
 	}
+	markAsServiceCatalogManagedResource(class, broker)
+	return class
 }
 
 func getTestBindingRetrievableClusterServiceClass() *v1beta1.ClusterServiceClass {
@@ -591,8 +602,28 @@ func getTestBindingRetrievableClusterServiceClass() *v1beta1.ClusterServiceClass
 	}
 }
 
+func getTestBindingRetrievableServiceClass() *v1beta1.ServiceClass {
+	return &v1beta1.ServiceClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testServiceClassGUID,
+			Namespace: testNamespace,
+		},
+		Spec: v1beta1.ServiceClassSpec{
+			ServiceBrokerName: testServiceBrokerName,
+			CommonServiceClassSpec: v1beta1.CommonServiceClassSpec{
+				Description:        "a test service",
+				ExternalName:       testServiceClassName,
+				ExternalID:         testServiceClassGUID,
+				BindingRetrievable: true,
+				Bindable:           true,
+			},
+		},
+	}
+}
+
 func getTestClusterServicePlan() *v1beta1.ClusterServicePlan {
-	return &v1beta1.ClusterServicePlan{
+	broker := getTestClusterServiceBroker()
+	plan := &v1beta1.ClusterServicePlan{
 		ObjectMeta: metav1.ObjectMeta{Name: testClusterServicePlanGUID},
 		Spec: v1beta1.ClusterServicePlanSpec{
 			ClusterServiceBrokerName: testClusterServiceBrokerName,
@@ -607,10 +638,13 @@ func getTestClusterServicePlan() *v1beta1.ClusterServicePlan {
 		},
 		Status: v1beta1.ClusterServicePlanStatus{},
 	}
+	markAsServiceCatalogManagedResource(plan, broker)
+	return plan
 }
 
 func getTestMarkedAsRemovedClusterServicePlan() *v1beta1.ClusterServicePlan {
-	return &v1beta1.ClusterServicePlan{
+	broker := getTestClusterServiceBroker()
+	plan := &v1beta1.ClusterServicePlan{
 		ObjectMeta: metav1.ObjectMeta{Name: testRemovedClusterServicePlanGUID},
 		Spec: v1beta1.ClusterServicePlanSpec{
 			ClusterServiceBrokerName: testClusterServiceBrokerName,
@@ -629,10 +663,13 @@ func getTestMarkedAsRemovedClusterServicePlan() *v1beta1.ClusterServicePlan {
 			},
 		},
 	}
+	markAsServiceCatalogManagedResource(plan, broker)
+	return plan
 }
 
 func getTestRemovedClusterServicePlan() *v1beta1.ClusterServicePlan {
-	return &v1beta1.ClusterServicePlan{
+	broker := getTestClusterServiceBroker()
+	plan := &v1beta1.ClusterServicePlan{
 		ObjectMeta: metav1.ObjectMeta{Name: testRemovedClusterServicePlanGUID},
 		Spec: v1beta1.ClusterServicePlanSpec{
 			ClusterServiceBrokerName: testClusterServiceBrokerName,
@@ -646,10 +683,13 @@ func getTestRemovedClusterServicePlan() *v1beta1.ClusterServicePlan {
 			},
 		},
 	}
+	markAsServiceCatalogManagedResource(plan, broker)
+	return plan
 }
 
 func getTestClusterServicePlanNonbindable() *v1beta1.ClusterServicePlan {
-	return &v1beta1.ClusterServicePlan{
+	broker := getTestClusterServiceBroker()
+	plan := &v1beta1.ClusterServicePlan{
 		ObjectMeta: metav1.ObjectMeta{Name: testNonbindableClusterServicePlanGUID},
 		Spec: v1beta1.ClusterServicePlanSpec{
 			CommonServicePlanSpec: v1beta1.CommonServicePlanSpec{
@@ -662,6 +702,8 @@ func getTestClusterServicePlanNonbindable() *v1beta1.ClusterServicePlan {
 			},
 		},
 	}
+	markAsServiceCatalogManagedResource(plan, broker)
+	return plan
 }
 
 // an unbindable service class wired to the result of getTestClusterServiceBroker()
@@ -716,10 +758,26 @@ func getTestCatalog() *osb.CatalogResponse {
 // as ClusterServiceClassRef and ClusterServicePlanRef which means that the
 // ClusterServiceClass and ClusterServicePlan are fetched using
 // Service[Class|Plan]Lister.get(spec.Service[Class|Plan]Ref.Name)
-func getTestServiceInstanceWithRefs() *v1beta1.ServiceInstance {
+func getTestServiceInstanceWithClusterRefs() *v1beta1.ServiceInstance {
 	sc := getTestServiceInstance()
 	sc.Spec.ClusterServiceClassRef = &v1beta1.ClusterObjectReference{Name: testClusterServiceClassGUID}
 	sc.Spec.ClusterServicePlanRef = &v1beta1.ClusterObjectReference{Name: testClusterServicePlanGUID}
+	return sc
+}
+
+func getTestServiceInstanceWithNamespacedRefs() *v1beta1.ServiceInstance {
+	sc := getTestServiceInstanceNamespacedPlanRef()
+	sc.Spec.ServiceClassRef = &v1beta1.LocalObjectReference{Name: testServiceClassGUID}
+	sc.Spec.ServicePlanRef = &v1beta1.LocalObjectReference{Name: testServicePlanGUID}
+	return sc
+}
+
+func getTestServiceInstanceWithRefsAndExternalProperties() *v1beta1.ServiceInstance {
+	sc := getTestServiceInstanceWithClusterRefs()
+	sc.Status.ExternalProperties = &v1beta1.ServiceInstancePropertiesState{
+		ClusterServicePlanExternalID:   testClusterServicePlanGUID,
+		ClusterServicePlanExternalName: testClusterServicePlanName,
+	}
 	return sc
 }
 
@@ -740,6 +798,32 @@ func getTestServiceInstance() *v1beta1.ServiceInstance {
 			PlanReference: v1beta1.PlanReference{
 				ClusterServiceClassExternalName: testClusterServiceClassName,
 				ClusterServicePlanExternalName:  testClusterServicePlanName,
+			},
+			ExternalID: testServiceInstanceGUID,
+		},
+		Status: v1beta1.ServiceInstanceStatus{
+			DeprovisionStatus: v1beta1.ServiceInstanceDeprovisionStatusRequired,
+		},
+	}
+}
+
+// instance referencing the result of getTestServiceClass()
+// and getTestServicePlan()
+// This version sets:
+// ServiceClassExternalName and ServicePlanExternalName, so depending on the
+// test, you may need to add reactors that deal with List due to the need
+// to resolve Names to IDs for both ServiceClass and ServicePlan
+func getTestServiceInstanceNamespacedPlanRef() *v1beta1.ServiceInstance {
+	return &v1beta1.ServiceInstance{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       testServiceInstanceName,
+			Namespace:  testNamespace,
+			Generation: 1,
+		},
+		Spec: v1beta1.ServiceInstanceSpec{
+			PlanReference: v1beta1.PlanReference{
+				ServiceClassExternalName: testServiceClassName,
+				ServicePlanExternalName:  testServicePlanName,
 			},
 			ExternalID: testServiceInstanceGUID,
 		},
@@ -791,7 +875,7 @@ func getTestServiceInstanceNonbindableServiceBindablePlan() *v1beta1.ServiceInst
 }
 
 func getTestServiceInstanceBindableServiceNonbindablePlan() *v1beta1.ServiceInstance {
-	i := getTestServiceInstanceWithRefs()
+	i := getTestServiceInstanceWithClusterRefs()
 	i.Spec.ClusterServicePlanExternalName = testNonbindableClusterServicePlanName
 	i.Spec.ClusterServicePlanRef = &v1beta1.ClusterObjectReference{Name: testNonbindableClusterServicePlanGUID}
 
@@ -799,20 +883,17 @@ func getTestServiceInstanceBindableServiceNonbindablePlan() *v1beta1.ServiceInst
 }
 
 func getTestServiceInstanceWithStatus(status v1beta1.ConditionStatus) *v1beta1.ServiceInstance {
-	instance := getTestServiceInstanceWithRefs()
-	instance.Status = v1beta1.ServiceInstanceStatus{
-		Conditions: []v1beta1.ServiceInstanceCondition{{
-			Type:               v1beta1.ServiceInstanceConditionReady,
-			Status:             status,
-			LastTransitionTime: metav1.NewTime(time.Now().Add(-5 * time.Minute)),
-		}},
-	}
-
+	instance := getTestServiceInstanceWithRefsAndExternalProperties()
+	instance.Status.Conditions = []v1beta1.ServiceInstanceCondition{{
+		Type:               v1beta1.ServiceInstanceConditionReady,
+		Status:             status,
+		LastTransitionTime: metav1.NewTime(time.Now().Add(-5 * time.Minute)),
+	}}
 	return instance
 }
 
 func getTestServiceInstanceWithFailedStatus() *v1beta1.ServiceInstance {
-	instance := getTestServiceInstanceWithRefs()
+	instance := getTestServiceInstanceWithClusterRefs()
 	instance.Status = v1beta1.ServiceInstanceStatus{
 		Conditions: []v1beta1.ServiceInstanceCondition{{
 			Type:   v1beta1.ServiceInstanceConditionFailed,
@@ -824,7 +905,7 @@ func getTestServiceInstanceWithFailedStatus() *v1beta1.ServiceInstance {
 }
 
 func getTestServiceInstanceUpdatingPlan() *v1beta1.ServiceInstance {
-	instance := getTestServiceInstanceWithRefs()
+	instance := getTestServiceInstanceWithClusterRefs()
 	instance.Generation = 2
 	instance.Status = v1beta1.ServiceInstanceStatus{
 		Conditions: []v1beta1.ServiceInstanceCondition{{
@@ -846,7 +927,7 @@ func getTestServiceInstanceUpdatingPlan() *v1beta1.ServiceInstance {
 }
 
 func getTestServiceInstanceUpdatingParametersOfDeletedPlan() *v1beta1.ServiceInstance {
-	instance := getTestServiceInstanceWithRefs()
+	instance := getTestServiceInstanceWithClusterRefs()
 	instance.Generation = 2
 	instance.Status = v1beta1.ServiceInstanceStatus{
 		Conditions: []v1beta1.ServiceInstanceCondition{{
@@ -869,7 +950,7 @@ func getTestServiceInstanceUpdatingParametersOfDeletedPlan() *v1beta1.ServiceIns
 
 // getTestServiceInstanceAsync returns an instance in async mode
 func getTestServiceInstanceAsyncProvisioning(operation string) *v1beta1.ServiceInstance {
-	instance := getTestServiceInstanceWithRefs()
+	instance := getTestServiceInstanceWithClusterRefs()
 
 	operationStartTime := metav1.NewTime(time.Now().Add(-1 * time.Hour))
 	instance.Status = v1beta1.ServiceInstanceStatus{
@@ -899,7 +980,7 @@ func getTestServiceInstanceAsyncProvisioning(operation string) *v1beta1.ServiceI
 // getTestServiceInstanceAsyncUpdating returns an instance for which there is an
 // in-progress async update
 func getTestServiceInstanceAsyncUpdating(operation string) *v1beta1.ServiceInstance {
-	instance := getTestServiceInstanceWithRefs()
+	instance := getTestServiceInstanceWithClusterRefs()
 	instance.Generation = 2
 
 	operationStartTime := metav1.NewTime(time.Now().Add(-1 * time.Hour))
@@ -934,7 +1015,7 @@ func getTestServiceInstanceAsyncUpdating(operation string) *v1beta1.ServiceInsta
 }
 
 func getTestServiceInstanceAsyncDeprovisioning(operation string) *v1beta1.ServiceInstance {
-	instance := getTestServiceInstanceWithRefs()
+	instance := getTestServiceInstanceWithClusterRefs()
 	instance.Generation = 2
 
 	operationStartTime := metav1.NewTime(time.Now().Add(-1 * time.Hour))
@@ -945,9 +1026,14 @@ func getTestServiceInstanceAsyncDeprovisioning(operation string) *v1beta1.Servic
 			Message:            "Deprovisioning",
 			LastTransitionTime: metav1.NewTime(time.Now().Add(-5 * time.Minute)),
 		}},
-		AsyncOpInProgress:    true,
-		OperationStartTime:   &operationStartTime,
-		CurrentOperation:     v1beta1.ServiceInstanceOperationDeprovision,
+		AsyncOpInProgress:  true,
+		OperationStartTime: &operationStartTime,
+		CurrentOperation:   v1beta1.ServiceInstanceOperationDeprovision,
+		InProgressProperties: &v1beta1.ServiceInstancePropertiesState{
+			ClusterServicePlanExternalName: testClusterServicePlanName,
+			ClusterServicePlanExternalID:   testClusterServicePlanGUID,
+		},
+
 		ReconciledGeneration: 1,
 		ObservedGeneration:   2,
 		ExternalProperties: &v1beta1.ServiceInstancePropertiesState{
@@ -1502,6 +1588,15 @@ func TestConvertAndFilterCatalog(t *testing.T) {
 			plans:   []string{"Goldengrove", "Queensgate"},
 			catalog: largeTestCatalog,
 		},
+		{
+			name: "filter free plans",
+			restrictions: &v1beta1.CatalogRestrictions{
+				ServicePlan: []string{"spec.free==true"},
+			},
+			classes: []string{"Arrax", "Balerion"},
+			plans:   []string{"Eastwatch-by-the-Sea", "OldOak", "Queensgate"},
+			catalog: largeTestCatalog,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1861,7 +1956,7 @@ func TestIsPlanBindable(t *testing.T) {
 		sc := serviceClass(tc.serviceClass)
 		plan := servicePlan(tc.servicePlan)
 
-		if e, a := tc.bindable, isPlanBindable(sc, plan); e != a {
+		if e, a := tc.bindable, isClusterServicePlanBindable(sc, plan); e != a {
 			t.Errorf("%v: unexpected result; expected %v, got %v", tc.name, e, a)
 		}
 	}
@@ -1903,10 +1998,13 @@ func newTestController(t *testing.T, config fakeosb.FakeClientConfiguration) (
 		fakeKubeClient,
 		fakeCatalogClient.ServicecatalogV1beta1(),
 		serviceCatalogSharedInformers.ClusterServiceBrokers(),
+		serviceCatalogSharedInformers.ServiceBrokers(),
 		serviceCatalogSharedInformers.ClusterServiceClasses(),
+		serviceCatalogSharedInformers.ServiceClasses(),
 		serviceCatalogSharedInformers.ServiceInstances(),
 		serviceCatalogSharedInformers.ServiceBindings(),
 		serviceCatalogSharedInformers.ClusterServicePlans(),
+		serviceCatalogSharedInformers.ServicePlans(),
 		brokerClFunc,
 		24*time.Hour,
 		osb.LatestAPIVersion().HeaderValue(),
@@ -1924,6 +2022,15 @@ func newTestController(t *testing.T, config fakeosb.FakeClientConfiguration) (
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	fakeKubeClient.AddReactor("get", "namespaces", func(action clientgotesting.Action) (bool, runtime.Object, error) {
+		return true, &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: testNamespace,
+				UID:  testNamespaceGUID,
+			},
+		}, nil
+	})
 
 	return fakeKubeClient, fakeCatalogClient, fakeOSBClient, testController.(*controller), serviceCatalogSharedInformers
 }
@@ -2059,6 +2166,12 @@ func testActionFor(t *testing.T, name string, f failfFunc, action clientgotestin
 		resource = "clusterserviceclasses"
 	case *v1beta1.ClusterServicePlan:
 		resource = "clusterserviceplans"
+	case *v1beta1.ServiceBroker:
+		resource = "servicebrokers"
+	case *v1beta1.ServiceClass:
+		resource = "serviceclasses"
+	case *v1beta1.ServicePlan:
+		resource = "serviceplans"
 	case *v1beta1.ServiceInstance:
 		resource = "serviceinstances"
 	case *v1beta1.ServiceBinding:
@@ -2697,10 +2810,9 @@ func assertServiceInstanceRequestRetriableErrorWithParameters(t *testing.T, obj 
 	assertServiceInstanceProvisioned(t, obj, originalInstance.Status.ProvisionStatus)
 	switch operation {
 	case v1beta1.ServiceInstanceOperationProvision, v1beta1.ServiceInstanceOperationUpdate:
+	case v1beta1.ServiceInstanceOperationDeprovision:
 		assertServiceInstanceInProgressPropertiesPlan(t, obj, planName, planID)
 		assertServiceInstanceInProgressPropertiesParameters(t, obj, inProgressParameters, inProgressParametersChecksum)
-	case v1beta1.ServiceInstanceOperationDeprovision:
-		assertServiceInstanceInProgressPropertiesNil(t, obj)
 	}
 	assertServiceInstanceExternalPropertiesUnchanged(t, obj, originalInstance)
 	assertServiceInstanceDeprovisionStatus(t, obj, originalInstance.Status.DeprovisionStatus)
@@ -2748,10 +2860,9 @@ func assertServiceInstanceAsyncStillInProgress(t *testing.T, obj runtime.Object,
 	assertServiceInstanceProvisioned(t, obj, originalInstance.Status.ProvisionStatus)
 	switch operation {
 	case v1beta1.ServiceInstanceOperationProvision, v1beta1.ServiceInstanceOperationUpdate:
+	case v1beta1.ServiceInstanceOperationDeprovision:
 		assertServiceInstanceInProgressPropertiesPlan(t, obj, planName, planID)
 		assertServiceInstanceInProgressPropertiesParameters(t, obj, nil, "")
-	case v1beta1.ServiceInstanceOperationDeprovision:
-		assertServiceInstanceInProgressPropertiesNil(t, obj)
 	}
 	assertAsyncOpInProgressTrue(t, obj)
 	assertServiceInstanceDeprovisionStatus(t, obj, originalInstance.Status.DeprovisionStatus)
@@ -2792,7 +2903,7 @@ func assertServiceInstanceInProgressPropertiesPlan(t *testing.T, obj runtime.Obj
 	if !ok {
 		fatalf(t, "Couldn't convert object %+v into a *v1beta1.ServiceInstance", obj)
 	}
-	assertServiceInstancePropertiesStatePlan(t, "in-progress", instance.Status.InProgressProperties, planName, planID)
+	assertServiceInstancePropertiesStatePlan(t, "in-progress", instance, instance.Status.InProgressProperties, planName, planID)
 }
 
 func assertServiceInstanceInProgressPropertiesParameters(t *testing.T, obj runtime.Object, params map[string]interface{}, checksum string) {
@@ -2831,7 +2942,7 @@ func assertServiceInstanceExternalPropertiesPlan(t *testing.T, obj runtime.Objec
 	if !ok {
 		fatalf(t, "Couldn't convert object %+v into a *v1beta1.ServiceInstance", obj)
 	}
-	assertServiceInstancePropertiesStatePlan(t, "external", instance.Status.ExternalProperties, planName, planID)
+	assertServiceInstancePropertiesStatePlan(t, "external", instance, instance.Status.ExternalProperties, planName, planID)
 }
 
 func assertServiceInstanceExternalPropertiesParameters(t *testing.T, obj runtime.Object, params map[string]interface{}, checksum string) {
@@ -2854,16 +2965,27 @@ func assertServiceInstanceExternalPropertiesUnchanged(t *testing.T, obj runtime.
 	}
 }
 
-func assertServiceInstancePropertiesStatePlan(t *testing.T, propsLabel string, actualProps *v1beta1.ServiceInstancePropertiesState, expectedPlanName string, expectedPlanID string) {
+func assertServiceInstancePropertiesStatePlan(t *testing.T, propsLabel string, instance *v1beta1.ServiceInstance, actualProps *v1beta1.ServiceInstancePropertiesState, expectedPlanName string, expectedPlanID string) {
 	if actualProps == nil {
 		fatalf(t, "expected %v properties to not be nil", propsLabel)
 	}
-	if e, a := expectedPlanName, actualProps.ClusterServicePlanExternalName; e != a {
-		fatalf(t, "unexpected %v properties external service plan name: expected %v, actual %v", propsLabel, e, a)
+
+	if instance.Spec.ClusterServicePlanSpecified() {
+		if e, a := expectedPlanName, actualProps.ClusterServicePlanExternalName; e != a {
+			fatalf(t, "unexpected %v properties external service plan name: expected %v, actual %v", propsLabel, e, a)
+		}
+		if e, a := expectedPlanID, actualProps.ClusterServicePlanExternalID; e != a {
+			fatalf(t, "unexpected %v properties external service plan ID: expected %v, actual %v", propsLabel, e, a)
+		}
+	} else {
+		if e, a := expectedPlanName, actualProps.ServicePlanExternalName; e != a {
+			fatalf(t, "unexpected %v properties external service plan name: expected %v, actual %v", propsLabel, e, a)
+		}
+		if e, a := expectedPlanID, actualProps.ServicePlanExternalID; e != a {
+			fatalf(t, "unexpected %v properties external service plan ID: expected %v, actual %v", propsLabel, e, a)
+		}
 	}
-	if e, a := expectedPlanID, actualProps.ClusterServicePlanExternalID; e != a {
-		fatalf(t, "unexpected %v properties external service plan ID: expected %v, actual %v", propsLabel, e, a)
-	}
+
 }
 
 func assertServiceInstancePropertiesStateParameters(t *testing.T, propsLabel string, actualProps *v1beta1.ServiceInstancePropertiesState, expectedParams map[string]interface{}, expectedChecksum string) {
@@ -3437,8 +3559,8 @@ func testCatalogFinalizerExists(t *testing.T, name string, f failfFunc, obj runt
 	return true
 }
 
-func assertNumberOfClusterServiceBrokerActions(t *testing.T, actions []fakeosb.Action, number int) {
-	testNumberOfClusterServiceBrokerActions(t, "" /* name */, fatalf, actions, number)
+func assertNumberOfBrokerActions(t *testing.T, actions []fakeosb.Action, number int) {
+	testNumberOfBrokerActions(t, "" /* name */, fatalf, actions, number)
 }
 
 // assertListRestrictions compares expected Fields / Labels on a list options.
@@ -3452,10 +3574,10 @@ func assertListRestrictions(t *testing.T, e, a clientgotesting.ListRestrictions)
 }
 
 func expectNumberOfClusterServiceBrokerActions(t *testing.T, name string, actions []fakeosb.Action, number int) bool {
-	return testNumberOfClusterServiceBrokerActions(t, name, errorf, actions, number)
+	return testNumberOfBrokerActions(t, name, errorf, actions, number)
 }
 
-func testNumberOfClusterServiceBrokerActions(t *testing.T, name string, f failfFunc, actions []fakeosb.Action, number int) bool {
+func testNumberOfBrokerActions(t *testing.T, name string, f failfFunc, actions []fakeosb.Action, number int) bool {
 	logContext := ""
 	if len(name) > 0 {
 		logContext = name + ": "

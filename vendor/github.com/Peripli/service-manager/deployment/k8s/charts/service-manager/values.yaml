@@ -1,0 +1,41 @@
+replicaCount: 1
+
+image:
+  repository: service-manager
+  tag: latest
+  pullPolicy: Never
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  host: local.service-manager
+  tls: {}
+    # secretName: ***
+
+#externalPostgresURI: postgres://<pguser>:<pgpassword>@<pghost>:<pgport>/postgres?sslmode=disable
+
+postgresql:
+  install: true
+  postgresUser: pguser
+  postgresPassword: pgpassword
+  persistence:
+    size: 1Gi
+
+file:
+  name: application
+  location: /etc/config
+  format: yml
+
+config:
+  log:
+    level: info
+    format: text
+  server:
+    request_timeout: 3000ms
+    shutdown_timeout: 3000ms
+  api:
+    token_issuer_url: https://uaa.local.pcfdev.io
+    client_id: smctl

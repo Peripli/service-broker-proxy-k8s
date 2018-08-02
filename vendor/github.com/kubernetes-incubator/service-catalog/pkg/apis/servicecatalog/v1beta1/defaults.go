@@ -17,11 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
-	"time"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/uuid"
 )
 
 func addDefaultingFuncs(scheme *runtime.Scheme) error {
@@ -39,22 +35,6 @@ func SetDefaults_ServiceBrokerSpec(spec *ServiceBrokerSpec) {
 func setCommonServiceBrokerDefaults(spec *CommonServiceBrokerSpec) {
 	if spec.RelistBehavior == "" {
 		spec.RelistBehavior = ServiceBrokerRelistBehaviorDuration
-	}
-
-	if spec.RelistBehavior == ServiceBrokerRelistBehaviorDuration && spec.RelistDuration == nil {
-		spec.RelistDuration = &metav1.Duration{Duration: 15 * time.Minute}
-	}
-}
-
-func SetDefaults_ServiceInstanceSpec(spec *ServiceInstanceSpec) {
-	if spec.ExternalID == "" {
-		spec.ExternalID = string(uuid.NewUUID())
-	}
-}
-
-func SetDefaults_ServiceBindingSpec(spec *ServiceBindingSpec) {
-	if spec.ExternalID == "" {
-		spec.ExternalID = string(uuid.NewUUID())
 	}
 }
 

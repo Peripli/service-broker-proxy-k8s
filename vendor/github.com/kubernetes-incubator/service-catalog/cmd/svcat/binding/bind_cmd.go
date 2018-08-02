@@ -27,6 +27,8 @@ import (
 
 type bindCmd struct {
 	*command.Namespaced
+	*command.Waitable
+
 	instanceName string
 	bindingName  string
 	externalID   string
@@ -40,11 +42,14 @@ type bindCmd struct {
 
 // NewBindCmd builds a "svcat bind" command
 func NewBindCmd(cxt *command.Context) *cobra.Command {
-	bindCmd := &bindCmd{Namespaced: command.NewNamespacedCommand(cxt)}
+	bindCmd := &bindCmd{
+		Namespaced: command.NewNamespaced(cxt),
+		Waitable:   command.NewWaitable(),
+	}
 	cmd := &cobra.Command{
 		Use:   "bind INSTANCE_NAME",
 		Short: "Binds an instance's metadata to a secret, which can then be used by an application to connect to the instance",
-		Example: `
+		Example: command.NormalizeExamples(`
   svcat bind wordpress
   svcat bind wordpress-mysql-instance --name wordpress-mysql-binding --secret-name wordpress-mysql-secret
   svcat bind wordpress-mysql-instance --name wordpress-mysql-binding --external-id c8ca2fcc-4398-11e8-842f-0ed5f89f718b
@@ -56,13 +61,12 @@ func NewBindCmd(cxt *command.Context) *cobra.Command {
 		"weather",
 		"sports"
 	]
-}
-'
-`,
+  }'
+`),
 		PreRunE: command.PreRunE(bindCmd),
 		RunE:    command.RunE(bindCmd),
 	}
-	command.AddNamespaceFlags(cmd.Flags(), false)
+	bindCmd.AddNamespaceFlags(cmd.Flags(), false)
 	cmd.Flags().StringVarP(
 		&bindCmd.bindingName,
 		"name",
@@ -81,17 +85,18 @@ func NewBindCmd(cxt *command.Context) *cobra.Command {
 		"The name of the secret. Defaults to the name of the instance.",
 	)
 	cmd.Flags().StringSliceVarP(&bindCmd.rawParams, "param", "p", nil,
-		"Additional parameter to use when binding the instance, format: NAME=VALUE. Cannot be combined with --params-json")
+		"Additional parameter to use when binding the instance, format: NAME=VALUE. Cannot be combined with --params-json, Sensitive information should be placed in a secret and specified with --secret")
 	cmd.Flags().StringSliceVarP(&bindCmd.rawSecrets, "secret", "s", nil,
 		"Additional parameter, whose value is stored in a secret, to use when binding the instance, format: SECRET[KEY]")
 	cmd.Flags().StringVar(&bindCmd.jsonParams, "params-json", "",
 		"Additional parameters to use when binding the instance, provided as a JSON object. Cannot be combined with --param")
+	bindCmd.AddWaitFlags(cmd)
 	return cmd
 }
 
 func (c *bindCmd) Validate(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("instance is required")
+		return fmt.Errorf("an instance name is required")
 	}
 	c.instanceName = args[0]
 
@@ -128,6 +133,19 @@ func (c *bindCmd) Run() error {
 func (c *bindCmd) bind() error {
 	binding, err := c.App.Bind(c.Namespace, c.bindingName, c.externalID, c.instanceName, c.secretName, c.params, c.secrets)
 	if err != nil {
+		return err
+	}
+
+	if c.Wait {
+		fmt.Fprintln(c.Output, "Waiting for binding to be injected...")
+		finalBinding, err := c.App.WaitForBinding(binding.Namespace, binding.Name, c.Interval, c.Timeout)
+		if err == nil {
+			binding = finalBinding
+		}
+
+		// Always print the binding because the bind did succeed,
+		// and just print any errors that occurred while polling
+		output.WriteBindingDetails(c.Output, binding)
 		return err
 	}
 

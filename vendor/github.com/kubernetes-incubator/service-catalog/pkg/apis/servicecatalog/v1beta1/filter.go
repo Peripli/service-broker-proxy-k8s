@@ -17,12 +17,44 @@ limitations under the License.
 package v1beta1
 
 import (
+	"strconv"
+
 	"github.com/kubernetes-incubator/service-catalog/pkg/filter"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-// These are functions to support filtering and are class specific for the ClusterServiceClass and ClusterServicePlan
-// This is where we can add more fields to the labels.Set to support other kinds of catalog filtering.
+// These are functions to support filtering. This is where we can add more fields
+// to the labels.Set to support other kinds of catalog filtering.
+
+// ConvertServiceClassToProperties takes a Service Class and pulls out the
+// properties we support for filtering, converting them into a map in the
+// expected format.
+func ConvertServiceClassToProperties(serviceClass *ServiceClass) filter.Properties {
+	if serviceClass == nil {
+		return labels.Set{}
+	}
+	return labels.Set{
+		FilterName:             serviceClass.Name,
+		FilterSpecExternalName: serviceClass.Spec.ExternalName,
+		FilterSpecExternalID:   serviceClass.Spec.ExternalID,
+	}
+}
+
+// ConvertServicePlanToProperties takes a Service Plan and pulls out the
+// properties we support for filtering, converting them into a map in the
+// expected format.
+func ConvertServicePlanToProperties(servicePlan *ServicePlan) filter.Properties {
+	if servicePlan == nil {
+		return labels.Set{}
+	}
+	return labels.Set{
+		FilterName:                 servicePlan.Name,
+		FilterSpecExternalName:     servicePlan.Spec.ExternalName,
+		FilterSpecExternalID:       servicePlan.Spec.ExternalID,
+		FilterSpecServiceClassName: servicePlan.Spec.ServiceClassRef.Name,
+		FilterSpecFree:             strconv.FormatBool(servicePlan.Spec.Free),
+	}
+}
 
 // ConvertClusterServiceClassToProperties takes a Service Class and pulls out the
 // properties we support for filtering, converting them into a map in the
@@ -50,5 +82,6 @@ func ConvertClusterServicePlanToProperties(servicePlan *ClusterServicePlan) filt
 		FilterSpecExternalName:            servicePlan.Spec.ExternalName,
 		FilterSpecExternalID:              servicePlan.Spec.ExternalID,
 		FilterSpecClusterServiceClassName: servicePlan.Spec.ClusterServiceClassRef.Name,
+		FilterSpecFree:                    strconv.FormatBool(servicePlan.Spec.Free),
 	}
 }
