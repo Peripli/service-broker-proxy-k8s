@@ -5,8 +5,9 @@ import (
 	"time"
 
 	"github.com/Peripli/service-manager/pkg/env"
-	"github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
-	"github.com/kubernetes-incubator/service-catalog/pkg/svcat"
+	svcatclient "github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
+	"github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
+
 	"github.com/sirupsen/logrus"
 	k8sclient "k8s.io/client-go/kubernetes"
 
@@ -23,10 +24,17 @@ type LibraryConfig struct {
 	*HTTPClient `mapstructure:"httpClient"`
 }
 
-// ClientConfiguration type holds config info for building the k8s client
+// RegistrationDetails type represents the credentials used to register a broker at the k8s cluster
+type RegistrationDetails struct {
+	User     string
+	Password string
+}
+
+// ClientConfiguration type holds config info for building the k8s service catalog client
 type ClientConfiguration struct {
 	*LibraryConfig      `mapstructure:"client"`
-	K8sClientCreateFunc func(*LibraryConfig) (*svcat.App, error)
+	Reg                 *RegistrationDetails
+	K8sClientCreateFunc func(*LibraryConfig) (*servicecatalog.SDK, error)
 }
 
 // Settings type wraps the K8S client configuration
@@ -34,8 +42,8 @@ type Settings struct {
 	K8S *ClientConfiguration `mapstructure:"k8s"`
 }
 
-// newSvcatApp creates a service-catalog client from configuration
-func newSvcatApp(libraryConfig *LibraryConfig) (*svcat.App, error) {
+// newSvcatSDK creates a service-catalog client from configuration
+func newSvcatSDK(libraryConfig *LibraryConfig) (*servicecatalog.SDK, error) {
 	config, err := restInClusterConfig()
 	if err != nil {
 		logrus.Error("Failed to load client config: " + err.Error())
@@ -44,9 +52,9 @@ func newSvcatApp(libraryConfig *LibraryConfig) (*svcat.App, error) {
 
 	config.Timeout = libraryConfig.Timeout
 
-	appClient, err := clientset.NewForConfig(config)
+	svcatClient, err := svcatclient.NewForConfig(config)
 	if err != nil {
-		logrus.Error("Failed to create new ClientSet: " + err.Error())
+		logrus.Error("Failed to create new svcat client: " + err.Error())
 		return nil, err
 	}
 
@@ -56,13 +64,10 @@ func newSvcatApp(libraryConfig *LibraryConfig) (*svcat.App, error) {
 		return nil, err
 	}
 
-	svcatApp, err := svcat.NewApp(k8sClient, appClient, "")
-	if err != nil {
-		logrus.Error("Failed to create new svcat application: " + err.Error())
-		return nil, err
-	}
-
-	return svcatApp, nil
+	return &servicecatalog.SDK{
+		K8sClient:            k8sClient,
+		ServiceCatalogClient: svcatClient,
+	}, nil
 }
 
 // defaultClientConfiguration creates a default config for the K8S client
@@ -71,7 +76,8 @@ func defaultClientConfiguration() *ClientConfiguration {
 		LibraryConfig: &LibraryConfig{
 			&HTTPClient{Timeout: time.Second * 10},
 		},
-		K8sClientCreateFunc: newSvcatApp,
+		Reg:                 &RegistrationDetails{},
+		K8sClientCreateFunc: newSvcatSDK,
 	}
 }
 

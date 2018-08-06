@@ -19,14 +19,17 @@ config:
     logLevel: debug
     logFormat: text
     timeout: 5000ms
-  #  host: https://cfproxy.local.pcfdev.io
   sm:
     user: admin
     password: admin
-    host: https://smanager.local.pcfdev.io
+    host: http://service-manager.local.pcfdev.io
     osbApi: /v1/osb
     requestTimeout: 6000ms
   k8s:
     client:
       httpClient:
         timeout: 6000ms
+    reg:
+      user: admin
+      password: admin
+

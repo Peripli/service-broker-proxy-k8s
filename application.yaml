@@ -1,19 +1,25 @@
 # these are env vars + config file properties + flag options (flag > env > config)
 # the application.yml file should be part of the wrapper module
+# This file is not part of the docker image.
+# To change default values in kubernetes deployment go to values.yaml file in the helm chart
 
-# Any of the below config properties can be provided via Environment Variables prefixed  by PROXY_
-# If any of the provided env variables are supposed to be "Unmarshaled" via viper, they need to have default values
-# specified here so that viper may know for these env vars' existence and use them during unmarshaling
+# Any of the below config properties can be provided via Environment Variables
 
-app:
+server:
   port: 8081
   logLevel: debug
   logFormat: text
-  timeoutSeconds: 5
-  host: http://localhost:8081
+  timeout: 5000ms
 sm:
   user: admin
   password: admin
-  host: http://localhost:8080
+  host: http://service-manager.local.pcfdev.io
   osbApi: /v1/osb
-  timeoutSeconds: 10
+  requestTimeout: 6000ms
+k8s:
+  client:
+    httpClient:
+      timeout: 6000ms
+  reg:
+    user: admin
+    password: admin

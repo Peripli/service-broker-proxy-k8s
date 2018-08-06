@@ -3,7 +3,7 @@ package k8s
 import (
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
-	"github.com/kubernetes-incubator/service-catalog/pkg/svcat"
+	"github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
@@ -12,7 +12,7 @@ import (
 // PlatformClient implements all broker specific functions, like create/update/delete/list a service broker
 // in kubernetes.
 type PlatformClient struct {
-	app *svcat.App
+	cli *servicecatalog.SDK
 }
 
 var _ platform.Client = &PlatformClient{}
@@ -20,24 +20,24 @@ var _ platform.CatalogFetcher = &PlatformClient{}
 
 var restInClusterConfig = rest.InClusterConfig
 
-var createClusterServiceBroker = func(app *svcat.App, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
-	return app.ServiceCatalog().ClusterServiceBrokers().Create(broker)
+var createClusterServiceBroker = func(cli *servicecatalog.SDK, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
+	return cli.ServiceCatalog().ClusterServiceBrokers().Create(broker)
 }
 
-var deleteClusterServiceBroker = func(app *svcat.App, name string, options *v1.DeleteOptions) error {
-	return app.ServiceCatalog().ClusterServiceBrokers().Delete(name, options)
+var deleteClusterServiceBroker = func(cli *servicecatalog.SDK, name string, options *v1.DeleteOptions) error {
+	return cli.ServiceCatalog().ClusterServiceBrokers().Delete(name, options)
 }
 
-var retrieveClusterServiceBrokers = func(app *svcat.App) ([]v1beta1.ClusterServiceBroker, error) {
-	return app.RetrieveBrokers()
+var retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) ([]v1beta1.ClusterServiceBroker, error) {
+	return cli.RetrieveBrokers()
 }
 
-var updateClusterServiceBroker = func(app *svcat.App, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
-	return app.ServiceCatalog().ClusterServiceBrokers().Update(broker)
+var updateClusterServiceBroker = func(cli *servicecatalog.SDK, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
+	return cli.ServiceCatalog().ClusterServiceBrokers().Update(broker)
 }
 
-var syncClusterServiceBroker = func(app *svcat.App, name string, retries int) error {
-	return app.Sync(name, 3)
+var syncClusterServiceBroker = func(cli *servicecatalog.SDK, name string, retries int) error {
+	return cli.Sync(name, 3)
 }
 
 // NewClient create a client to communicate with the kubernetes service-catalog.
@@ -45,17 +45,17 @@ func NewClient(config *ClientConfiguration) (*PlatformClient, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
-	app, err := config.K8sClientCreateFunc(config.LibraryConfig)
+	svcatSDK, err := config.K8sClientCreateFunc(config.LibraryConfig)
 	if err != nil {
 		return nil, err
 	}
-	return &PlatformClient{app}, nil
+	return &PlatformClient{svcatSDK}, nil
 }
 
 // GetBrokers returns all service-brokers currently registered in kubernetes service-catalog.
 func (b PlatformClient) GetBrokers() ([]platform.ServiceBroker, error) {
 	logrus.Debug("Getting all brokers registered in the k8s service-catalog...")
-	brokers, err := retrieveClusterServiceBrokers(b.app)
+	brokers, err := retrieveClusterServiceBrokers(b.cli)
 	if err != nil {
 		logrus.Error("Getting all brokers at the service catalog failed: " + err.Error())
 		return nil, err
@@ -64,7 +64,7 @@ func (b PlatformClient) GetBrokers() ([]platform.ServiceBroker, error) {
 	var clientBrokers = make([]platform.ServiceBroker, 0)
 	for _, broker := range brokers {
 		serviceBroker := platform.ServiceBroker{
-			Guid:      string(broker.ObjectMeta.UID),
+			GUID:      string(broker.ObjectMeta.UID),
 			Name:      broker.Name,
 			BrokerURL: broker.Spec.URL,
 		}
@@ -91,7 +91,7 @@ func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*p
 		},
 	}
 
-	csb, err := createClusterServiceBroker(b.app, request)
+	csb, err := createClusterServiceBroker(b.cli, request)
 	if err != nil {
 		logrus.Error("Registering new broker with name '" + r.Name + "' at the service catalog failed: " + err.Error())
 		return nil, err
@@ -99,7 +99,7 @@ func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*p
 	logrus.Debugf("New service broker successfully registered in k8s")
 
 	return &platform.ServiceBroker{
-		Guid:      string(csb.UID),
+		GUID:      string(csb.UID),
 		Name:      r.Name,
 		BrokerURL: r.BrokerURL,
 	}, nil
@@ -107,21 +107,21 @@ func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*p
 
 // DeleteBroker deletes an existing broker in from kubernetes service-catalog.
 func (b PlatformClient) DeleteBroker(r *platform.DeleteServiceBrokerRequest) error {
-	logrus.Debugf("Deleting broker via k8s client with guid [%s] ", r.Guid)
+	logrus.Debugf("Deleting broker via k8s client with guid [%s] ", r.GUID)
 
-	err := deleteClusterServiceBroker(b.app, r.Name, &v1.DeleteOptions{})
+	err := deleteClusterServiceBroker(b.cli, r.Name, &v1.DeleteOptions{})
 	if err != nil {
-		logrus.Error("Deleting broker '" + r.Guid + "' at the service catalog failed: " + err.Error())
+		logrus.Error("Deleting broker '" + r.GUID + "' at the service catalog failed: " + err.Error())
 		return err
 	}
-	logrus.Debugf("Successfully deleted broker via k8s client with guid [%s] ", r.Guid)
+	logrus.Debugf("Successfully deleted broker via k8s client with guid [%s] ", r.GUID)
 
 	return nil
 }
 
 // UpdateBroker updates a service broker in the kubernetes service-catalog.
 func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	logrus.Debugf("Updating broker via k8s client with guid [%s] ", r.Guid)
+	logrus.Debugf("Updating broker via k8s client with guid [%s] ", r.GUID)
 
 	// Name and broker url are updateable
 	broker := &v1beta1.ClusterServiceBroker{
@@ -135,15 +135,15 @@ func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*p
 		},
 	}
 
-	updatedBroker, err := updateClusterServiceBroker(b.app, broker)
+	updatedBroker, err := updateClusterServiceBroker(b.cli, broker)
 	if err != nil {
-		logrus.Error("Updating broker '" + r.Guid + "' at the service catalog failed: " + err.Error())
+		logrus.Error("Updating broker '" + r.GUID + "' at the service catalog failed: " + err.Error())
 		return nil, err
 	}
-	logrus.Debugf("Successfully updated broker via k8s Client with guid [%s] ", r.Guid)
+	logrus.Debugf("Successfully updated broker via k8s Client with guid [%s] ", r.GUID)
 
 	return &platform.ServiceBroker{
-		Guid:      string(updatedBroker.ObjectMeta.UID),
+		GUID:      string(updatedBroker.ObjectMeta.UID),
 		Name:      updatedBroker.Name,
 		BrokerURL: updatedBroker.Spec.URL,
 	}, nil
@@ -152,10 +152,10 @@ func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*p
 // Fetch the new catalog information from reach service-broker registered in kubernetes,
 // so that it is visible in the kubernetes service-catalog.
 func (b PlatformClient) Fetch(serviceBroker *platform.ServiceBroker) error {
-	logrus.Debugf("Updating catalog information of service-broker with guid [%s] ", serviceBroker.Guid)
-	err := syncClusterServiceBroker(b.app, serviceBroker.Name, 3)
+	logrus.Debugf("Updating catalog information of service-broker with guid [%s] ", serviceBroker.GUID)
+	err := syncClusterServiceBroker(b.cli, serviceBroker.Name, 3)
 	if err != nil {
-		logrus.Error("Syncing broker '" + serviceBroker.Guid + "' at the service catalog failed: " + err.Error())
+		logrus.Error("Syncing broker '" + serviceBroker.GUID + "' at the service catalog failed: " + err.Error())
 	}
 	return err
 }

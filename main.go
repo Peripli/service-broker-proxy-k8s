@@ -4,19 +4,16 @@ import (
 	"fmt"
 
 	"github.com/Peripli/service-broker-proxy-k8s/k8s"
-	"github.com/Peripli/service-broker-proxy/pkg/config"
 	"github.com/Peripli/service-broker-proxy/pkg/middleware"
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
 
 	"github.com/spf13/pflag"
 )
 
-const envPrefix = "PROXY"
-
 func main() {
 	env := sbproxy.DefaultEnv(func(set *pflag.FlagSet) {
 		k8s.CreatePFlagsForK8SClient(set)
-	}
+	})
 
 	platformConfig, err := k8s.NewConfig(env)
 	if err != nil {
