@@ -32,7 +32,6 @@ WORKDIR /app
 
 # Copy the executable file
 COPY --from=builder /main /app/
-COPY application.yaml /app/
 
 EXPOSE 8081
 ENTRYPOINT [ "./main" ]

@@ -88,6 +88,12 @@ func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*p
 				URL:            r.BrokerURL,
 				RelistBehavior: "Manual",
 			},
+			// TODO refer secret in broker
+			// AuthInfo: &v1beta1.AuthInfo{
+			// 	Basic: &v1beta1.ClusterBasicAuthConfig{
+			// 		SecretRef: &
+			// 	}
+			// }
 		},
 	}
 

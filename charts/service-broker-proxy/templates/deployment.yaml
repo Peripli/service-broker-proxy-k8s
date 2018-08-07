@@ -19,32 +19,47 @@ spec:
         app: {{ template "service-broker-proxy.name" . }}
         release: {{ .Release.Name }}
     spec:
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ template "service-broker-proxy.fullname" . }}-config
       serviceAccountName: {{ template "service-broker-proxy.fullname" . }}
       containers:
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        volumeMounts:
+        - name: config-volume
+          mountPath: {{ .Values.file.location }}
+          readOnly: true
         env:
-        - name: PROXY_APP_HOST
+        - name: SERVER_HOST
           value: http://{{ template "service-broker-proxy.name" . }}.{{ .Release.Namespace }}:{{ .Values.service.port }}
-        - name: PROXY_SM_HOST
+        - name: SM_USER
           valueFrom:
             secretKeyRef:
-              name: {{ template "service-broker-proxy.fullname" . }}
-              key: host
-        - name: PROXY_SM_USER
+              name: {{ template "service-broker-proxy.fullname" . }}-secret
+              key: sm_user
+        - name: SM_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: {{ template "service-broker-proxy.fullname" . }}
-              key: user
-        - name: PROXY_SM_PASSWORD
+              name: {{ template "service-broker-proxy.fullname" . }}-secret
+              key: sm_password
+        - name: K8S_REG_USER
           valueFrom:
             secretKeyRef:
-              name: {{ template "service-broker-proxy.fullname" . }}
-              key: password
+              name: {{ template "service-broker-proxy.fullname" . }}-secret
+              key: k8s_reg_user
+        - name: K8S_REG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "service-broker-proxy.fullname" . }}-secret
+              key: k8s_reg_password
         ports:
         - name: http
           containerPort: 8081
           protocol: TCP
-
-
+        args:
+          - "--file.location={{ .Values.file.location }}"
+          - "--file.name={{ .Values.file.name }}"
+          - "--file.format={{ .Values.file.format }}"
