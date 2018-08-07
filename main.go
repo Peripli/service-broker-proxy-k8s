@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Peripli/service-broker-proxy-k8s/k8s"
-	// "github.com/Peripli/service-broker-proxy/pkg/middleware"
+	"github.com/Peripli/service-broker-proxy/pkg/middleware"
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
 
 	"github.com/spf13/pflag"
@@ -30,7 +30,7 @@ func main() {
 		panic(fmt.Errorf("error creating proxy: %s", err))
 	}
 
-	// proxy.Server.Use(middleware.BasicAuth(platformConfig.Reg.User, platformConfig.Reg.Password))
+	proxy.Server.Use(middleware.BasicAuth(platformConfig.Reg.User, platformConfig.Reg.Password))
 
 	proxy.Run()
 }

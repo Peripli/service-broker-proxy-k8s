@@ -45,16 +45,20 @@ spec:
             secretKeyRef:
               name: {{ template "service-broker-proxy.fullname" . }}-secret
               key: sm_password
+        - name: K8S_REG_SECRET_NAME
+          value: {{ template "service-broker-proxy.fullname" . }}-regsecret
+        - name: K8S_REG_SECRET_NAMESPACE
+          value: {{ .Release.Namespace }}
         - name: K8S_REG_USER
           valueFrom:
             secretKeyRef:
-              name: {{ template "service-broker-proxy.fullname" . }}-secret
-              key: k8s_reg_user
+              name: {{ template "service-broker-proxy.fullname" . }}-regsecret
+              key: username
         - name: K8S_REG_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: {{ template "service-broker-proxy.fullname" . }}-secret
-              key: k8s_reg_password
+              name: {{ template "service-broker-proxy.fullname" . }}-regsecret
+              key: password
         ports:
         - name: http
           containerPort: 8081

@@ -21,5 +21,9 @@ k8s:
     httpClient:
       timeout: 6000ms
   reg:
+    # To run locally you need to create a secret in the k8s cluster
     user: admin
     password: admin
+    secret:
+      name: service-broker-proxy-regsecret
+      namespace: service-broker-proxy

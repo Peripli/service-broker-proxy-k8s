@@ -12,7 +12,8 @@ import (
 // PlatformClient implements all broker specific functions, like create/update/delete/list a service broker
 // in kubernetes.
 type PlatformClient struct {
-	cli *servicecatalog.SDK
+	cli          *servicecatalog.SDK
+	regSecretRef *v1beta1.ObjectReference
 }
 
 var _ platform.Client = &PlatformClient{}
@@ -49,7 +50,13 @@ func NewClient(config *ClientConfiguration) (*PlatformClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &PlatformClient{svcatSDK}, nil
+	return &PlatformClient{
+		cli: svcatSDK,
+		regSecretRef: &v1beta1.ObjectReference{
+			Namespace: config.Reg.Secret.Namespace,
+			Name:      config.Reg.Secret.Name,
+		},
+	}, nil
 }
 
 // GetBrokers returns all service-brokers currently registered in kubernetes service-catalog.
@@ -79,25 +86,10 @@ func (b PlatformClient) GetBrokers() ([]platform.ServiceBroker, error) {
 func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
 	logrus.Debugf("Creating broker via k8s client with name [%s]...", r.Name)
 
-	request := &v1beta1.ClusterServiceBroker{
-		ObjectMeta: v1.ObjectMeta{
-			Name: r.Name,
-		},
-		Spec: v1beta1.ClusterServiceBrokerSpec{
-			CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
-				URL:            r.BrokerURL,
-				RelistBehavior: "Manual",
-			},
-			// TODO refer secret in broker
-			// AuthInfo: &v1beta1.AuthInfo{
-			// 	Basic: &v1beta1.ClusterBasicAuthConfig{
-			// 		SecretRef: &
-			// 	}
-			// }
-		},
-	}
+	broker := newServiceBroker(r.Name, r.BrokerURL, b.regSecretRef)
+	broker.Spec.CommonServiceBrokerSpec.RelistBehavior = "Manual"
 
-	csb, err := createClusterServiceBroker(b.cli, request)
+	csb, err := createClusterServiceBroker(b.cli, broker)
 	if err != nil {
 		logrus.Error("Registering new broker with name '" + r.Name + "' at the service catalog failed: " + err.Error())
 		return nil, err
@@ -130,16 +122,7 @@ func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*p
 	logrus.Debugf("Updating broker via k8s client with guid [%s] ", r.GUID)
 
 	// Name and broker url are updateable
-	broker := &v1beta1.ClusterServiceBroker{
-		ObjectMeta: v1.ObjectMeta{
-			Name: r.Name,
-		},
-		Spec: v1beta1.ClusterServiceBrokerSpec{
-			CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
-				URL: r.BrokerURL,
-			},
-		},
-	}
+	broker := newServiceBroker(r.Name, r.BrokerURL, b.regSecretRef)
 
 	updatedBroker, err := updateClusterServiceBroker(b.cli, broker)
 	if err != nil {
@@ -164,4 +147,22 @@ func (b PlatformClient) Fetch(serviceBroker *platform.ServiceBroker) error {
 		logrus.Error("Syncing broker '" + serviceBroker.GUID + "' at the service catalog failed: " + err.Error())
 	}
 	return err
+}
+
+func newServiceBroker(name string, url string, secret *v1beta1.ObjectReference) *v1beta1.ClusterServiceBroker {
+	return &v1beta1.ClusterServiceBroker{
+		ObjectMeta: v1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1beta1.ClusterServiceBrokerSpec{
+			CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
+				URL: url,
+			},
+			AuthInfo: &v1beta1.ClusterServiceBrokerAuthInfo{
+				Basic: &v1beta1.ClusterBasicAuthConfig{
+					SecretRef: secret,
+				},
+			},
+		},
+	}
 }

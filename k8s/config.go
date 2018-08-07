@@ -24,10 +24,17 @@ type LibraryConfig struct {
 	*HTTPClient `mapstructure:"httpClient"`
 }
 
-// RegistrationDetails type represents the credentials used to register a broker at the k8s cluster
+// SecretRef reference to secret used for broker registration
+type SecretRef struct {
+	Namespace string
+	Name      string
+}
+
+// RegistrationDetails type represents the credentials and secret name used to register a broker at the k8s cluster
 type RegistrationDetails struct {
 	User     string
 	Password string
+	Secret   *SecretRef
 }
 
 // ClientConfiguration type holds config info for building the k8s service catalog client
@@ -76,7 +83,9 @@ func defaultClientConfiguration() *ClientConfiguration {
 		LibraryConfig: &LibraryConfig{
 			&HTTPClient{Timeout: time.Second * 10},
 		},
-		Reg:                 &RegistrationDetails{},
+		Reg: &RegistrationDetails{
+			Secret: &SecretRef{},
+		},
 		K8sClientCreateFunc: newSvcatSDK,
 	}
 }
@@ -93,6 +102,15 @@ func (c *ClientConfiguration) Validate() error {
 	}
 	if c.LibraryConfig == nil {
 		return errors.New("K8S client configuration missing")
+	}
+	if c.Reg == nil {
+		return errors.New("K8S broker registration configuration missing")
+	}
+	if c.Reg.User == "" || c.Reg.Password == "" {
+		return errors.New("K8S broker registration credentials missing")
+	}
+	if c.Reg.Secret.Name == "" || c.Reg.Secret.Namespace == "" {
+		return errors.New("K8S secret configuration for broker registration missing")
 	}
 	if c.LibraryConfig.HTTPClient != nil && c.LibraryConfig.HTTPClient.Timeout == 0 {
 		return errors.New("K8S client configuration timeout missing")
