@@ -46,7 +46,7 @@ func NewClient(config *ClientConfiguration) (*PlatformClient, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
-	svcatSDK, err := config.K8sClientCreateFunc(config.LibraryConfig)
+	svcatSDK, err := config.K8sClientCreateFunc(config.Client)
 	if err != nil {
 		return nil, err
 	}

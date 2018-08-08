@@ -1,20 +1,8 @@
 package k8s
 
 import (
-	// "errors"
-
-	// "github.com/Peripli/service-broker-proxy/pkg/platform"
-
-	// "os"
-
 	. "github.com/onsi/ginkgo"
-
-	// "github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
-	// "github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
-
 	. "github.com/onsi/gomega"
-	// "k8s.io/apimachinery/pkg/apis/meta/v1"
-	// "k8s.io/client-go/rest"
 )
 
 var _ = Describe("Kubernetes Broker Proxy", func() {
@@ -48,7 +36,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 			Context("when LibraryConfig is missing", func() {
 				It("should fail", func() {
-					config.LibraryConfig = nil
+					config.Client = nil
 					err := config.Validate()
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("K8S client configuration missing"))
@@ -111,7 +99,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 			Context("when LibraryConfig.HTTPClient is missing", func() {
 				It("should fail", func() {
-					config.LibraryConfig.HTTPClient = nil
+					config.Client.HTTPClient = nil
 					err := config.Validate()
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("K8S client configuration timeout missing"))
@@ -120,7 +108,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 			Context("when LibraryConfig.Timeout is missing", func() {
 				It("should fail", func() {
-					config.LibraryConfig.Timeout = 0
+					config.Client.Timeout = 0
 					err := config.Validate()
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("K8S client configuration timeout missing"))

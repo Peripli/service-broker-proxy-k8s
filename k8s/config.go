@@ -39,7 +39,7 @@ type RegistrationDetails struct {
 
 // ClientConfiguration type holds config info for building the k8s service catalog client
 type ClientConfiguration struct {
-	*LibraryConfig      `mapstructure:"client"`
+	Client              *LibraryConfig
 	Reg                 *RegistrationDetails
 	K8sClientCreateFunc func(*LibraryConfig) (*servicecatalog.SDK, error)
 }
@@ -80,7 +80,7 @@ func newSvcatSDK(libraryConfig *LibraryConfig) (*servicecatalog.SDK, error) {
 // defaultClientConfiguration creates a default config for the K8S client
 func defaultClientConfiguration() *ClientConfiguration {
 	return &ClientConfiguration{
-		LibraryConfig: &LibraryConfig{
+		Client: &LibraryConfig{
 			&HTTPClient{Timeout: time.Second * 10},
 		},
 		Reg: &RegistrationDetails{
@@ -100,22 +100,38 @@ func (c *ClientConfiguration) Validate() error {
 	if c.K8sClientCreateFunc == nil {
 		return errors.New("K8S ClientCreateFunc missing")
 	}
-	if c.LibraryConfig == nil {
+	if c.Client == nil {
 		return errors.New("K8S client configuration missing")
+	}
+	if err := c.Client.Validate(); err != nil {
+		return err
 	}
 	if c.Reg == nil {
 		return errors.New("K8S broker registration configuration missing")
 	}
-	if c.Reg.User == "" || c.Reg.Password == "" {
+	if err := c.Reg.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Validate validates the registration details and returns appropriate errors in case it is invalid
+func (r *RegistrationDetails) Validate() error {
+	if r.User == "" || r.Password == "" {
 		return errors.New("K8S broker registration credentials missing")
 	}
-	if c.Reg.Secret == nil {
+	if r.Secret == nil {
 		return errors.New("K8S secret configuration for broker registration missing")
 	}
-	if c.Reg.Secret.Name == "" || c.Reg.Secret.Namespace == "" {
+	if r.Secret.Name == "" || r.Secret.Namespace == "" {
 		return errors.New("Properties of K8S secret configuration for broker registration missing")
 	}
-	if c.LibraryConfig.HTTPClient == nil || c.LibraryConfig.HTTPClient.Timeout == 0 {
+	return nil
+}
+
+// Validate validates the library configurations and returns appropriate errors in case it is invalid
+func (r *LibraryConfig) Validate() error {
+	if r.HTTPClient == nil || r.HTTPClient.Timeout == 0 {
 		return errors.New("K8S client configuration timeout missing")
 	}
 	return nil
