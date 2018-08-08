@@ -109,10 +109,13 @@ func (c *ClientConfiguration) Validate() error {
 	if c.Reg.User == "" || c.Reg.Password == "" {
 		return errors.New("K8S broker registration credentials missing")
 	}
-	if c.Reg.Secret.Name == "" || c.Reg.Secret.Namespace == "" {
+	if c.Reg.Secret == nil {
 		return errors.New("K8S secret configuration for broker registration missing")
 	}
-	if c.LibraryConfig.HTTPClient != nil && c.LibraryConfig.HTTPClient.Timeout == 0 {
+	if c.Reg.Secret.Name == "" || c.Reg.Secret.Namespace == "" {
+		return errors.New("Properties of K8S secret configuration for broker registration missing")
+	}
+	if c.LibraryConfig.HTTPClient == nil || c.LibraryConfig.HTTPClient.Timeout == 0 {
 		return errors.New("K8S client configuration timeout missing")
 	}
 	return nil
