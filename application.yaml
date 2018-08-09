@@ -5,6 +5,8 @@
 
 # Any of the below config properties can be provided via Environment Variables
 
+# Currently we use configmaps in k8s deployment so this is relevant for local development only
+
 server:
   port: 8081
   logLevel: debug
@@ -18,8 +20,7 @@ sm:
   requestTimeout: 6000ms
 k8s:
   client:
-    httpClient:
-      timeout: 6000ms
+    timeout: 6000ms
   reg:
     # To run locally you need to create a secret in the k8s cluster
     user: admin

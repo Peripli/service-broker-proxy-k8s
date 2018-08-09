@@ -22,7 +22,7 @@ func main() {
 
 	platformClient, err := k8s.NewClient(platformConfig)
 	if err != nil {
-		panic(fmt.Errorf("error creating CF client: %s", err))
+		panic(fmt.Errorf("error creating K8S client: %s", err))
 	}
 
 	proxy, err := sbproxy.New(env, platformClient)

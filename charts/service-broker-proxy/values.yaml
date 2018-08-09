@@ -40,5 +40,4 @@ config:
     requestTimeout: 6000ms
   k8s:
     client:
-      httpClient:
-        timeout: 6000ms
+      timeout: 6000ms

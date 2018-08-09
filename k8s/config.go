@@ -2,26 +2,21 @@ package k8s
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Peripli/service-manager/pkg/env"
 	svcatclient "github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
 	"github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
 
-	"github.com/sirupsen/logrus"
 	k8sclient "k8s.io/client-go/kubernetes"
 
 	"github.com/spf13/pflag"
 )
 
-// HTTPClient configurations for the HTTPClient of the k8s library
-type HTTPClient struct {
-	Timeout time.Duration `mapstructure:"timeout"`
-}
-
 // LibraryConfig configurations for the k8s library
 type LibraryConfig struct {
-	*HTTPClient `mapstructure:"httpClient"`
+	Timeout time.Duration `mapstructure:"timeout"`
 }
 
 // SecretRef reference to secret used for broker registration
@@ -39,8 +34,8 @@ type RegistrationDetails struct {
 
 // ClientConfiguration type holds config info for building the k8s service catalog client
 type ClientConfiguration struct {
-	Client              *LibraryConfig
-	Reg                 *RegistrationDetails
+	Client              *LibraryConfig       `mapstructure:"client"`
+	Reg                 *RegistrationDetails `mapstructure:"reg"`
 	K8sClientCreateFunc func(*LibraryConfig) (*servicecatalog.SDK, error)
 }
 
@@ -53,22 +48,19 @@ type Settings struct {
 func newSvcatSDK(libraryConfig *LibraryConfig) (*servicecatalog.SDK, error) {
 	config, err := restInClusterConfig()
 	if err != nil {
-		logrus.Error("Failed to load client config: " + err.Error())
-		return nil, err
+		return nil, fmt.Errorf("Failed to load cluster config: %s", err.Error())
 	}
 
 	config.Timeout = libraryConfig.Timeout
 
 	svcatClient, err := svcatclient.NewForConfig(config)
 	if err != nil {
-		logrus.Error("Failed to create new svcat client: " + err.Error())
-		return nil, err
+		return nil, fmt.Errorf("Failed to create new svcat client: %s", err.Error())
 	}
 
 	k8sClient, err := k8sclient.NewForConfig(config)
 	if err != nil {
-		logrus.Error("Failed to create new k8sClient: " + err.Error())
-		return nil, err
+		return nil, fmt.Errorf("Failed to create new k8sClient: %s", err.Error())
 	}
 
 	return &servicecatalog.SDK{
@@ -81,7 +73,7 @@ func newSvcatSDK(libraryConfig *LibraryConfig) (*servicecatalog.SDK, error) {
 func defaultClientConfiguration() *ClientConfiguration {
 	return &ClientConfiguration{
 		Client: &LibraryConfig{
-			&HTTPClient{Timeout: time.Second * 10},
+			Timeout: time.Second * 10,
 		},
 		Reg: &RegistrationDetails{
 			Secret: &SecretRef{},
@@ -131,7 +123,7 @@ func (r *RegistrationDetails) Validate() error {
 
 // Validate validates the library configurations and returns appropriate errors in case it is invalid
 func (r *LibraryConfig) Validate() error {
-	if r.HTTPClient == nil || r.HTTPClient.Timeout == 0 {
+	if r.Timeout == 0 {
 		return errors.New("K8S client configuration timeout missing")
 	}
 	return nil

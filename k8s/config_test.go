@@ -43,6 +43,15 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				})
 			})
 
+			Context("when LibraryConfig.Timeout is missing", func() {
+				It("should fail", func() {
+					config.Client.Timeout = 0
+					err := config.Validate()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(Equal("K8S client configuration timeout missing"))
+				})
+			})
+
 			Context("when Reg is missing", func() {
 				It("should fail", func() {
 					config.Reg = nil
@@ -97,23 +106,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				})
 			})
 
-			Context("when LibraryConfig.HTTPClient is missing", func() {
-				It("should fail", func() {
-					config.Client.HTTPClient = nil
-					err := config.Validate()
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(Equal("K8S client configuration timeout missing"))
-				})
-			})
-
-			Context("when LibraryConfig.Timeout is missing", func() {
-				It("should fail", func() {
-					config.Client.Timeout = 0
-					err := config.Validate()
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(Equal("K8S client configuration timeout missing"))
-				})
-			})
 		})
 	})
 })
