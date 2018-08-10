@@ -1,35 +1,36 @@
 package main
 
 import (
-	"github.com/Peripli/service-broker-proxy-k8s/k8sclient"
-	"github.com/Peripli/service-broker-proxy/pkg/env"
+	"fmt"
+
+	"github.com/Peripli/service-broker-proxy-k8s/k8s"
+	"github.com/Peripli/service-broker-proxy/pkg/middleware"
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
-	"github.com/sirupsen/logrus"
+
+	"github.com/spf13/pflag"
 )
 
-const envPrefix = "PROXY"
-
 func main() {
+	env := sbproxy.DefaultEnv(func(set *pflag.FlagSet) {
+		k8s.CreatePFlagsForK8SClient(set)
+	})
 
-	env := env.Default(envPrefix)
-	if err := env.Load(); err != nil {
-		logrus.WithError(err).Fatal("Error loading environment")
-	}
-
-	proxyConfig, err := sbproxy.NewConfigFromEnv(env)
+	platformConfig, err := k8s.NewConfig(env)
 	if err != nil {
-		logrus.WithError(err).Fatal("Error loading configuration")
+		panic(fmt.Errorf("error loading config: %s", err))
 	}
 
-	platformClient, err := k8sclient.NewClient()
+	platformClient, err := k8s.NewClient(platformConfig)
 	if err != nil {
-		logrus.WithError(err).Fatal("Error creating platform client")
+		panic(fmt.Errorf("error creating K8S client: %s", err))
 	}
 
-	sbProxy, err := sbproxy.New(proxyConfig, platformClient)
+	proxy, err := sbproxy.New(env, platformClient)
 	if err != nil {
-		logrus.WithError(err).Fatal("Error creating SB Proxy")
+		panic(fmt.Errorf("error creating proxy: %s", err))
 	}
 
-	sbProxy.Run()
+	proxy.Server.Use(middleware.BasicAuth(platformConfig.Reg.User, platformConfig.Reg.Password))
+
+	proxy.Run()
 }

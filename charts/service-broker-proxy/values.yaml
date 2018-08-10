@@ -13,8 +13,31 @@ service:
   type: ClusterIP
   port: 80
 
+file:
+  name: application
+  location: /etc/config
+  format: yml
+
+sm:
+  user: admin
+  password: admin
+
+# Credentials used to register the proxy as a broker
+reg:
+  user: admin
+  password: admin
+
 config:
-  serviceManager:
-    host: <host-of-the-service-manager>
-    user: admin
-    password: admin
+  server:
+    port: 8081
+    logLevel: debug
+    logFormat: text
+    timeout: 5000ms
+    # ResyncPeriod: 10s
+  sm:
+    host: http://service-manager.local.pcfdev.io
+    osbApi: /v1/osb
+    requestTimeout: 6000ms
+  k8s:
+    client:
+      timeout: 6000ms

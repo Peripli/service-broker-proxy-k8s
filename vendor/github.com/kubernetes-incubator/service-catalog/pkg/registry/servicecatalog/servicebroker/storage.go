@@ -17,6 +17,7 @@ limitations under the License.
 package servicebroker
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -28,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	genericapirequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/generic"
 	"k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/apiserver/pkg/registry/rest"
@@ -157,6 +157,12 @@ type StatusREST struct {
 	store *registry.Store
 }
 
+var (
+	_ rest.Storage = &StatusREST{}
+	_ rest.Getter  = &StatusREST{}
+	_ rest.Updater = &StatusREST{}
+)
+
 // New returns a new ServiceBroker.
 func (r *StatusREST) New() runtime.Object {
 	return &servicecatalog.ServiceBroker{}
@@ -164,12 +170,12 @@ func (r *StatusREST) New() runtime.Object {
 
 // Get retrieves the object from the storage. It is required to support Patch
 // and to implement the rest.Getter interface.
-func (r *StatusREST) Get(ctx genericapirequest.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
+func (r *StatusREST) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
 	return r.store.Get(ctx, name, options)
 }
 
 // Update alters the status subset of an object and implements the
 // rest.Updater interface.
-func (r *StatusREST) Update(ctx genericapirequest.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc) (runtime.Object, bool, error) {
+func (r *StatusREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc) (runtime.Object, bool, error) {
 	return r.store.Update(ctx, name, objInfo, createValidation, updateValidation)
 }

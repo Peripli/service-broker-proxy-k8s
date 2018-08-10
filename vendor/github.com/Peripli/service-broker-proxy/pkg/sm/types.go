@@ -1,26 +1,20 @@
 package sm
 
-// BrokerList broker struct
-type BrokerList struct {
+import (
+	"encoding/json"
+
+	"github.com/Peripli/service-manager/pkg/types"
+	osbc "github.com/pmorie/go-open-service-broker-client/v2"
+)
+
+// Brokers type used for responses from the Service Manager client
+type Brokers struct {
 	Brokers []Broker `json:"brokers"`
 }
 
-// Broker broker struct
+// Broker type used for responses from the Service Manager client
 type Broker struct {
-	ID          string       `json:"id"`
-	Name        string       `json:"name"`
-	Description string       `json:"description"`
-	BrokerURL   string       `json:"broker_url"`
-	Credentials *Credentials `json:"credentials,omitempty"`
-}
-
-// Basic basic credentials
-type Basic struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-// Credentials credentials
-type Credentials struct {
-	Basic *Basic `json:"basic,omitempty"`
+	*types.Broker
+	Catalog  *osbc.CatalogResponse      `json:"catalog"`
+	Metadata map[string]json.RawMessage `json:"metadata,omitempty"`
 }

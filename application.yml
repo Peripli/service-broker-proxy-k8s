@@ -1,0 +1,30 @@
+# these are env vars + config file properties + flag options (flag > env > config)
+# the application.yml file should be part of the wrapper module
+# This file is not part of the docker image.
+# To change default values in kubernetes deployment go to values.yaml file in the helm chart
+
+# Any of the below config properties can be provided via Environment Variables
+
+# Currently we use configmaps in k8s deployment so this is relevant for local development only
+
+server:
+  port: 8081
+  logLevel: debug
+  logFormat: text
+  timeout: 5000ms
+sm:
+  user: admin
+  password: admin
+  host: http://service-manager.local.pcfdev.io
+  osbApi: /v1/osb
+  requestTimeout: 6000ms
+k8s:
+  client:
+    timeout: 6000ms
+  reg:
+    # To run locally you need to create a secret in the k8s cluster
+    user: admin
+    password: admin
+    secret:
+      name: service-broker-proxy-regsecret
+      namespace: service-broker-proxy

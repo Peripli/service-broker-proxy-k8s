@@ -26,37 +26,29 @@ import (
 
 type describeCmd struct {
 	*command.Namespaced
-	name     string
-	traverse bool
+	name string
 }
 
 // NewDescribeCmd builds a "svcat describe instance" command
 func NewDescribeCmd(cxt *command.Context) *cobra.Command {
-	describeCmd := &describeCmd{Namespaced: command.NewNamespacedCommand(cxt)}
+	describeCmd := &describeCmd{Namespaced: command.NewNamespaced(cxt)}
 	cmd := &cobra.Command{
 		Use:     "instance NAME",
 		Aliases: []string{"instances", "inst"},
 		Short:   "Show details of a specific instance",
-		Example: `
+		Example: command.NormalizeExamples(`
   svcat describe instance wordpress-mysql-instance
-`,
+`),
 		PreRunE: command.PreRunE(describeCmd),
 		RunE:    command.RunE(describeCmd),
 	}
-	command.AddNamespaceFlags(cmd.Flags(), false)
-	cmd.Flags().BoolVarP(
-		&describeCmd.traverse,
-		"traverse",
-		"t",
-		false,
-		"Whether or not to traverse from binding -> instance -> class/plan -> broker",
-	)
+	describeCmd.AddNamespaceFlags(cmd.Flags(), false)
 	return cmd
 }
 
 func (c *describeCmd) Validate(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("name is required")
+		return fmt.Errorf("an instance name is required")
 	}
 	c.name = args[0]
 
@@ -80,16 +72,6 @@ func (c *describeCmd) describe() error {
 		return err
 	}
 	output.WriteAssociatedBindings(c.Output, bindings)
-
-	if c.traverse {
-		class, plan, broker, err := c.App.InstanceParentHierarchy(instance)
-		if err != nil {
-			return fmt.Errorf("unable to traverse up the instance hierarchy (%s)", err)
-		}
-		output.WriteParentClass(c.Output, class)
-		output.WriteParentPlan(c.Output, plan)
-		output.WriteParentBroker(c.Output, broker)
-	}
 
 	return nil
 }

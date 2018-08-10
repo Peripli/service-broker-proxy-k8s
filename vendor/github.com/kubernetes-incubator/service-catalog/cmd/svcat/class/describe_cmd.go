@@ -27,7 +27,6 @@ import (
 
 type describeCmd struct {
 	*command.Context
-	traverse     bool
 	lookupByUUID bool
 	uuid         string
 	name         string
@@ -40,20 +39,13 @@ func NewDescribeCmd(cxt *command.Context) *cobra.Command {
 		Use:     "class NAME",
 		Aliases: []string{"classes", "cl"},
 		Short:   "Show details of a specific class",
-		Example: `
+		Example: command.NormalizeExamples(`
   svcat describe class mysqldb
   svcat describe class -uuid 997b8372-8dac-40ac-ae65-758b4a5075a5
-`,
+`),
 		PreRunE: command.PreRunE(describeCmd),
 		RunE:    command.RunE(describeCmd),
 	}
-	cmd.Flags().BoolVarP(
-		&describeCmd.traverse,
-		"traverse",
-		"t",
-		false,
-		"Whether or not to traverse from plan -> class -> broker",
-	)
 	cmd.Flags().BoolVarP(
 		&describeCmd.lookupByUUID,
 		"uuid",
@@ -66,7 +58,7 @@ func NewDescribeCmd(cxt *command.Context) *cobra.Command {
 
 func (c *describeCmd) Validate(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("name or uuid is required")
+		return fmt.Errorf("a class name or uuid is required")
 	}
 
 	if c.lookupByUUID {
@@ -101,15 +93,6 @@ func (c *describeCmd) describe() error {
 		return err
 	}
 	output.WriteAssociatedPlans(c.Output, plans)
-
-	if c.traverse {
-		broker, err := c.App.RetrieveBrokerByClass(class)
-		if err != nil {
-			return err
-		}
-		output.WriteParentBroker(c.Output, broker)
-		output.WriteAssociatedPlans(c.Output, plans)
-	}
 
 	return nil
 }

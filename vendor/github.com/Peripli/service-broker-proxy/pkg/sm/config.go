@@ -1,24 +1,51 @@
 package sm
 
 import (
-	"github.com/Peripli/service-broker-proxy/pkg/env"
+	"time"
+
+	"github.com/Peripli/service-manager/pkg/env"
 	"github.com/pkg/errors"
 )
 
-type ClientConfiguration struct {
-	User           string
-	Password       string
-	Host           string
-	OsbApi         string
-	TimeoutSeconds int
-	CreateFunc     func(config *ClientConfiguration) (Client, error)
+// DefaultConfig builds a default Service Manager Config
+func DefaultConfig() *Config {
+	return &Config{
+		User:              "",
+		Password:          "",
+		Host:              "",
+		RequestTimeout:    5 * time.Second,
+		CreateFunc:        NewClient,
+		SkipSslValidation: false,
+	}
 }
 
-type Settings struct {
-	Sm *ClientConfiguration
+// NewConfig builds a Service Manager Config from the provided Environment
+func NewConfig(env env.Environment) (*Config, error) {
+	config := struct {
+		Sm *Config
+	}{DefaultConfig()}
+
+	if err := env.Unmarshal(&config); err != nil {
+		return nil, errors.Wrap(err, "error unmarshaling SM configuration")
+	}
+
+	return config.Sm, nil
 }
 
-func (c *ClientConfiguration) Validate() error {
+// Config type holds SM Client config properties
+type Config struct {
+	User              string
+	Password          string
+	Host              string
+	OsbAPI            string
+	RequestTimeout    time.Duration
+	SkipSslValidation bool
+
+	CreateFunc func(config *Config) (Client, error)
+}
+
+// Validate validates the configuration and returns appropriate errors in case it is invalid
+func (c *Config) Validate() error {
 	if len(c.User) == 0 {
 		return errors.New("SM configuration User missing")
 	}
@@ -28,37 +55,14 @@ func (c *ClientConfiguration) Validate() error {
 	if len(c.Host) == 0 {
 		return errors.New("SM configuration Host missing")
 	}
-	if len(c.OsbApi) == 0 {
+	if len(c.OsbAPI) == 0 {
 		return errors.New("SM configuration OSB API missing")
 	}
-	if c.TimeoutSeconds == 0 {
-		return errors.New("SM configuration TimeoutSeconds missing")
+	if c.RequestTimeout == 0 {
+		return errors.New("SM configuration RequestTimeout missing")
 	}
 	if c.CreateFunc == nil {
 		return errors.New("SM configuration CreateFunc missing")
 	}
 	return nil
-}
-
-func DefaultConfig() *ClientConfiguration {
-	return &ClientConfiguration{
-		User:           "admin",
-		Password:       "admin",
-		Host:           "",
-		TimeoutSeconds: 10,
-		CreateFunc:     NewClient,
-	}
-}
-
-func NewConfig(env env.Environment) (*ClientConfiguration, error) {
-	config := DefaultConfig()
-
-	smConfig := &Settings{
-		Sm: config,
-	}
-	if err := env.Unmarshal(smConfig); err != nil {
-		return nil, errors.Wrap(err, "error unmarshaling SM configuration")
-	}
-
-	return config, nil
 }

@@ -18,11 +18,14 @@ package servicecatalog
 
 import (
 	"fmt"
+	"math"
+	"time"
 
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 const (
@@ -31,13 +34,33 @@ const (
 )
 
 // RetrieveInstances lists all instances in a namespace.
-func (sdk *SDK) RetrieveInstances(ns string) (*v1beta1.ServiceInstanceList, error) {
+func (sdk *SDK) RetrieveInstances(ns, classFilter, planFilter string) (*v1beta1.ServiceInstanceList, error) {
 	instances, err := sdk.ServiceCatalog().ServiceInstances(ns).List(v1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to list instances in %s (%s)", ns, err)
 	}
 
-	return instances, nil
+	if classFilter == "" && planFilter == "" {
+		return instances, nil
+	}
+
+	filtered := v1beta1.ServiceInstanceList{
+		Items: []v1beta1.ServiceInstance{},
+	}
+
+	for _, instance := range instances.Items {
+		if classFilter != "" && instance.Spec.GetSpecifiedClusterServiceClass() != classFilter {
+			continue
+		}
+
+		if planFilter != "" && instance.Spec.GetSpecifiedClusterServicePlan() != planFilter {
+			continue
+		}
+
+		filtered.Items = append(filtered.Items, instance)
+	}
+
+	return &filtered, nil
 }
 
 // RetrieveInstance gets an instance by its name.
@@ -193,11 +216,62 @@ func (sdk *SDK) TouchInstance(ns, name string, retries int) error {
 			return nil
 		}
 		// if we didn't get a conflict, no idea what happened
-		if !errors.IsConflict(err) {
+		if !apierrors.IsConflict(err) {
 			return fmt.Errorf("could not touch instance (%s)", err)
 		}
 	}
 
 	// conflict after `retries` tries
 	return fmt.Errorf("could not sync service broker after %d tries", retries)
+}
+
+// WaitForInstance waits for the instance to complete the current operation (or fail).
+func (sdk *SDK) WaitForInstance(ns, name string, interval time.Duration, timeout *time.Duration) (instance *v1beta1.ServiceInstance, err error) {
+	if timeout == nil {
+		notimeout := time.Duration(math.MaxInt64)
+		timeout = &notimeout
+	}
+
+	err = wait.PollImmediate(interval, *timeout,
+		func() (bool, error) {
+			instance, err = sdk.RetrieveInstance(ns, name)
+			if nil != err {
+				if apierrors.IsNotFound(err) {
+					return true, nil
+				}
+				return false, err
+			}
+
+			if len(instance.Status.Conditions) == 0 {
+				return false, nil
+			}
+
+			isDone := (sdk.IsInstanceReady(instance) || sdk.IsInstanceFailed(instance)) && !instance.Status.AsyncOpInProgress
+			return isDone, nil
+		},
+	)
+
+	return instance, err
+}
+
+// IsInstanceReady returns if the instance is in the Ready status.
+func (sdk *SDK) IsInstanceReady(instance *v1beta1.ServiceInstance) bool {
+	return sdk.InstanceHasStatus(instance, v1beta1.ServiceInstanceConditionReady)
+}
+
+// IsInstanceFailed returns if the instance is in the Failed status.
+func (sdk *SDK) IsInstanceFailed(instance *v1beta1.ServiceInstance) bool {
+	return sdk.InstanceHasStatus(instance, v1beta1.ServiceInstanceConditionFailed)
+}
+
+// InstanceHasStatus returns if the instance is in the specified status.
+func (sdk *SDK) InstanceHasStatus(instance *v1beta1.ServiceInstance, status v1beta1.ServiceInstanceConditionType) bool {
+	for _, cond := range instance.Status.Conditions {
+		if cond.Type == status &&
+			cond.Status == v1beta1.ConditionTrue {
+			return true
+		}
+	}
+
+	return false
 }
