@@ -33,7 +33,7 @@ config:
     logLevel: debug
     logFormat: text
     timeout: 5000ms
-    # ResyncPeriod: 10s
+    # resyncPeriod: 10s
   sm:
     host: http://service-manager.local.pcfdev.io
     osbApi: /v1/osb
