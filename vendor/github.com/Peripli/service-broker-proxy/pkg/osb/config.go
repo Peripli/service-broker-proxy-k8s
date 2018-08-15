@@ -4,30 +4,50 @@ package osb
 import (
 	"github.com/Peripli/service-broker-proxy/pkg/sm"
 	"github.com/pkg/errors"
-	osbc "github.com/pmorie/go-open-service-broker-client/v2"
 )
 
 const name = "sbproxy"
 
+type Target struct {
+	// URL is the URL to use to contact the broker.
+	URL string
+	// Username is the basic auth username.
+	Username string
+	// Password is the basic auth password.
+	Password string
+	// URL is the URL to use to contact the broker.
+}
+
 // ClientConfig type holds config info for building an OSB client
 type ClientConfig struct {
-	*osbc.ClientConfiguration
+	Name string
+	// Username is the basic auth username.
+	Username string
+	// Password is the basic auth password.
+	Password string
+	// URL is the URL to use to contact the broker.
+	URL string
+	// Insecure represents whether the 'InsecureSkipVerify' TLS configuration
+	// field should be set.  If the TLSConfig field is set and this field is
+	// set to true, it overrides the value in the TLSConfig field.
+	Insecure bool
+	// TimeoutSeconds is the length of the timeout of any request to the
+	// broker, in seconds.
+	TimeoutSeconds int
 
-	CreateFunc func(config *osbc.ClientConfiguration) (osbc.Client, error)
+	// CreateFunc func(config *osbc.ClientConfiguration) (osbc.Client, error)
 }
 
 // DefaultConfig returns default ClientConfig
 func DefaultConfig() *ClientConfig {
 	return &ClientConfig{
-		ClientConfiguration: osbc.DefaultClientConfiguration(),
-		CreateFunc:          osbc.NewClient,
+		Name: name,
 	}
 }
 
 // NewConfig creates ClientConfig from the provided settings
 func NewConfig(settings *sm.Config) (*ClientConfig, error) {
 	clientConfig := DefaultConfig()
-	clientConfig.Name = name
 
 	if len(settings.Host) != 0 {
 		clientConfig.URL = settings.Host + settings.OsbAPI
@@ -38,11 +58,8 @@ func NewConfig(settings *sm.Config) (*ClientConfig, error) {
 	}
 
 	if len(settings.User) != 0 && len(settings.Password) != 0 {
-		clientConfig.AuthConfig = &osbc.AuthConfig{
-			BasicAuthConfig: &osbc.BasicAuthConfig{
-				Username: settings.User,
-				Password: settings.Password,
-			}}
+		clientConfig.Username = settings.User
+		clientConfig.Password = settings.Password
 	}
 
 	clientConfig.Insecure = settings.SkipSslValidation
@@ -52,17 +69,11 @@ func NewConfig(settings *sm.Config) (*ClientConfig, error) {
 
 // Validate validates the configuration and returns appropriate errors in case it is invalid
 func (c *ClientConfig) Validate() error {
-	if c.CreateFunc == nil {
-		return errors.New("OSB client configuration CreateFunc missing")
-	}
-	if c.ClientConfiguration == nil {
-		return errors.New("OSB client configuration missing")
-	}
 	if len(c.URL) == 0 {
 		return errors.New("OSB client configuration URL missing")
 	}
-	if c.AuthConfig == nil {
-		return errors.New("OSB client configuration AuthConfig missing")
+	if c.Username == "" || c.Password == "" {
+		return errors.New("OSB client configuration Username/Password missing")
 	}
 	if c.TimeoutSeconds == 0 {
 		return errors.New("OSB client configuration RequestTimeout missing")

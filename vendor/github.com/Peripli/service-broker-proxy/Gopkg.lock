@@ -2,21 +2,34 @@
 
 
 [[projects]]
-  branch = "master"
+  branch = "reverse-proxy"
   name = "github.com/Peripli/service-manager"
   packages = [
+    "api",
+    "api/broker",
+    "api/catalog",
+    "api/filters/authn",
+    "api/healthcheck",
+    "api/info",
+    "api/osb",
+    "api/platform",
     "pkg/env",
+    "pkg/proxy",
     "pkg/types",
     "pkg/util",
-    "pkg/web"
+    "pkg/web",
+    "security",
+    "security/basic",
+    "security/oidc",
+    "server",
+    "storage"
   ]
-  revision = "6bbeba0c92ac3a6ff0fe64e7495f4a359ca88d07"
+  revision = "617af19de1a1a1e8e5cf3258bfa9c996cda70191"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/beorn7/perks"
-  packages = ["quantile"]
-  revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
+  name = "github.com/coreos/go-oidc"
+  packages = ["."]
+  revision = "1180514eaf4d9f38d0d19eef639a1d695e066e72"
 
 [[projects]]
   name = "github.com/fatih/structs"
@@ -105,12 +118,6 @@
   version = "v1.8.0"
 
 [[projects]]
-  name = "github.com/matttproud/golang_protobuf_extensions"
-  packages = ["pbutil"]
-  revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
-  version = "v1.0.1"
-
-[[projects]]
   branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
@@ -123,7 +130,7 @@
     "filename",
     "formatter"
   ]
-  revision = "00f4ddfaeb23824ce8b9ce969095a9b2529b9eca"
+  revision = "ca0a758702be2ae04725ba88dcd27a71949faf33"
 
 [[projects]]
   name = "github.com/onsi/ginkgo"
@@ -185,61 +192,28 @@
 [[projects]]
   name = "github.com/pmorie/go-open-service-broker-client"
   packages = ["v2"]
-  revision = "e8aa16c9036317bd59ced8921e9da6197ab577e3"
-  version = "0.0.5"
-
-[[projects]]
-  name = "github.com/pmorie/osb-broker-lib"
-  packages = [
-    "pkg/broker",
-    "pkg/metrics",
-    "pkg/rest",
-    "pkg/server"
-  ]
-  revision = "f4ca270ef323318b363f986229bd10bccb2d28b1"
+  revision = "dca737037ce636eb282e84e3a1c7479c9692e884"
   version = "0.0.10"
 
 [[projects]]
-  name = "github.com/prometheus/client_golang"
-  packages = [
-    "prometheus",
-    "prometheus/promhttp"
-  ]
-  revision = "c5b7fccd204277076155f10851dad72b76a49317"
-  version = "v0.8.0"
-
-[[projects]]
   branch = "master"
-  name = "github.com/prometheus/client_model"
-  packages = ["go"]
-  revision = "5c3871d89910bfb32f5fcab2aa4b9ec68e65a99f"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/prometheus/common"
-  packages = [
-    "expfmt",
-    "internal/bitbucket.org/ww/goautoneg",
-    "model"
-  ]
-  revision = "c7de2306084e37d54b8be01f3541a8464345e9a5"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/prometheus/procfs"
+  name = "github.com/pquerna/cachecontrol"
   packages = [
     ".",
-    "internal/util",
-    "nfs",
-    "xfs"
+    "cacheobject"
   ]
-  revision = "05ee40e3a273f7245e8777337fc7b46e533a9a92"
+  revision = "1555304b9b35fdd2b425bccf1a5613677705e7d0"
 
 [[projects]]
   name = "github.com/robfig/cron"
   packages = ["."]
   revision = "b41be1df696709bb6395fe435af20370037c0b4c"
   version = "v1.1"
+
+[[projects]]
+  name = "github.com/satori/go.uuid"
+  packages = ["."]
+  revision = "36e9d2ebbde5e3f13ab2e25625fd453271d6522e"
 
 [[projects]]
   name = "github.com/sirupsen/logrus"
@@ -266,7 +240,7 @@
   branch = "master"
   name = "github.com/spf13/jwalterweatherman"
   packages = ["."]
-  revision = "7c0cea34c8ece3fbeb2b27ab9b59511d360fb394"
+  revision = "14d3d4c518341bea657dd8a226f5121c0ff8c9f2"
 
 [[projects]]
   name = "github.com/spf13/pflag"
@@ -283,18 +257,34 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
-  packages = ["ssh/terminal"]
-  revision = "c126467f60eb25f8f27e5a981f32a87e3965053f"
+  packages = [
+    "ed25519",
+    "ed25519/internal/edwards25519",
+    "pbkdf2",
+    "ssh/terminal"
+  ]
+  revision = "de0752318171da717af4ce24d0a2e8626afaeb11"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = [
+    "context",
+    "context/ctxhttp",
     "html",
     "html/atom",
     "html/charset"
   ]
-  revision = "49c15d80dfbc983ea25246ee959d970efe09ec09"
+  revision = "c39426892332e1bb5ec0a434a079bf82f5d30c54"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/oauth2"
+  packages = [
+    ".",
+    "internal"
+  ]
+  revision = "3d292e4d0cdc3a0113e6d207bb137145ef1de42f"
 
 [[projects]]
   branch = "master"
@@ -303,7 +293,7 @@
     "unix",
     "windows"
   ]
-  revision = "bd9dbc187b6e1dacfdd2722a87e83093c2d7bd6e"
+  revision = "4e1fef5609515ec7a2cee7b5de30ba6d9b438cbf"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -333,11 +323,35 @@
   version = "v0.3.0"
 
 [[projects]]
+  name = "google.golang.org/appengine"
+  packages = [
+    "internal",
+    "internal/base",
+    "internal/datastore",
+    "internal/log",
+    "internal/remote_api",
+    "internal/urlfetch",
+    "urlfetch"
+  ]
+  revision = "b1f26356af11148e710935ed1ac8a7f5702c7612"
+  version = "v1.1.0"
+
+[[projects]]
   name = "gopkg.in/fsnotify.v1"
   packages = ["."]
-  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
+  revision = "944cff21b3baf3ced9a880365682152ba577d348"
   source = "https://github.com/fsnotify/fsnotify.git"
-  version = "v1.4.7"
+  version = "v1.4.1"
+
+[[projects]]
+  name = "gopkg.in/square/go-jose.v2"
+  packages = [
+    ".",
+    "cipher",
+    "json"
+  ]
+  revision = "8254d6c783765f38c8675fae4427a1fe73fbd09d"
+  version = "v2.1.8"
 
 [[projects]]
   branch = "v1"
@@ -354,6 +368,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a512b775b01edcec7446d08be6af494586fec5fbf338fcab166d0106e969f2d8"
+  inputs-digest = "2921fee21c9b81c4bcf0864e4e77909fec80bb6dd2b45edc56b7e50974faa0bf"
   solver-name = "gps-cdcl"
   solver-version = 1

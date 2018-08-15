@@ -3,6 +3,8 @@ package sbproxy
 import (
 	"sync"
 
+	"fmt"
+
 	"github.com/Peripli/service-broker-proxy/pkg/config"
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/Peripli/service-broker-proxy/pkg/server"
@@ -12,7 +14,6 @@ import (
 	"github.com/robfig/cron"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
-	"fmt"
 )
 
 const (

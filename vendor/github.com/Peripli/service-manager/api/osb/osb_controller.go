@@ -17,15 +17,13 @@
 package osb
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
-	"net/http/httputil"
 	"net/url"
 	"regexp"
 
+	"github.com/Peripli/service-manager/pkg/proxy"
 	"github.com/Peripli/service-manager/pkg/types"
 	"github.com/Peripli/service-manager/pkg/util"
 	"github.com/Peripli/service-manager/pkg/web"
@@ -36,68 +34,81 @@ import (
 
 var osbPathPattern = regexp.MustCompile("^" + v1 + root + "/[^/]+(/.*)$")
 
+// Adapter is implemented by OSB handler providers
+type Adapter interface {
+	Handler() web.HandlerFunc
+}
+
 // Controller implements api.Controller by providing OSB API logic
-type Controller struct {
+type controller struct {
+	adapter Adapter
+}
+
+// NewController returns new OSB controller
+func NewController(adapter Adapter) web.Controller {
+	return &controller{
+		adapter: adapter,
+	}
+}
+
+var _ web.Controller = &controller{}
+
+// BusinessLogic provides handler for the Service Manager OSB business logic
+type BusinessLogic struct {
 	BrokerStorage storage.Broker
-	Filters       web.Filters
 	Encrypter     security.Encrypter
 }
 
-var _ web.Controller = &Controller{}
+// Handler provides implementation to the Adapter interface
+// It uses the Reverse proxy implementation to forward the call to the broker
+func (a *BusinessLogic) Handler() web.HandlerFunc {
+	return func(request *web.Request) (*web.Response, error) {
+		logrus.Debug("Executing OSB operation: ", request.URL.Path)
+		broker, err := a.fetchBroker(request)
+		if err != nil {
+			return nil, err
+		}
+		target, _ := url.Parse(broker.BrokerURL)
 
-func (c *Controller) handler(request *web.Request) (*web.Response, error) {
-	logrus.Debug("Executing OSB operation: ", request.URL.Path)
-	broker, err := c.fetchBroker(request)
-	if err != nil {
-		return nil, err
+		username, password := broker.Credentials.Basic.Username, broker.Credentials.Basic.Password
+		plaintextPassword, err := a.Encrypter.Decrypt([]byte(password))
+		if err != nil {
+			return nil, err
+		}
+
+		proxier := proxy.NewReverseProxy(proxy.Options{
+			Transport: http.DefaultTransport,
+		})
+		reqBuilder := proxier.RequestBuilder().Auth(username, string(plaintextPassword))
+
+		m := osbPathPattern.FindStringSubmatch(request.URL.Path)
+		if m == nil || len(m) < 2 {
+			return nil, fmt.Errorf("could not get OSB path from URL %s", request.URL.Path)
+		}
+		target.Path = target.Path + m[1]
+		reqBuilder.URL(target)
+
+		resp, err := proxier.ProxyRequest(request.Request, reqBuilder, request.Body)
+		if err != nil {
+			return nil, err
+		}
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		webResp := &web.Response{
+			StatusCode: resp.StatusCode,
+			Header:     resp.Header,
+			Body:       respBody,
+		}
+
+		logrus.Debugf("Service broker replied with status %d", webResp.StatusCode)
+		return webResp, nil
 	}
-	target, _ := url.Parse(broker.BrokerURL)
-
-	reverseProxy := httputil.ReverseProxy{
-		Director: func(req *http.Request) {
-			req.Host = target.Host
-		},
-	}
-
-	username, password := broker.Credentials.Basic.Username, broker.Credentials.Basic.Password
-
-	modifiedRequest := request.Request.WithContext(request.Context())
-	plaintextPassword, err := c.Encrypter.Decrypt([]byte(password))
-	if err != nil {
-		return nil, err
-	}
-	modifiedRequest.SetBasicAuth(username, string(plaintextPassword))
-	modifiedRequest.URL.Scheme = target.Scheme
-	modifiedRequest.URL.Host = target.Host
-	modifiedRequest.Body = ioutil.NopCloser(bytes.NewReader(request.Body))
-	modifiedRequest.ContentLength = int64(len(request.Body))
-
-	m := osbPathPattern.FindStringSubmatch(request.URL.Path)
-	if m == nil || len(m) < 2 {
-		return nil, fmt.Errorf("could not get OSB path from URL %s", request.URL.Path)
-	}
-	modifiedRequest.URL.Path = m[1]
-
-	logrus.Debugf("Forwarding OSB request to %s", modifiedRequest.URL)
-	recorder := httptest.NewRecorder()
-	reverseProxy.ServeHTTP(recorder, modifiedRequest)
-
-	body, err := ioutil.ReadAll(recorder.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	headers := recorder.HeaderMap
-	resp := &web.Response{
-		StatusCode: recorder.Code,
-		Body:       body,
-		Header:     headers,
-	}
-	logrus.Debugf("Service broker replied with status %d", resp.StatusCode)
-	return resp, nil
 }
 
-func (c *Controller) fetchBroker(request *web.Request) (*types.Broker, error) {
+func (a *BusinessLogic) fetchBroker(request *web.Request) (*types.Broker, error) {
 	brokerID, ok := request.PathParams[BrokerIDPathParam]
 	if !ok {
 		logrus.Debugf("error creating OSB client: brokerID path parameter not found")
@@ -109,7 +120,7 @@ func (c *Controller) fetchBroker(request *web.Request) (*types.Broker, error) {
 	}
 	logrus.Debugf("Obtained path parameter [brokerID = %s] from path params", brokerID)
 
-	serviceBroker, err := c.BrokerStorage.Get(brokerID)
+	serviceBroker, err := a.BrokerStorage.Get(brokerID)
 	if err != nil {
 		logrus.Debugf("Broker with id %s not found in storage during OSB %s operation", brokerID, request.URL.Path)
 		return nil, util.HandleStorageError(err, "broker", brokerID)

@@ -27,11 +27,11 @@
 
 [[constraint]]
   name = "github.com/kubernetes-incubator/service-catalog"
-  version = "0.1.27"
+  version = "=0.1.27"
 
 [[constraint]]
   name = "github.com/Peripli/service-broker-proxy"
-  branch = "master"
+  branch = "reverse-proxy"
 
 [[constraint]]
   name = "github.com/onsi/ginkgo"
