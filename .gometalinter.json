@@ -5,6 +5,5 @@
     "Deadline": "300s",
     "Aggregate": true,
     "Sort": ["severity", "path", "line", "message"],
-    "Checkstyle": false,
-    "Cyclo": 12
+    "Checkstyle": false
 }
