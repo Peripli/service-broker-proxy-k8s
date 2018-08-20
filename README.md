@@ -1,6 +1,9 @@
 # service-broker-proxy-k8s
 
-[![Build Status](https://travis-ci.org/Peripli/service-broker-proxy-k8s.svg?branch=master)](https://travis-ci.org/Peripli/service-broker-proxy-k8s)[![Coverage Status](https://coveralls.io/repos/github/Peripli/service-broker-proxy-k8s/badge.svg?branch=master)](https://coveralls.io/github/Peripli/service-broker-proxy-k8s?branch=master)[![Go Report Card](https://goreportcard.com/badge/github.com/Peripli/service-broker-proxy-k8s)](https://goreportcard.com/report/github.com/Peripli/service-broker-proxy-k8s)
+[![Build Status](https://travis-ci.org/Peripli/service-broker-proxy-k8s.svg?branch=master)](https://travis-ci.org/Peripli/service-broker-proxy-k8s)
+[![Coverage Status](https://coveralls.io/repos/github/Peripli/service-broker-proxy-k8s/badge.svg?branch=master)](https://coveralls.io/github/Peripli/service-broker-proxy-k8s?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Peripli/service-broker-proxy-k8s)](https://goreportcard.com/report/github.com/Peripli/service-broker-proxy-k8s)
+[![Docker Repository on Quay](https://quay.io/repository/service-manager/sb-proxy-k8s/status "Docker Repository on Quay")](https://quay.io/repository/service-manager/sb-proxy-k8s)
 
 K8S Specific Implementation for Service Broker Proxy Module
 
