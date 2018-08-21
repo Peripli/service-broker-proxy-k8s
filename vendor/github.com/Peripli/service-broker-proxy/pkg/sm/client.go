@@ -1,7 +1,6 @@
 package sm
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/http"
 
@@ -23,14 +22,14 @@ type Client interface {
 }
 
 type serviceManagerClient struct {
-	Config     *Config
+	Config     *Settings
 	httpClient *http.Client
 }
 
 var _ Client = &serviceManagerClient{}
 
 // NewClient builds a new Service Manager Client from the provided configuration
-func NewClient(config *Config) (Client, error) {
+func NewClient(config *Settings) (Client, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
@@ -39,22 +38,12 @@ func NewClient(config *Config) (Client, error) {
 		Timeout: time.Duration(config.RequestTimeout) * time.Second,
 	}
 
-	defaultTransport := http.DefaultTransport.(*http.Transport)
-	t := &http.Transport{
-		Proxy:                 defaultTransport.Proxy,
-		TLSHandshakeTimeout:   defaultTransport.TLSHandshakeTimeout,
-		ExpectContinueTimeout: defaultTransport.ExpectContinueTimeout,
-	}
-	t.TLSClientConfig = &tls.Config{
-		InsecureSkipVerify: config.SkipSslValidation,
-	}
-
-	if config.User != "" && config.Password != "" {
-		httpClient.Transport = BasicAuthTransport{
-			username: config.User,
-			password: config.Password,
-			rt:       t,
-		}
+	httpClient.Transport = BasicAuthTransport{
+		Username: config.User,
+		Password: config.Password,
+		Rt: SkipSSLTransport{
+			SkipSslValidation: config.SkipSSLValidation,
+		},
 	}
 
 	client := &serviceManagerClient{

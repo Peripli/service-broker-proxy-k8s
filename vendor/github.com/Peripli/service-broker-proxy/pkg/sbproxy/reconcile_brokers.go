@@ -72,7 +72,6 @@ func (r ReconcileBrokersTask) run() {
 
 	// control logic - make sure current state matches desired state
 	r.reconcileBrokers(brokersFromPlatform, brokersFromSM)
-
 }
 
 // reconcileBrokers attempts to reconcile the current brokers state in the platform (existingBrokers)
@@ -93,7 +92,6 @@ func (r ReconcileBrokersTask) reconcileBrokers(existingBrokers []serviceBrokerRe
 	for _, existingBroker := range existingMap {
 		r.deleteBrokerRegistration(&existingBroker.ServiceBroker)
 	}
-
 }
 
 func (r ReconcileBrokersTask) getBrokersFromPlatform() ([]serviceBrokerReg, error) {
@@ -180,7 +178,6 @@ func (r ReconcileBrokersTask) deleteBrokerRegistration(broker *platform.ServiceB
 		logrus.WithFields(logBroker(broker)).WithError(err).Error("Error during broker deletion")
 	} else {
 		logrus.WithFields(logBroker(broker)).Infof("ReconcileBrokersTask task SUCCESSFULLY deleted proxy broker from platform with name [%s]", deleteRequest.Name)
-
 	}
 }
 

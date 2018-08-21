@@ -7,23 +7,23 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DefaultConfig builds a default Service Manager Config
-func DefaultConfig() *Config {
-	return &Config{
+// DefaultSettings builds a default Service Manager Settings
+func DefaultSettings() *Settings {
+	return &Settings{
 		User:              "",
 		Password:          "",
 		Host:              "",
 		RequestTimeout:    5 * time.Second,
 		CreateFunc:        NewClient,
-		SkipSslValidation: false,
+		SkipSSLValidation: false,
 	}
 }
 
-// NewConfig builds a Service Manager Config from the provided Environment
-func NewConfig(env env.Environment) (*Config, error) {
+// NewSettings builds a Service Manager Settings from the provided Environment
+func NewSettings(env env.Environment) (*Settings, error) {
 	config := struct {
-		Sm *Config
-	}{DefaultConfig()}
+		Sm *Settings
+	}{DefaultSettings()}
 
 	if err := env.Unmarshal(&config); err != nil {
 		return nil, errors.Wrap(err, "error unmarshaling SM configuration")
@@ -32,20 +32,21 @@ func NewConfig(env env.Environment) (*Config, error) {
 	return config.Sm, nil
 }
 
-// Config type holds SM Client config properties
-type Config struct {
+// Settings type holds SM Client config properties
+type Settings struct {
 	User              string
 	Password          string
 	Host              string
-	OsbAPI            string
-	RequestTimeout    time.Duration
-	SkipSslValidation bool
+	OsbAPI            string        `mapstructure:"osb_api"`
+	RequestTimeout    time.Duration `mapstructure:"request_timeout"`
+	ResyncPeriod      time.Duration `mapstructure:"resync_period"`
+	SkipSSLValidation bool          `mapstructure:"skip_ssl_validation"`
 
-	CreateFunc func(config *Config) (Client, error)
+	CreateFunc func(config *Settings) (Client, error)
 }
 
 // Validate validates the configuration and returns appropriate errors in case it is invalid
-func (c *Config) Validate() error {
+func (c *Settings) Validate() error {
 	if len(c.User) == 0 {
 		return errors.New("SM configuration User missing")
 	}
@@ -59,6 +60,9 @@ func (c *Config) Validate() error {
 		return errors.New("SM configuration OSB API missing")
 	}
 	if c.RequestTimeout == 0 {
+		return errors.New("SM configuration RequestTimeout missing")
+	}
+	if c.ResyncPeriod == 0 {
 		return errors.New("SM configuration RequestTimeout missing")
 	}
 	if c.CreateFunc == nil {
