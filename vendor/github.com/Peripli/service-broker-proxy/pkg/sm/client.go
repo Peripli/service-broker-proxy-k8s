@@ -1,7 +1,6 @@
 package sm
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/http"
 
@@ -23,14 +22,14 @@ type Client interface {
 }
 
 type serviceManagerClient struct {
-	Config     *Config
+	Config     *Settings
 	httpClient *http.Client
 }
 
 var _ Client = &serviceManagerClient{}
 
 // NewClient builds a new Service Manager Client from the provided configuration
-func NewClient(config *Config) (Client, error) {
+func NewClient(config *Settings) (Client, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
@@ -39,22 +38,12 @@ func NewClient(config *Config) (Client, error) {
 		Timeout: time.Duration(config.RequestTimeout) * time.Second,
 	}
 
-	defaultTransport := http.DefaultTransport.(*http.Transport)
-	t := &http.Transport{
-		Proxy:                 defaultTransport.Proxy,
-		TLSHandshakeTimeout:   defaultTransport.TLSHandshakeTimeout,
-		ExpectContinueTimeout: defaultTransport.ExpectContinueTimeout,
-	}
-	t.TLSClientConfig = &tls.Config{
-		InsecureSkipVerify: config.SkipSslValidation,
-	}
-
-	if config.User != "" && config.Password != "" {
-		httpClient.Transport = BasicAuthTransport{
-			username: config.User,
-			password: config.Password,
-			rt:       t,
-		}
+	httpClient.Transport = BasicAuthTransport{
+		Username: config.User,
+		Password: config.Password,
+		Rt: SkipSSLTransport{
+			SkipSslValidation: config.SkipSSLValidation,
+		},
 	}
 
 	client := &serviceManagerClient{
@@ -68,8 +57,8 @@ func NewClient(config *Config) (Client, error) {
 // GetBrokers calls the Service Manager in order to obtain all brokers t	hat need to be registered
 // in the service broker proxy
 func (c *serviceManagerClient) GetBrokers() ([]platform.ServiceBroker, error) {
-	logrus.Debugf("Getting brokers for proxy from Service Manager at %s", c.Config.Host)
-	URL := fmt.Sprintf(APIInternalBrokers, c.Config.Host)
+	logrus.Debugf("Getting brokers for proxy from Service Manager at %s", c.Config.URL)
+	URL := fmt.Sprintf(APIInternalBrokers, c.Config.URL)
 	response, err := util.SendRequest(c.httpClient.Do, http.MethodGet, URL, map[string]string{"catalog": "true"}, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting brokers from Service Manager")

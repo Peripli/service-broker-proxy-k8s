@@ -30,7 +30,7 @@ import (
 	"github.com/Peripli/service-manager/pkg/util"
 	"github.com/Peripli/service-manager/pkg/web"
 	"github.com/Peripli/service-manager/storage"
-	"github.com/satori/go.uuid"
+	"github.com/gofrs/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -41,9 +41,9 @@ const (
 
 // Controller broker controller
 type Controller struct {
-	BrokerStorage          storage.Broker
-	OSBClientCreateFunc    osbc.CreateFunc
-	Encrypter security.Encrypter
+	BrokerStorage       storage.Broker
+	OSBClientCreateFunc osbc.CreateFunc
+	Encrypter           security.Encrypter
 }
 
 var _ web.Controller = &Controller{}

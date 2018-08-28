@@ -24,9 +24,9 @@ Docker Images are available on quay.io/service-manager/sb-proxy
 The service-broker-proxy-k8s is installed via a helm chart.
 
 ```bash
-helm install charts/service-broker-proxy --name service-broker-proxy --namespace service-broker-proxy --set config.sm.host=<SM_HOST> --set sm.user=<USER> --set sm.password=<PASSWORD>
+helm install charts/service-broker-proxy --name service-broker-proxy --namespace service-broker-proxy --set config.sm.url=<SM_URL> --set sm.user=<USER> --set sm.password=<PASSWORD>
 ```
 
-**Note:** Make sure you substitute <SM_HOST> with the Service Manager url, <USER> and <PASSWORD> with the credentials for the Service Manager. The credentials can be obtained when registering the cluster in Service Manager.
+**Note:** Make sure you substitute <SM_URL> with the Service Manager url, <USER> and <PASSWORD> with the credentials for the Service Manager. The credentials can be obtained when registering the cluster in Service Manager.
 
 To use your own images you can set `image.repository`, `image.tag` and `image.pullPolicy` to the helm install command.

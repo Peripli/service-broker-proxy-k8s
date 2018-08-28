@@ -70,8 +70,8 @@ func NewTestContext(smURL, tokenIssuerURL string) *TestContext {
 	}
 }
 
-func NewTestContextFromAPIs(additionalAPIs ...*web.API) *TestContext {
-	ctx, cancel := context.WithCancel(context.Background())
+func NewTestContextFromAPIs(plugins []web.Plugin, additionalAPIs ...*web.API) *TestContext {
+	ctx, _ := context.WithCancel(context.Background())
 	mockOauthServer := SetupFakeOAuthServer()
 
 	env := sm.DefaultEnv(func(set *pflag.FlagSet) {
@@ -79,11 +79,12 @@ func NewTestContextFromAPIs(additionalAPIs ...*web.API) *TestContext {
 		set.Set("api.token_issuer_url", mockOauthServer.URL)
 	})
 
-	smanagerBuilder := sm.New(ctx, cancel, env)
+	smanagerBuilder := sm.New(ctx, env)
 	for _, additionalAPI := range additionalAPIs {
 		smanagerBuilder.RegisterControllers(additionalAPI.Controllers...)
 		smanagerBuilder.RegisterFilters(additionalAPI.Filters...)
 	}
+	smanagerBuilder.RegisterPlugins(plugins...)
 	serviceManager := smanagerBuilder.Build()
 	smServer := httptest.NewServer(serviceManager.Server.Router)
 
@@ -94,7 +95,6 @@ type TestContext struct {
 	SM          *httpexpect.Expect
 	SMWithOAuth *httpexpect.Expect
 	SMWithBasic *httpexpect.Expect
-	SMServer    *httptest.Server
 
 	brokers map[string]*Broker
 }
@@ -123,10 +123,9 @@ func (ctx *TestContext) Cleanup() {
 		return
 	}
 
-	if ctx.SMServer != nil {
+	if ctx.SMWithOAuth != nil {
 		RemoveAllBrokers(ctx.SMWithOAuth)
 		RemoveAllPlatforms(ctx.SMWithOAuth)
-		ctx.SMServer.Close()
 	}
 
 	for _, broker := range ctx.brokers {

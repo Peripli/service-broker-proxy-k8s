@@ -34,9 +34,7 @@ var _ = Describe("Service Manager Plugins", func() {
 
 	Describe("Partial plugin", func() {
 		BeforeEach(func() {
-			api := &web.API{}
-			api.RegisterPlugins(&PartialPlugin{})
-			ctx = common.NewTestContextFromAPIs(api)
+			ctx = common.NewTestContextFromAPIs([]web.Plugin{&PartialPlugin{}})
 			testBroker = ctx.RegisterBroker("broker1", nil)
 
 		})
@@ -62,17 +60,13 @@ var _ = Describe("Service Manager Plugins", func() {
 		})
 
 		JustBeforeEach(func() {
-			api := &web.API{}
-			api.RegisterPlugins(testPlugin)
-			ctx = common.NewTestContextFromAPIs(api)
+			ctx = common.NewTestContextFromAPIs([]web.Plugin{testPlugin})
 			testBroker = ctx.RegisterBroker("broker1", nil)
 		})
 
-
 		It("Plugin modifies the request & response body", func() {
 			var resBodySize int
-			testPlugin["provision"] = web.MiddlewareFunc(func(next web.Handler) web.Handler {
-				return web.HandlerFunc(func(req *web.Request) (*web.Response, error) {
+			testPlugin["provision"] = web.MiddlewareFunc(func(req *web.Request, next web.Handler) (*web.Response, error) {
 					var err error
 					req.Body, err = sjson.SetBytes(req.Body, "extra", "request")
 					if err != nil {
@@ -90,7 +84,6 @@ var _ = Describe("Service Manager Plugins", func() {
 					}
 					resBodySize = len(res.Body)
 					return res, nil
-				})
 			})
 			testBroker.StatusCode = http.StatusCreated
 
@@ -114,8 +107,7 @@ var _ = Describe("Service Manager Plugins", func() {
 		})
 
 		It("Plugin modifies the request & response headers", func() {
-			testPlugin["fetchCatalog"] = web.MiddlewareFunc(func(next web.Handler) web.Handler {
-				return web.HandlerFunc(func(req *web.Request) (*web.Response, error) {
+			testPlugin["fetchCatalog"] = web.MiddlewareFunc(func(req *web.Request, next web.Handler) (*web.Response, error) {
 					h := req.Header.Get("extra")
 					req.Header.Set("extra", h+"-request")
 
@@ -126,7 +118,6 @@ var _ = Describe("Service Manager Plugins", func() {
 
 					res.Header.Set("extra", h+"-response")
 					return res, nil
-				})
 			})
 			testBroker.StatusCode = http.StatusOK
 
@@ -137,14 +128,12 @@ var _ = Describe("Service Manager Plugins", func() {
 		})
 
 		It("Plugin aborts the request", func() {
-			testPlugin["fetchCatalog"] = web.MiddlewareFunc(func(next web.Handler) web.Handler {
-				return web.HandlerFunc(func(req *web.Request) (*web.Response, error) {
+			testPlugin["fetchCatalog"] = web.MiddlewareFunc(func(req *web.Request, next web.Handler) (*web.Response, error) {
 					return nil, &util.HTTPError{
 						ErrorType:   "PluginErr",
 						Description: "Plugin error",
 						StatusCode:  http.StatusBadRequest,
 					}
-				})
 			})
 
 			ctx.SMWithBasic.GET(testBroker.OSBURL + "/v2/catalog").
@@ -163,34 +152,42 @@ var _ = Describe("Service Manager Plugins", func() {
 			Expect(testBroker.Server.URL).To(ContainSubstring(testBroker.Request.Host))
 		})
 
-		osbOperations := []struct{ name, method, path string }{
-			{"fetchCatalog", "GET", "/v2/catalog"},
-			{"provision", "PUT", "/v2/service_instances/1234"},
-			{"deprovision", "DELETE", "/v2/service_instances/1234"},
-			{"updateService", "PATCH", "/v2/service_instances/1234"},
-			{"fetchService", "GET", "/v2/service_instances/1234"},
-			{"bind", "PUT", "/v2/service_instances/1234/service_bindings/111"},
-			{"unbind", "DELETE", "/v2/service_instances/1234/service_bindings/111"},
-			{"fetchBinding", "GET", "/v2/service_instances/1234/service_bindings/111"},
+		osbOperations := []struct {
+			name    string
+			method  string
+			path    string
+			queries []string
+		}{
+			{"fetchCatalog", "GET", "/v2/catalog", []string{""}},
+			{"provision", "PUT", "/v2/service_instances/1234", []string{"", "accepts_incomplete=true"}},
+			{"deprovision", "DELETE", "/v2/service_instances/1234", []string{""}},
+			{"updateService", "PATCH", "/v2/service_instances/1234", []string{""}},
+			{"fetchService", "GET", "/v2/service_instances/1234", []string{""}},
+			{"bind", "PUT", "/v2/service_instances/1234/service_bindings/111", []string{""}},
+			{"unbind", "DELETE", "/v2/service_instances/1234/service_bindings/111", []string{""}},
+			{"fetchBinding", "GET", "/v2/service_instances/1234/service_bindings/111", []string{""}},
+			{"pollInstance", "GET", "/v2/service_instances/1234/last_operation", []string{"", "service_id=serviceId", "plan_id=planId", "operation=provision", "service_id=serviceId&plan_id=planId&operation=provision"}},
+			{"pollBinding", "GET", "/v2/service_instances/1234/service_bindings/111/last_operation", []string{"", "service_id=serviceId", "plan_id=planId", "operation=provision", "service_id=serviceId&plan_id=planId&operation=provision"}},
 		}
 
 		for _, op := range osbOperations {
 			op := op
 			It(fmt.Sprintf("Plugin intercepts %s operation", op.name), func() {
-				testPlugin[op.name] = web.MiddlewareFunc(func(next web.Handler) web.Handler {
-					return web.HandlerFunc(func(req *web.Request) (*web.Response, error) {
+				testPlugin[op.name] = web.MiddlewareFunc(func(req *web.Request, next web.Handler) (*web.Response, error) {
 						res, err := next.Handle(req)
 						if err == nil {
 							res.Header.Set("X-Plugin", op.name)
 						}
 						return res, err
-					})
 				})
 
-				ctx.SMWithBasic.Request(op.method, testBroker.OSBURL+op.path).
-					WithHeader("Content-Type", "application/json").
-					WithJSON(object{}).
-					Expect().Status(http.StatusOK).Header("X-Plugin").Equal(op.name)
+				for _, query := range op.queries {
+					ctx.SMWithBasic.Request(op.method, testBroker.OSBURL+op.path).
+						WithHeader("Content-Type", "application/json").
+						WithJSON(object{}).
+						WithQueryString(query).
+						Expect().Status(http.StatusOK).Header("X-Plugin").Equal(op.name)
+				}
 			})
 		}
 
@@ -202,56 +199,60 @@ type TestPlugin map[string]web.Middleware
 
 func (p TestPlugin) Name() string { return "TestPlugin" }
 
-func (p TestPlugin) call(middleware web.Middleware, next web.Handler) web.Handler {
-	return web.HandlerFunc(func(r *web.Request) (*web.Response, error) {
-			if middleware == nil {
-				return next.Handle(r)
+func (p TestPlugin) call(middleware web.Middleware, req *web.Request, next web.Handler) (*web.Response, error) {
+		if middleware == nil {
+			return next.Handle(req)
 		}
-		return middleware.Run(next).Handle(r)
-	})
+		return middleware.Run(req, next)
 }
 
-func (p TestPlugin) FetchCatalog(next web.Handler) web.Handler {
-	return p.call(p["fetchCatalog"], next)
+func (p TestPlugin) FetchCatalog(request *web.Request, next web.Handler) (*web.Response, error) {
+	return p.call(p["fetchCatalog"], request, next)
 }
 
-func (p TestPlugin) Provision(next web.Handler) web.Handler {
-	return p.call(p["provision"], next)
+func (p TestPlugin) Provision(request *web.Request, next web.Handler) (*web.Response, error) {
+	return p.call(p["provision"], request,next)
 }
 
-func (p TestPlugin) Deprovision(next web.Handler) web.Handler {
-	return p.call(p["deprovision"], next)
+func (p TestPlugin) Deprovision(request *web.Request, next web.Handler) (*web.Response, error) {
+	return p.call(p["deprovision"], request,next)
 }
 
-func (p TestPlugin) UpdateService(next web.Handler) web.Handler {
-	return p.call(p["updateService"], next)
+func (p TestPlugin) UpdateService(request *web.Request, next web.Handler) (*web.Response, error) {
+	return p.call(p["updateService"],request, next)
 }
-func (p TestPlugin) FetchService(next web.Handler) web.Handler {
-	return p.call(p["fetchService"], next)
-}
-
-func (p TestPlugin) Bind(next web.Handler) web.Handler {
-	return p.call(p["bind"], next)
+func (p TestPlugin) FetchService(request *web.Request, next web.Handler) (*web.Response, error) {
+	return p.call(p["fetchService"],request, next)
 }
 
-func (p TestPlugin) Unbind(next web.Handler) web.Handler {
-	return p.call(p["unbind"], next)
+func (p TestPlugin) Bind(request *web.Request, next web.Handler) (*web.Response, error) {
+	return p.call(p["bind"], request,next)
 }
 
-func (p TestPlugin) FetchBinding(next web.Handler) web.Handler {
-	return p.call(p["fetchBinding"], next)
+func (p TestPlugin) Unbind(request *web.Request, next web.Handler) (*web.Response, error) {
+	return p.call(p["unbind"],request, next)
+}
+
+func (p TestPlugin) FetchBinding(request *web.Request, next web.Handler) (*web.Response, error) {
+	return p.call(p["fetchBinding"],request, next)
+}
+
+func (p TestPlugin) PollInstance(request *web.Request, next web.Handler) (*web.Response, error) {
+	return p.call(p["pollInstance"], request,next)
+}
+
+func (p TestPlugin) PollBinding(request *web.Request, next web.Handler) (*web.Response, error) {
+	return p.call(p["pollBinding"],request, next)
 }
 
 type PartialPlugin struct{}
 
 func (p PartialPlugin) Name() string { return "PartialPlugin" }
 
-func (p PartialPlugin) Provision(next web.Handler) web.Handler {
-	return web.HandlerFunc(func(request *web.Request) (*web.Response, error) {
-		res, err := next.Handle(request)
-		if err == nil {
-			res.Header.Set("X-Plugin", "provision")
-		}
-		return res, err
-	})
+func (p PartialPlugin) Provision(request *web.Request, next web.Handler) (*web.Response, error) {
+	res, err := next.Handle(request)
+	if err == nil {
+		res.Header.Set("X-Plugin", "provision")
+	}
+	return res, err
 }

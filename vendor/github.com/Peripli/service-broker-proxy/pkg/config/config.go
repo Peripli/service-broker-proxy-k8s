@@ -1,60 +1,58 @@
 package config
 
 import (
-	"github.com/Peripli/service-broker-proxy/pkg/osb"
-	"github.com/Peripli/service-broker-proxy/pkg/server"
 	"github.com/Peripli/service-broker-proxy/pkg/sm"
 	"github.com/Peripli/service-manager/pkg/env"
+	"github.com/Peripli/service-manager/pkg/log"
+	"github.com/Peripli/service-manager/pkg/server"
 	"github.com/spf13/pflag"
 )
 
-// New builds an sbproxy.Config from the specified Environment
-func New(env env.Environment) (*Config, error) {
-	serverConfig, err := server.NewConfig(env)
-	if err != nil {
-		return nil, err
-	}
+// Settings type holds all config properties for the sbproxy
+type Settings struct {
+	Server  *server.Settings `mapstructure:"server"`
+	Log     *log.Settings    `mapstructure:"log"`
+	Sm      *sm.Settings     `mapstructure:"sm"`
+	SelfURL string           `mapstructure:"self_url"`
+}
 
-	smConfig, err := sm.NewConfig(env)
-	if err != nil {
-		return nil, err
+// DefaultSettings returns default value for the proxy settings
+func DefaultSettings() *Settings {
+	return &Settings{
+		Server:  server.DefaultSettings(),
+		Log:     log.DefaultSettings(),
+		Sm:      sm.DefaultSettings(),
+		SelfURL: "",
 	}
+}
 
-	osbConfig, err := osb.NewConfig(smConfig)
-	if err != nil {
+// NewSettings creates new proxy settings from the specified environment
+func NewSettings(env env.Environment) (*Settings, error) {
+	config := DefaultSettings()
+	if err := env.Unmarshal(config); err != nil {
 		return nil, err
-	}
-
-	config := &Config{
-		Server: serverConfig,
-		Osb:    osbConfig,
-		Sm:     smConfig,
 	}
 
 	return config, nil
 }
 
-// AddPFlags adds the pflags needed for the the proxy default config to the provided flag set.
+// AddPFlags adds the SM config flags to the provided flag set
 func AddPFlags(set *pflag.FlagSet) {
-	defaultCfg := &Config{
-		Server: server.DefaultConfig(),
-		Sm:     sm.DefaultConfig(),
-		Osb:    osb.DefaultConfig(),
-	}
+	env.CreatePFlags(set, DefaultSettings())
 
-	env.CreatePFlags(set, defaultCfg)
+	env.CreatePFlagsForConfigFile(set)
 }
 
-// Config type holds all config properties for the sbproxy
-type Config struct {
-	Server *server.Config
-	Sm     *sm.Config
-	Osb    *osb.ClientConfig `structs:"-"`
+// New builds an config.Settings from the specified Environment
+func New(env env.Environment) (*Settings, error) {
+	return NewSettings(env)
 }
 
-// Validate validates the configuration and returns appropriate errors in case it is invalid
-func (c *Config) Validate() error {
-	validatable := []interface{ Validate() error }{c.Server, c.Osb, c.Sm}
+// Validate validates that the configuration contains all mandatory properties
+func (c *Settings) Validate() error {
+	validatable := []interface {
+		Validate() error
+	}{c.Server, c.Log, c.Sm}
 
 	for _, item := range validatable {
 		if err := item.Validate(); err != nil {

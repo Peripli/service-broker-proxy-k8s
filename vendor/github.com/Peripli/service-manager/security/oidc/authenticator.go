@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-// Package oidc contains logic for setting up an oidc authenticator
+// Package oidc contains logic for setting up an Open ID Connect authenticator
 package oidc
 
 import (
@@ -27,13 +27,10 @@ import (
 	"fmt"
 
 	"github.com/Peripli/service-manager/pkg/util"
+	"github.com/Peripli/service-manager/pkg/web"
 	"github.com/Peripli/service-manager/security"
-	"github.com/coreos/go-oidc"
-	"github.com/sirupsen/logrus"
+	goidc "github.com/coreos/go-oidc"
 )
-
-// DoRequestFunc is an alias for any function that takes an http request and returns a response and error
-type DoRequestFunc func(request *http.Request) (*http.Response, error)
 
 type claims struct {
 	UserID   string `json:"user_id"`
@@ -56,7 +53,7 @@ type Options struct {
 	ClientID string
 
 	// ReadConfigurationFunc is the function used to call the token issuer. If one is not provided, http.DefaultClient.Do will be used
-	ReadConfigurationFunc DoRequestFunc
+	ReadConfigurationFunc util.DoRequestFunc
 }
 
 // Authenticator is the OpenID implementation of security.Authenticator
@@ -65,10 +62,9 @@ type Authenticator struct {
 }
 
 // NewAuthenticator returns a new OpenID authenticator or an error if one couldn't be configured
-func NewAuthenticator(ctx context.Context, options Options) (*Authenticator, error) {
-	if options.IssuerURL == "" || options.ClientID == "" {
-		logrus.Warn("Missing config for OIDC authenticator")
-		return nil, errors.New("missing config for OIDC Authenticator")
+func NewAuthenticator(ctx context.Context, options *Options) (*Authenticator, error) {
+	if options.IssuerURL == "" {
+		return nil, errors.New("missing issuer URL")
 	}
 	resp, err := getOpenIDConfig(ctx, options)
 	if err != nil {
@@ -84,17 +80,21 @@ func NewAuthenticator(ctx context.Context, options Options) (*Authenticator, err
 		return nil, fmt.Errorf("error decoding body of response with status %s: %s", resp.Status, err.Error())
 	}
 
-	keySet := oidc.NewRemoteKeySet(ctx, p.JWKSURL)
-	cfg := &oidc.Config{
-		ClientID: options.ClientID,
-	}
+	keySet := goidc.NewRemoteKeySet(ctx, p.JWKSURL)
 	return &Authenticator{Verifier: &oidcVerifier{
-		IDTokenVerifier: oidc.NewVerifier(p.Issuer, keySet, cfg),
+		IDTokenVerifier: goidc.NewVerifier(p.Issuer, keySet, newOIDCConfig(options)),
 	}}, nil
 }
 
+func newOIDCConfig(options *Options) *goidc.Config {
+	return &goidc.Config{
+		ClientID:          options.ClientID,
+		SkipClientIDCheck: options.ClientID == "",
+	}
+}
+
 // Authenticate returns information about the user by obtaining it from the bearer token, or an error if security is unsuccessful
-func (a *Authenticator) Authenticate(request *http.Request) (*security.User, security.AuthenticationDecision, error) {
+func (a *Authenticator) Authenticate(request *http.Request) (*web.User, security.AuthenticationDecision, error) {
 	authorizationHeader := request.Header.Get("Authorization")
 	if authorizationHeader == "" || !strings.HasPrefix(strings.ToLower(authorizationHeader), "bearer") {
 		return nil, security.Abstain, nil
@@ -114,14 +114,15 @@ func (a *Authenticator) Authenticate(request *http.Request) (*security.User, sec
 	if err := idToken.Claims(claims); err != nil {
 		return nil, security.Deny, err
 	}
-	return &security.User{
-		Name: claims.Username,
+	return &web.User{
+		Name:      claims.Username,
+		TokenData: idToken,
 	}, security.Allow, nil
 }
 
-func getOpenIDConfig(ctx context.Context, options Options) (*http.Response, error) {
+func getOpenIDConfig(ctx context.Context, options *Options) (*http.Response, error) {
 	// Work around for UAA until https://github.com/cloudfoundry/uaa/issues/805 is fixed
-	// Then oidc.NewProvider(ctx, options.IssuerURL) should be used
+	// Then goidc.NewProvider(ctx, options.IssuerURL) should be used
 	if _, err := url.ParseRequestURI(options.IssuerURL); err != nil {
 		return nil, err
 	}
@@ -131,7 +132,7 @@ func getOpenIDConfig(ctx context.Context, options Options) (*http.Response, erro
 		return nil, err
 	}
 
-	var readConfigFunc DoRequestFunc
+	var readConfigFunc util.DoRequestFunc
 	if options.ReadConfigurationFunc != nil {
 		readConfigFunc = options.ReadConfigurationFunc
 	} else {
