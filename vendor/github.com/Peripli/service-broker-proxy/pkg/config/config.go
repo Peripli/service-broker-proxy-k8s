@@ -10,19 +10,19 @@ import (
 
 // Settings type holds all config properties for the sbproxy
 type Settings struct {
-	Server   *server.Settings `mapstructure:"server"`
-	Log      *log.Settings    `mapstructure:"log"`
-	Sm       *sm.Settings     `mapstructure:"sm"`
-	SelfHost string           `mapstructure:"self_host"`
+	Server  *server.Settings `mapstructure:"server"`
+	Log     *log.Settings    `mapstructure:"log"`
+	Sm      *sm.Settings     `mapstructure:"sm"`
+	SelfURL string           `mapstructure:"self_url"`
 }
 
 // DefaultSettings returns default value for the proxy settings
 func DefaultSettings() *Settings {
 	return &Settings{
-		Server:   server.DefaultSettings(),
-		Log:      log.DefaultSettings(),
-		Sm:       sm.DefaultSettings(),
-		SelfHost: "",
+		Server:  server.DefaultSettings(),
+		Log:     log.DefaultSettings(),
+		Sm:      sm.DefaultSettings(),
+		SelfURL: "",
 	}
 }
 

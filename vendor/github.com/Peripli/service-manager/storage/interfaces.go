@@ -18,6 +18,7 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Peripli/service-manager/pkg/types"
@@ -70,7 +71,6 @@ type Storage interface {
 }
 
 // Broker interface for Broker db operations
-//go:generate counterfeiter . Broker
 type Broker interface {
 	// Create stores a broker in SM DB
 	Create(broker *types.Broker) error
@@ -89,7 +89,6 @@ type Broker interface {
 }
 
 // Platform interface for Platform db operations
-//go:generate counterfeiter . Platform
 type Platform interface {
 	// Create stores a platform in SM DB
 	Create(platform *types.Platform) error
@@ -115,6 +114,11 @@ type Credentials interface {
 
 // Security interface for encryption key operations
 type Security interface {
+	// Lock locks the storage so that only one process can manipulate the encryption key.
+	// Returns an error if the process has already acquired the lock
+	Lock(ctx context.Context) error
+	// Unlock releases the acquired lock.
+	Unlock() error
 	// Fetcher provides means to obtain the encryption key
 	Fetcher() security.KeyFetcher
 	// Setter provides means to change the encryption key

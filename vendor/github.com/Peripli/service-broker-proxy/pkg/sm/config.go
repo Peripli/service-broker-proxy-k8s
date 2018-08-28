@@ -12,7 +12,7 @@ func DefaultSettings() *Settings {
 	return &Settings{
 		User:              "",
 		Password:          "",
-		Host:              "",
+		URL:               "",
 		RequestTimeout:    5 * time.Second,
 		CreateFunc:        NewClient,
 		SkipSSLValidation: false,
@@ -36,8 +36,8 @@ func NewSettings(env env.Environment) (*Settings, error) {
 type Settings struct {
 	User              string
 	Password          string
-	Host              string
-	OsbAPI            string        `mapstructure:"osb_api"`
+	URL               string
+	OSBAPIPath        string        `mapstructure:"osb_api_path"`
 	RequestTimeout    time.Duration `mapstructure:"request_timeout"`
 	ResyncPeriod      time.Duration `mapstructure:"resync_period"`
 	SkipSSLValidation bool          `mapstructure:"skip_ssl_validation"`
@@ -53,11 +53,11 @@ func (c *Settings) Validate() error {
 	if len(c.Password) == 0 {
 		return errors.New("SM configuration Password missing")
 	}
-	if len(c.Host) == 0 {
-		return errors.New("SM configuration Host missing")
+	if len(c.URL) == 0 {
+		return errors.New("SM configuration URL missing")
 	}
-	if len(c.OsbAPI) == 0 {
-		return errors.New("SM configuration OSB API missing")
+	if len(c.OSBAPIPath) == 0 {
+		return errors.New("SM configuration OSB API Path missing")
 	}
 	if c.RequestTimeout == 0 {
 		return errors.New("SM configuration RequestTimeout missing")

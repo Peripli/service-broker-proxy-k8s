@@ -91,7 +91,7 @@ func New(ctx context.Context, env env.Environment, client platform.Client) *SMPr
 				Tr: sm.SkipSSLTransport{
 					SkipSslValidation: cfg.Sm.SkipSSLValidation,
 				},
-				URL:      cfg.Sm.Host + cfg.Sm.OsbAPI,
+				URL:      cfg.Sm.URL + cfg.Sm.OSBAPIPath,
 				Username: cfg.Sm.User,
 				Password: cfg.Sm.Password,
 			}),
@@ -106,7 +106,7 @@ func New(ctx context.Context, env env.Environment, client platform.Client) *SMPr
 		group: &group,
 	}
 
-	regJob, err := defaultRegJob(&group, client, cfg.Sm, cfg.SelfHost)
+	regJob, err := defaultRegJob(&group, client, cfg.Sm, cfg.SelfURL)
 	if err != nil {
 		panic(err)
 	}

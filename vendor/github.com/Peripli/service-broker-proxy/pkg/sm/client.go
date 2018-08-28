@@ -57,8 +57,8 @@ func NewClient(config *Settings) (Client, error) {
 // GetBrokers calls the Service Manager in order to obtain all brokers t	hat need to be registered
 // in the service broker proxy
 func (c *serviceManagerClient) GetBrokers() ([]platform.ServiceBroker, error) {
-	logrus.Debugf("Getting brokers for proxy from Service Manager at %s", c.Config.Host)
-	URL := fmt.Sprintf(APIInternalBrokers, c.Config.Host)
+	logrus.Debugf("Getting brokers for proxy from Service Manager at %s", c.Config.URL)
+	URL := fmt.Sprintf(APIInternalBrokers, c.Config.URL)
 	response, err := util.SendRequest(c.httpClient.Do, http.MethodGet, URL, map[string]string{"catalog": "true"}, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting brokers from Service Manager")
