@@ -17,8 +17,8 @@ log:
 sm:
   user: admin
   password: admin
-  host: http://service-manager.local.pcfdev.io
-  osb_api: /v1/osb
+  url: http://service-manager.local.pcfdev.io
+  osb_api_path: /v1/osb
   request_timeout: 6000ms
   skip_ssl_validation: true
   resync_period: 1m

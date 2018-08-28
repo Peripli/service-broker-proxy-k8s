@@ -5,9 +5,9 @@
 replicaCount: 1
 
 image:
-  repository: k8s-proxy
-  tag: reverse-proxy
-  pullPolicy: Never
+  repository: quay.io/service-manager/sb-proxy-k8s
+  tag: latest
+  pullPolicy: Always
 
 service:
   type: ClusterIP
@@ -19,7 +19,7 @@ file:
   format: yml
 
 sm:
-  user: admin;
+  user: admin
   password: admin
 
 # Credentials used to register the proxy as a broker
@@ -36,8 +36,8 @@ config:
     level: debug
     format: text
   sm:
-    host: http://service-manager.local.pcfdev.io
-    osb_api: /v1/osb
+    url: http://service-manager.local.pcfdev.io
+    osb_api_path: /v1/osb
     request_timeout: 6000ms
     skip_ssl_validation: false
     resync_period: 1m

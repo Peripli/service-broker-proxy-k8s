@@ -33,7 +33,7 @@ spec:
           mountPath: {{ .Values.file.location }}
           readOnly: true
         env:
-        - name: SELF_HOST
+        - name: SELF_URL
           value: http://{{ template "service-broker-proxy.name" . }}.{{ .Release.Namespace }}:{{ .Values.service.port }}
         - name: SM_USER
           valueFrom:
