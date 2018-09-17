@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"errors"
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
@@ -19,7 +20,7 @@ import (
 
 var _ = Describe("Kubernetes Broker Proxy", func() {
 	var clientConfig *ClientConfiguration
-
+	var ctx context.Context
 	BeforeSuite(func() {
 		os.Setenv("KUBERNETES_SERVICE_HOST", "test")
 		os.Setenv("KUBERNETES_SERVICE_PORT", "1234")
@@ -36,6 +37,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 		clientConfig.Reg.Secret.Name = "secretName"
 		clientConfig.Reg.Secret.Namespace = "secretNamespace"
 		clientConfig.K8sClientCreateFunc = newSvcatSDK
+		ctx = context.TODO()
 	})
 
 	Describe("New Client", func() {
@@ -85,7 +87,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Name:      "fake-broker",
 					BrokerURL: "http://fake.broker.url",
 				}
-				createdBroker, err := platformClient.CreateBroker(requestBroker)
+				createdBroker, err := platformClient.CreateBroker(ctx, requestBroker)
 
 				Expect(createdBroker.GUID).To(Equal("1234"))
 				Expect(createdBroker.Name).To(Equal("fake-broker"))
@@ -104,7 +106,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				}
 
 				requestBroker := &platform.CreateServiceBrokerRequest{}
-				createdBroker, err := platformClient.CreateBroker(requestBroker)
+				createdBroker, err := platformClient.CreateBroker(ctx, requestBroker)
 
 				Expect(createdBroker).To(BeNil())
 				Expect(err).To(Equal(errors.New("Error from service-catalog")))
@@ -127,7 +129,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Name: "fake-broker",
 				}
 
-				err = platformClient.DeleteBroker(requestBroker)
+				err = platformClient.DeleteBroker(ctx, requestBroker)
 
 				Expect(err).To(BeNil())
 			})
@@ -144,7 +146,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 				requestBroker := &platform.DeleteServiceBrokerRequest{}
 
-				err = platformClient.DeleteBroker(requestBroker)
+				err = platformClient.DeleteBroker(ctx, requestBroker)
 
 				Expect(err).To(Equal(errors.New("Error deleting clusterservicebroker")))
 			})
@@ -173,7 +175,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					return brokers, nil
 				}
 
-				brokers, err := platformClient.GetBrokers()
+				brokers, err := platformClient.GetBrokers(ctx)
 
 				Expect(err).To(BeNil())
 				Expect(brokers).ToNot(BeNil())
@@ -194,7 +196,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					return brokers, nil
 				}
 
-				brokers, err := platformClient.GetBrokers()
+				brokers, err := platformClient.GetBrokers(ctx)
 
 				Expect(err).To(BeNil())
 				Expect(brokers).ToNot(BeNil())
@@ -211,7 +213,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					return nil, errors.New("Error getting clusterservicebrokers")
 				}
 
-				brokers, err := platformClient.GetBrokers()
+				brokers, err := platformClient.GetBrokers(ctx)
 
 				Expect(brokers).To(BeNil())
 				Expect(err).To(Equal(errors.New("Error getting clusterservicebrokers")))
@@ -247,7 +249,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					BrokerURL: "http://fake.broker.url",
 				}
 
-				broker, err := platformClient.UpdateBroker(requestBroker)
+				broker, err := platformClient.UpdateBroker(ctx, requestBroker)
 
 				Expect(err).To(BeNil())
 				Expect(broker.GUID).To(Equal("1234"))
@@ -267,7 +269,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 				requestBroker := &platform.UpdateServiceBrokerRequest{}
 
-				broker, err := platformClient.UpdateBroker(requestBroker)
+				broker, err := platformClient.UpdateBroker(ctx, requestBroker)
 
 				Expect(broker).To(BeNil())
 				Expect(err).To(Equal(errors.New("Error updating clusterservicebroker")))
@@ -291,7 +293,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					return nil
 				}
 
-				err = platformClient.Fetch(requestBroker)
+				err = platformClient.Fetch(ctx, requestBroker)
 
 				Expect(err).To(BeNil())
 			})
@@ -307,7 +309,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					return errors.New("Error syncing service broker")
 				}
 
-				err = platformClient.Fetch(requestBroker)
+				err = platformClient.Fetch(ctx, requestBroker)
 
 				Expect(err).To(Equal(errors.New("Error syncing service broker")))
 			})

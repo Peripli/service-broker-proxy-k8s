@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
 	"github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
@@ -60,7 +61,7 @@ func NewClient(config *ClientConfiguration) (*PlatformClient, error) {
 }
 
 // GetBrokers returns all service-brokers currently registered in kubernetes service-catalog.
-func (b PlatformClient) GetBrokers() ([]platform.ServiceBroker, error) {
+func (b PlatformClient) GetBrokers(ctx context.Context) ([]platform.ServiceBroker, error) {
 	brokers, err := retrieveClusterServiceBrokers(b.cli)
 	if err != nil {
 		return nil, err
@@ -78,7 +79,7 @@ func (b PlatformClient) GetBrokers() ([]platform.ServiceBroker, error) {
 }
 
 // CreateBroker registers a new broker in kubernetes service-catalog.
-func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
+func (b PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
 	broker := newServiceBroker(r.Name, r.BrokerURL, b.regSecretRef)
 	broker.Spec.CommonServiceBrokerSpec.RelistBehavior = "Manual"
 
@@ -94,12 +95,12 @@ func (b PlatformClient) CreateBroker(r *platform.CreateServiceBrokerRequest) (*p
 }
 
 // DeleteBroker deletes an existing broker in from kubernetes service-catalog.
-func (b PlatformClient) DeleteBroker(r *platform.DeleteServiceBrokerRequest) error {
+func (b PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteServiceBrokerRequest) error {
 	return deleteClusterServiceBroker(b.cli, r.Name, &v1.DeleteOptions{})
 }
 
 // UpdateBroker updates a service broker in the kubernetes service-catalog.
-func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
+func (b PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
 	// Name and broker url are updateable
 	broker := newServiceBroker(r.Name, r.BrokerURL, b.regSecretRef)
 
@@ -116,7 +117,7 @@ func (b PlatformClient) UpdateBroker(r *platform.UpdateServiceBrokerRequest) (*p
 
 // Fetch the new catalog information from reach service-broker registered in kubernetes,
 // so that it is visible in the kubernetes service-catalog.
-func (b PlatformClient) Fetch(serviceBroker *platform.ServiceBroker) error {
+func (b PlatformClient) Fetch(ctx context.Context, serviceBroker *platform.ServiceBroker) error {
 	return syncClusterServiceBroker(b.cli, serviceBroker.Name, 3)
 }
 
