@@ -2,7 +2,7 @@
 
 
 [[projects]]
-  branch = "master"
+  branch = "logging"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
     "pkg/config",
@@ -13,7 +13,7 @@
     "pkg/sbproxy",
     "pkg/sm"
   ]
-  revision = "8fe36b08cf14e0c39204f1f0dc1e4b6c9f0e01c5"
+  revision = "26832536723beb63cca8f29b78b827bad37a01e9"
 
 [[projects]]
   branch = "master"
@@ -249,15 +249,6 @@
   packages = ["."]
   revision = "4b7aa43c6742a2c18fdef89dd197aaae7dac7ccd"
   version = "1.0.1"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/onrik/logrus"
-  packages = [
-    "filename",
-    "formatter"
-  ]
-  revision = "ca0a758702be2ae04725ba88dcd27a71949faf33"
 
 [[projects]]
   name = "github.com/onsi/ginkgo"
@@ -655,6 +646,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4eebd76d4498f05d79921a7ef1c7fe7925fb4246c78a915bf7ad8560141c820b"
+  inputs-digest = "33fd0500f159204356b9cd4ae7c0ee9ea21dc40298d4c90a2962ac5fbb3c62ce"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -1,6 +1,8 @@
 package sbproxy
 
 import (
+	"github.com/Peripli/service-broker-proxy/pkg/logging"
+	"github.com/Peripli/service-manager/pkg/log"
 	"sync"
 
 	"fmt"
@@ -9,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Peripli/service-broker-proxy/pkg/config"
-	"github.com/Peripli/service-broker-proxy/pkg/logging"
 	"github.com/Peripli/service-broker-proxy/pkg/osb"
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/Peripli/service-broker-proxy/pkg/sm"
@@ -19,7 +20,6 @@ import (
 	"github.com/Peripli/service-manager/pkg/server"
 	"github.com/Peripli/service-manager/pkg/web"
 	"github.com/robfig/cron"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 )
 
@@ -83,7 +83,8 @@ func New(ctx context.Context, env env.Environment, client platform.Client) *SMPr
 		panic(err)
 	}
 
-	logging.Setup(cfg.Log)
+	ctx = log.Configure(ctx, cfg.Log)
+	log.AddHook(&logging.ErrorLocationHook{})
 
 	api := &web.API{
 		Controllers: []web.Controller{
@@ -96,6 +97,9 @@ func New(ctx context.Context, env env.Environment, client platform.Client) *SMPr
 				Password: cfg.Sm.Password,
 			}),
 		},
+		Filters: []web.Filter{
+			&filters.Logging{},
+		},
 	}
 
 	sbProxy := &SMProxyBuilder{
@@ -106,13 +110,13 @@ func New(ctx context.Context, env env.Environment, client platform.Client) *SMPr
 		group: &group,
 	}
 
-	regJob, err := defaultRegJob(&group, client, cfg.Sm, cfg.SelfURL)
+	regJob, err := defaultRegJob(ctx, &group, client, cfg.Sm, cfg.SelfURL)
 	if err != nil {
 		panic(err)
 	}
 
 	resyncSchedule := "@every " + cfg.Sm.ResyncPeriod.String()
-	logrus.Info("Brokers and Access resync schedule: ", resyncSchedule)
+	log.C(ctx).Info("Brokers and Access resync schedule: ", resyncSchedule)
 
 	if err := cronScheduler.AddJob(resyncSchedule, regJob); err != nil {
 		panic(err)
@@ -138,26 +142,26 @@ func (smb *SMProxyBuilder) Build() *SMProxy {
 func (p *SMProxy) Run() {
 	p.scheduler.Start()
 	defer p.scheduler.Stop()
-	defer waitWithTimeout(p.group, p.Server.Config.ShutdownTimeout)
+	defer waitWithTimeout(p.ctx, p.group, p.Server.Config.ShutdownTimeout)
 
-	logrus.Info("Running SBProxy...")
+	log.C(p.ctx).Info("Running SBProxy...")
 
 	p.Server.Run(p.ctx)
 }
 
-func defaultRegJob(group *sync.WaitGroup, platformClient platform.Client, smConfig *sm.Settings, proxyHost string) (cron.Job, error) {
+func defaultRegJob(ctx context.Context, group *sync.WaitGroup, platformClient platform.Client, smConfig *sm.Settings, proxyHost string) (cron.Job, error) {
 	smClient, err := smConfig.CreateFunc(smConfig)
 	if err != nil {
 		return nil, err
 	}
-	regTask := NewTask(group, platformClient, smClient, proxyHost+APIPrefix)
+	regTask := NewTask(ctx, group, platformClient, smClient, proxyHost+APIPrefix)
 
 	return regTask, nil
 }
 
 // waitWithTimeout waits for a WaitGroup to finish for a certain duration and times out afterwards
 // WaitGroup parameter should be pointer or else the copy won't get notified about .Done() calls
-func waitWithTimeout(group *sync.WaitGroup, timeout time.Duration) {
+func waitWithTimeout(ctx context.Context, group *sync.WaitGroup, timeout time.Duration) {
 	c := make(chan struct{})
 	go func() {
 		defer close(c)
@@ -165,9 +169,9 @@ func waitWithTimeout(group *sync.WaitGroup, timeout time.Duration) {
 	}()
 	select {
 	case <-c:
-		logrus.Debug(fmt.Sprintf("Timeout WaitGroup %+v finished successfully", group))
+		log.C(ctx).Debug(fmt.Sprintf("Timeout WaitGroup %+v finished successfully", group))
 	case <-time.After(timeout):
-		logrus.Fatal("Shutdown took more than ", timeout)
+		log.C(ctx).Fatal("Shutdown took more than ", timeout)
 		close(c)
 	}
 }

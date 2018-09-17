@@ -2,15 +2,17 @@
 package platformfakes
 
 import (
+	"context"
 	"sync"
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 )
 
 type FakeCatalogFetcher struct {
-	FetchStub        func(serviceBroker *platform.ServiceBroker) error
+	FetchStub        func(ctx context.Context, serviceBroker *platform.ServiceBroker) error
 	fetchMutex       sync.RWMutex
 	fetchArgsForCall []struct {
+		ctx           context.Context
 		serviceBroker *platform.ServiceBroker
 	}
 	fetchReturns struct {
@@ -23,16 +25,17 @@ type FakeCatalogFetcher struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeCatalogFetcher) Fetch(serviceBroker *platform.ServiceBroker) error {
+func (fake *FakeCatalogFetcher) Fetch(ctx context.Context, serviceBroker *platform.ServiceBroker) error {
 	fake.fetchMutex.Lock()
 	ret, specificReturn := fake.fetchReturnsOnCall[len(fake.fetchArgsForCall)]
 	fake.fetchArgsForCall = append(fake.fetchArgsForCall, struct {
+		ctx           context.Context
 		serviceBroker *platform.ServiceBroker
-	}{serviceBroker})
-	fake.recordInvocation("Fetch", []interface{}{serviceBroker})
+	}{ctx, serviceBroker})
+	fake.recordInvocation("Fetch", []interface{}{ctx, serviceBroker})
 	fake.fetchMutex.Unlock()
 	if fake.FetchStub != nil {
-		return fake.FetchStub(serviceBroker)
+		return fake.FetchStub(ctx, serviceBroker)
 	}
 	if specificReturn {
 		return ret.result1
@@ -46,10 +49,10 @@ func (fake *FakeCatalogFetcher) FetchCallCount() int {
 	return len(fake.fetchArgsForCall)
 }
 
-func (fake *FakeCatalogFetcher) FetchArgsForCall(i int) *platform.ServiceBroker {
+func (fake *FakeCatalogFetcher) FetchArgsForCall(i int) (context.Context, *platform.ServiceBroker) {
 	fake.fetchMutex.RLock()
 	defer fake.fetchMutex.RUnlock()
-	return fake.fetchArgsForCall[i].serviceBroker
+	return fake.fetchArgsForCall[i].ctx, fake.fetchArgsForCall[i].serviceBroker
 }
 
 func (fake *FakeCatalogFetcher) FetchReturns(result1 error) {

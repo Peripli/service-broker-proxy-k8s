@@ -2,6 +2,7 @@
 package platformfakes
 
 import (
+	"context"
 	"encoding/json"
 	"sync"
 
@@ -9,10 +10,11 @@ import (
 )
 
 type FakeServiceAccess struct {
-	EnableAccessForServiceStub        func(context json.RawMessage, serviceGUID string) error
+	EnableAccessForServiceStub        func(ctx context.Context, data json.RawMessage, serviceGUID string) error
 	enableAccessForServiceMutex       sync.RWMutex
 	enableAccessForServiceArgsForCall []struct {
-		context     json.RawMessage
+		ctx         context.Context
+		data        json.RawMessage
 		serviceGUID string
 	}
 	enableAccessForServiceReturns struct {
@@ -21,10 +23,11 @@ type FakeServiceAccess struct {
 	enableAccessForServiceReturnsOnCall map[int]struct {
 		result1 error
 	}
-	EnableAccessForPlanStub        func(context json.RawMessage, servicePlanGUID string) error
+	EnableAccessForPlanStub        func(ctx context.Context, data json.RawMessage, servicePlanGUID string) error
 	enableAccessForPlanMutex       sync.RWMutex
 	enableAccessForPlanArgsForCall []struct {
-		context         json.RawMessage
+		ctx             context.Context
+		data            json.RawMessage
 		servicePlanGUID string
 	}
 	enableAccessForPlanReturns struct {
@@ -33,10 +36,11 @@ type FakeServiceAccess struct {
 	enableAccessForPlanReturnsOnCall map[int]struct {
 		result1 error
 	}
-	DisableAccessForServiceStub        func(context json.RawMessage, serviceGUID string) error
+	DisableAccessForServiceStub        func(ctx context.Context, data json.RawMessage, serviceGUID string) error
 	disableAccessForServiceMutex       sync.RWMutex
 	disableAccessForServiceArgsForCall []struct {
-		context     json.RawMessage
+		ctx         context.Context
+		data        json.RawMessage
 		serviceGUID string
 	}
 	disableAccessForServiceReturns struct {
@@ -45,10 +49,11 @@ type FakeServiceAccess struct {
 	disableAccessForServiceReturnsOnCall map[int]struct {
 		result1 error
 	}
-	DisableAccessForPlanStub        func(context json.RawMessage, servicePlanGUID string) error
+	DisableAccessForPlanStub        func(ctx context.Context, data json.RawMessage, servicePlanGUID string) error
 	disableAccessForPlanMutex       sync.RWMutex
 	disableAccessForPlanArgsForCall []struct {
-		context         json.RawMessage
+		ctx             context.Context
+		data            json.RawMessage
 		servicePlanGUID string
 	}
 	disableAccessForPlanReturns struct {
@@ -61,17 +66,18 @@ type FakeServiceAccess struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeServiceAccess) EnableAccessForService(context json.RawMessage, serviceGUID string) error {
+func (fake *FakeServiceAccess) EnableAccessForService(ctx context.Context, data json.RawMessage, serviceGUID string) error {
 	fake.enableAccessForServiceMutex.Lock()
 	ret, specificReturn := fake.enableAccessForServiceReturnsOnCall[len(fake.enableAccessForServiceArgsForCall)]
 	fake.enableAccessForServiceArgsForCall = append(fake.enableAccessForServiceArgsForCall, struct {
-		context     json.RawMessage
+		ctx         context.Context
+		data        json.RawMessage
 		serviceGUID string
-	}{context, serviceGUID})
-	fake.recordInvocation("EnableAccessForService", []interface{}{context, serviceGUID})
+	}{ctx, data, serviceGUID})
+	fake.recordInvocation("EnableAccessForService", []interface{}{ctx, data, serviceGUID})
 	fake.enableAccessForServiceMutex.Unlock()
 	if fake.EnableAccessForServiceStub != nil {
-		return fake.EnableAccessForServiceStub(context, serviceGUID)
+		return fake.EnableAccessForServiceStub(ctx, data, serviceGUID)
 	}
 	if specificReturn {
 		return ret.result1
@@ -85,10 +91,10 @@ func (fake *FakeServiceAccess) EnableAccessForServiceCallCount() int {
 	return len(fake.enableAccessForServiceArgsForCall)
 }
 
-func (fake *FakeServiceAccess) EnableAccessForServiceArgsForCall(i int) (json.RawMessage, string) {
+func (fake *FakeServiceAccess) EnableAccessForServiceArgsForCall(i int) (context.Context, json.RawMessage, string) {
 	fake.enableAccessForServiceMutex.RLock()
 	defer fake.enableAccessForServiceMutex.RUnlock()
-	return fake.enableAccessForServiceArgsForCall[i].context, fake.enableAccessForServiceArgsForCall[i].serviceGUID
+	return fake.enableAccessForServiceArgsForCall[i].ctx, fake.enableAccessForServiceArgsForCall[i].data, fake.enableAccessForServiceArgsForCall[i].serviceGUID
 }
 
 func (fake *FakeServiceAccess) EnableAccessForServiceReturns(result1 error) {
@@ -110,17 +116,18 @@ func (fake *FakeServiceAccess) EnableAccessForServiceReturnsOnCall(i int, result
 	}{result1}
 }
 
-func (fake *FakeServiceAccess) EnableAccessForPlan(context json.RawMessage, servicePlanGUID string) error {
+func (fake *FakeServiceAccess) EnableAccessForPlan(ctx context.Context, data json.RawMessage, servicePlanGUID string) error {
 	fake.enableAccessForPlanMutex.Lock()
 	ret, specificReturn := fake.enableAccessForPlanReturnsOnCall[len(fake.enableAccessForPlanArgsForCall)]
 	fake.enableAccessForPlanArgsForCall = append(fake.enableAccessForPlanArgsForCall, struct {
-		context         json.RawMessage
+		ctx             context.Context
+		data            json.RawMessage
 		servicePlanGUID string
-	}{context, servicePlanGUID})
-	fake.recordInvocation("EnableAccessForPlan", []interface{}{context, servicePlanGUID})
+	}{ctx, data, servicePlanGUID})
+	fake.recordInvocation("EnableAccessForPlan", []interface{}{ctx, data, servicePlanGUID})
 	fake.enableAccessForPlanMutex.Unlock()
 	if fake.EnableAccessForPlanStub != nil {
-		return fake.EnableAccessForPlanStub(context, servicePlanGUID)
+		return fake.EnableAccessForPlanStub(ctx, data, servicePlanGUID)
 	}
 	if specificReturn {
 		return ret.result1
@@ -134,10 +141,10 @@ func (fake *FakeServiceAccess) EnableAccessForPlanCallCount() int {
 	return len(fake.enableAccessForPlanArgsForCall)
 }
 
-func (fake *FakeServiceAccess) EnableAccessForPlanArgsForCall(i int) (json.RawMessage, string) {
+func (fake *FakeServiceAccess) EnableAccessForPlanArgsForCall(i int) (context.Context, json.RawMessage, string) {
 	fake.enableAccessForPlanMutex.RLock()
 	defer fake.enableAccessForPlanMutex.RUnlock()
-	return fake.enableAccessForPlanArgsForCall[i].context, fake.enableAccessForPlanArgsForCall[i].servicePlanGUID
+	return fake.enableAccessForPlanArgsForCall[i].ctx, fake.enableAccessForPlanArgsForCall[i].data, fake.enableAccessForPlanArgsForCall[i].servicePlanGUID
 }
 
 func (fake *FakeServiceAccess) EnableAccessForPlanReturns(result1 error) {
@@ -159,17 +166,18 @@ func (fake *FakeServiceAccess) EnableAccessForPlanReturnsOnCall(i int, result1 e
 	}{result1}
 }
 
-func (fake *FakeServiceAccess) DisableAccessForService(context json.RawMessage, serviceGUID string) error {
+func (fake *FakeServiceAccess) DisableAccessForService(ctx context.Context, data json.RawMessage, serviceGUID string) error {
 	fake.disableAccessForServiceMutex.Lock()
 	ret, specificReturn := fake.disableAccessForServiceReturnsOnCall[len(fake.disableAccessForServiceArgsForCall)]
 	fake.disableAccessForServiceArgsForCall = append(fake.disableAccessForServiceArgsForCall, struct {
-		context     json.RawMessage
+		ctx         context.Context
+		data        json.RawMessage
 		serviceGUID string
-	}{context, serviceGUID})
-	fake.recordInvocation("DisableAccessForService", []interface{}{context, serviceGUID})
+	}{ctx, data, serviceGUID})
+	fake.recordInvocation("DisableAccessForService", []interface{}{ctx, data, serviceGUID})
 	fake.disableAccessForServiceMutex.Unlock()
 	if fake.DisableAccessForServiceStub != nil {
-		return fake.DisableAccessForServiceStub(context, serviceGUID)
+		return fake.DisableAccessForServiceStub(ctx, data, serviceGUID)
 	}
 	if specificReturn {
 		return ret.result1
@@ -183,10 +191,10 @@ func (fake *FakeServiceAccess) DisableAccessForServiceCallCount() int {
 	return len(fake.disableAccessForServiceArgsForCall)
 }
 
-func (fake *FakeServiceAccess) DisableAccessForServiceArgsForCall(i int) (json.RawMessage, string) {
+func (fake *FakeServiceAccess) DisableAccessForServiceArgsForCall(i int) (context.Context, json.RawMessage, string) {
 	fake.disableAccessForServiceMutex.RLock()
 	defer fake.disableAccessForServiceMutex.RUnlock()
-	return fake.disableAccessForServiceArgsForCall[i].context, fake.disableAccessForServiceArgsForCall[i].serviceGUID
+	return fake.disableAccessForServiceArgsForCall[i].ctx, fake.disableAccessForServiceArgsForCall[i].data, fake.disableAccessForServiceArgsForCall[i].serviceGUID
 }
 
 func (fake *FakeServiceAccess) DisableAccessForServiceReturns(result1 error) {
@@ -208,17 +216,18 @@ func (fake *FakeServiceAccess) DisableAccessForServiceReturnsOnCall(i int, resul
 	}{result1}
 }
 
-func (fake *FakeServiceAccess) DisableAccessForPlan(context json.RawMessage, servicePlanGUID string) error {
+func (fake *FakeServiceAccess) DisableAccessForPlan(ctx context.Context, data json.RawMessage, servicePlanGUID string) error {
 	fake.disableAccessForPlanMutex.Lock()
 	ret, specificReturn := fake.disableAccessForPlanReturnsOnCall[len(fake.disableAccessForPlanArgsForCall)]
 	fake.disableAccessForPlanArgsForCall = append(fake.disableAccessForPlanArgsForCall, struct {
-		context         json.RawMessage
+		ctx             context.Context
+		data            json.RawMessage
 		servicePlanGUID string
-	}{context, servicePlanGUID})
-	fake.recordInvocation("DisableAccessForPlan", []interface{}{context, servicePlanGUID})
+	}{ctx, data, servicePlanGUID})
+	fake.recordInvocation("DisableAccessForPlan", []interface{}{ctx, data, servicePlanGUID})
 	fake.disableAccessForPlanMutex.Unlock()
 	if fake.DisableAccessForPlanStub != nil {
-		return fake.DisableAccessForPlanStub(context, servicePlanGUID)
+		return fake.DisableAccessForPlanStub(ctx, data, servicePlanGUID)
 	}
 	if specificReturn {
 		return ret.result1
@@ -232,10 +241,10 @@ func (fake *FakeServiceAccess) DisableAccessForPlanCallCount() int {
 	return len(fake.disableAccessForPlanArgsForCall)
 }
 
-func (fake *FakeServiceAccess) DisableAccessForPlanArgsForCall(i int) (json.RawMessage, string) {
+func (fake *FakeServiceAccess) DisableAccessForPlanArgsForCall(i int) (context.Context, json.RawMessage, string) {
 	fake.disableAccessForPlanMutex.RLock()
 	defer fake.disableAccessForPlanMutex.RUnlock()
-	return fake.disableAccessForPlanArgsForCall[i].context, fake.disableAccessForPlanArgsForCall[i].servicePlanGUID
+	return fake.disableAccessForPlanArgsForCall[i].ctx, fake.disableAccessForPlanArgsForCall[i].data, fake.disableAccessForPlanArgsForCall[i].servicePlanGUID
 }
 
 func (fake *FakeServiceAccess) DisableAccessForPlanReturns(result1 error) {

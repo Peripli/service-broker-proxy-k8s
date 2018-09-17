@@ -1,7 +1,9 @@
 package sm
 
 import (
+	"context"
 	"fmt"
+	"github.com/Peripli/service-manager/pkg/log"
 	"net/http"
 
 	"time"
@@ -9,7 +11,6 @@ import (
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/Peripli/service-manager/pkg/util"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
 
 // APIInternalBrokers is the SM API for obtaining the brokers for this proxy
@@ -18,7 +19,7 @@ const APIInternalBrokers = "%s/v1/service_brokers"
 // Client provides the logic for calling into the Service Manager
 //go:generate counterfeiter . Client
 type Client interface {
-	GetBrokers() ([]platform.ServiceBroker, error)
+	GetBrokers(ctx context.Context) ([]platform.ServiceBroker, error)
 }
 
 type serviceManagerClient struct {
@@ -56,10 +57,10 @@ func NewClient(config *Settings) (Client, error) {
 
 // GetBrokers calls the Service Manager in order to obtain all brokers t	hat need to be registered
 // in the service broker proxy
-func (c *serviceManagerClient) GetBrokers() ([]platform.ServiceBroker, error) {
-	logrus.Debugf("Getting brokers for proxy from Service Manager at %s", c.Config.URL)
+func (c *serviceManagerClient) GetBrokers(ctx context.Context) ([]platform.ServiceBroker, error) {
+	log.C(ctx).Debugf("Getting brokers for proxy from Service Manager at %s", c.Config.URL)
 	URL := fmt.Sprintf(APIInternalBrokers, c.Config.URL)
-	response, err := util.SendRequest(c.httpClient.Do, http.MethodGet, URL, map[string]string{"catalog": "true"}, nil)
+	response, err := util.SendRequest(ctx, c.httpClient.Do, http.MethodGet, URL, map[string]string{"catalog": "true"}, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting brokers from Service Manager")
 	}
