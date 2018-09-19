@@ -1,7 +1,7 @@
 # Service Broker Proxy Release Notes
 
-## init
+## v0.1.0
 
-2018-02-28
+2018-09-19
 
-* Repository is created
+* Initial version
