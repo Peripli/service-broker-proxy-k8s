@@ -1,9 +1,10 @@
 package osb
 
 import (
-	"net/http"
+	"context"
 	"github.com/Peripli/service-manager/api/osb"
 	"github.com/Peripli/service-manager/pkg/types"
+	"net/http"
 )
 
 // BrokerTransport implements osb.BrokerRoundTripper
@@ -18,7 +19,7 @@ type BrokerTransport struct {
 var _ osb.BrokerRoundTripper = &BrokerTransport{}
 
 // Broker implements osb.BrokerRoundTripper and returns the coordinates of the broker with the specified id
-func (b *BrokerTransport) Broker(brokerID string) (*types.Broker, error) {
+func (b *BrokerTransport) Broker(ctx context.Context, brokerID string) (*types.Broker, error) {
 	return &types.Broker{
 		BrokerURL: b.URL + "/" + brokerID,
 		Credentials: &types.Credentials{

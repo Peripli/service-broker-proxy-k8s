@@ -21,8 +21,8 @@ package web
 import (
 	"net/http"
 
+	"github.com/Peripli/service-manager/pkg/log"
 	"github.com/Peripli/service-manager/pkg/util/slice"
-	"github.com/sirupsen/logrus"
 )
 
 // API is the primary point for REST API registration
@@ -34,7 +34,7 @@ type API struct {
 	Filters []Filter
 }
 
-// pluginSegment represents one piece of a web.invalidPlugin. Each web.invalidPlugin is decomposed into as many plugin segments as
+// pluginSegment represents one piece of a web.Plugin. Each web.Plugin is decomposed into as many plugin segments as
 // the count of OSB operations it provides. Each pluginSegment is treated as a web.Filter.
 type pluginSegment struct {
 	NameValue          string
@@ -73,9 +73,7 @@ func (dp *pluginSegment) FilterMatchers() []FilterMatcher {
 
 // RegisterControllers registers a set of controllers
 func (api *API) RegisterControllers(controllers ...Controller) {
-	for _, controller := range controllers {
-		api.Controllers = append(api.Controllers, controller)
-	}
+	api.Controllers = append(api.Controllers, controllers...)
 }
 
 // RegisterFilters registers a set of filters
@@ -84,33 +82,37 @@ func (api *API) RegisterFilters(filters ...Filter) {
 	api.Filters = append(api.Filters, filters...)
 }
 
-// RegisterFilterBefore registers the specified filter before the one with the given name.
+// RegisterFiltersBefore registers the specified filters before the one with the given name.
 // If for some routes, the filter with the given name does not match the routes of the provided filter, then
-// the filter will be registered at the place at which the filter with this name would have been, had it been
+// the filters will be registered at the place at which the filter with this name would have been, had it been
 // configured to match route.
-func (api *API) RegisterFilterBefore(beforeFilterName string, filter Filter) {
-	logrus.Debugf("Registering filter %s before %s", filter.Name(), beforeFilterName)
-	api.validateFilters(filter)
-	api.registerFilterRelatively(beforeFilterName, filter, func(beforeFilterPosition int) int {
-		return beforeFilterPosition
-	})
+func (api *API) RegisterFiltersBefore(beforeFilterName string, filters ...Filter) {
+	for _, filter := range filters {
+		log.D().Debugf("Registering filter %s before %s", filter.Name(), beforeFilterName)
+		api.validateFilters(filter)
+		api.registerFilterRelatively(beforeFilterName, filter, func(beforeFilterPosition int) int {
+			return beforeFilterPosition
+		})
+	}
 }
 
-// RegisterFilterAfter registers the specified filter after the one with the given name.
+// RegisterFiltersAfter registers the specified filter after the one with the given name.
 // If for some routes, the filter with the given name does not match the routes of the provided filter, then
 // the filter will be registered after the place at which the filter with this name would have been, had it been
 // configured to match route.
-func (api *API) RegisterFilterAfter(afterFilterName string, filter Filter) {
-	logrus.Debugf("Registering filter %s after %s", filter.Name(), afterFilterName)
-	api.validateFilters(filter)
-	api.registerFilterRelatively(afterFilterName, filter, func(filterPosition int) int {
-		return filterPosition + 1
-	})
+func (api *API) RegisterFiltersAfter(afterFilterName string, filters ...Filter) {
+	for i, filter := range filters {
+		log.D().Debugf("Registering filter %s after %s", filter.Name(), afterFilterName)
+		api.validateFilters(filter)
+		api.registerFilterRelatively(afterFilterName, filter, func(filterPosition int) int {
+			return filterPosition + 1 + i
+		})
+	}
 }
 
 // ReplaceFilter registers the given filter in the place of the filter with the given name.
 func (api *API) ReplaceFilter(replacedFilterName string, filter Filter) {
-	logrus.Debugf("Replacing filter %s with %s", replacedFilterName, filter.Name())
+	log.D().Debugf("Replacing filter %s with %s", replacedFilterName, filter.Name())
 	api.validateFilters(filter)
 	registeredFilterPosition := api.findFilterPosition(replacedFilterName)
 	api.Filters[registeredFilterPosition] = filter
@@ -129,7 +131,7 @@ func (api *API) RegisterPlugins(plugins ...Plugin) {
 	for _, plugin := range plugins {
 		registeredFilterNames := api.filterNames(api.Filters)
 		if slice.StringsAnyPrefix(registeredFilterNames, plugin.Name()+":") {
-			logrus.Panicf("Plugin %s is already registered", plugin.Name())
+			log.D().Panicf("Plugin %s is already registered", plugin.Name())
 		}
 		pluginSegments := api.decomposePluginOrDie(plugin)
 		api.Filters = append(api.Filters, pluginSegments...)
@@ -139,16 +141,16 @@ func (api *API) RegisterPlugins(plugins ...Plugin) {
 func (api *API) validateFilters(filters ...Filter) {
 	newFilterNames := api.filterNames(filters)
 	if slice.StringsAnyEquals(newFilterNames, "") {
-		logrus.Panicf("Filters cannot have empty names")
+		log.D().Panicf("Filters cannot have empty names")
 	}
 	registeredFilterNames := api.filterNames(api.Filters)
 	commonFilterNames := slice.StringsIntersection(registeredFilterNames, newFilterNames)
 	if len(commonFilterNames) > 0 {
-		logrus.Panicf("Filters %q are already registered", commonFilterNames)
+		log.D().Panicf("Filters %q are already registered", commonFilterNames)
 	}
 	filterNamesWithColon := slice.StringsContaining(newFilterNames, ":")
-	if  len(filterNamesWithColon) > 0 {
-		logrus.Panicf("Cannot register filters with : in their names. Invalid filter names: %q", filterNamesWithColon)
+	if len(filterNamesWithColon) > 0 {
+		log.D().Panicf("Cannot register filters with : in their names. Invalid filter names: %q", filterNamesWithColon)
 	}
 }
 
@@ -170,7 +172,7 @@ func (api *API) findFilterPosition(filterName string) int {
 		}
 	}
 	if filterPosition < 0 {
-		logrus.Panicf("Filter with name %s is not found", filterName)
+		log.D().Panicf("Filter with name %s is not found", filterName)
 	}
 	return filterPosition
 }
@@ -187,7 +189,7 @@ func (api *API) filterNames(filters []Filter) []string {
 func (api *API) decomposePluginOrDie(plugin Plugin) []Filter {
 	pluginSegments := api.decomposePlugin(plugin)
 	if len(pluginSegments) == 0 {
-		logrus.Panicf("%T does not implement any plugin operation", plugin)
+		log.D().Panicf("%T does not implement any plugin operation", plugin)
 	}
 	return pluginSegments
 }

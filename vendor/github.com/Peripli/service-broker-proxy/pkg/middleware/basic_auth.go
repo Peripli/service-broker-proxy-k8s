@@ -1,10 +1,10 @@
 package middleware
 
 import (
+	"github.com/Peripli/service-manager/pkg/log"
 	"net/http"
 
 	"github.com/Peripli/service-manager/pkg/util"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -17,14 +17,15 @@ func BasicAuth(username, password string) func(handler http.Handler) http.Handle
 	return func(handler http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !authorized(r, username, password) {
-				logrus.WithField("username", username).Debug(errorMessage)
+				logger := log.C(r.Context())
+				logger.WithField("username", username).Debug(errorMessage)
 				err := util.WriteJSON(w, http.StatusUnauthorized, &util.HTTPError{
 					ErrorType:   notAuthorized,
 					Description: errorMessage,
 					StatusCode:  http.StatusUnauthorized,
 				})
 				if err != nil {
-					logrus.Error(err)
+					logger.Error(err)
 				}
 				return
 			}
