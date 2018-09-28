@@ -26,6 +26,14 @@
   version = "1.4.0"
 
 [[constraint]]
+  name = "github.com/pmorie/go-open-service-broker-client"
+  version = "=0.0.10"
+
+[[constraint]]
+  name = "github.com/gavv/httpexpect"
+  revision = "c44a6d7bb636b17e880a53998a7f7061a56ffacb"
+
+[[constraint]]
  name = "github.com/onsi/gomega"
  version = "=1.3.0"
 

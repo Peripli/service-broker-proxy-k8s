@@ -1,8 +1,24 @@
+/*
+ * Copyright 2018 The Service Manager Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package sm
 
 import (
-	"net/http"
 	"crypto/tls"
+	"net/http"
 )
 
 // BasicAuthTransport implements http.RoundTripper interface and intercepts that request that is being sent,
@@ -18,7 +34,7 @@ var _ http.RoundTripper = &BasicAuthTransport{}
 
 // RoundTrip implements http.RoundTrip and adds basic authorization header before delegating to the
 // underlying RoundTripper
-func (b BasicAuthTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+func (b *BasicAuthTransport) RoundTrip(request *http.Request) (*http.Response, error) {
 	if b.Username != "" && b.Password != "" {
 		request.SetBasicAuth(b.Username, b.Password)
 	}
@@ -29,21 +45,23 @@ func (b BasicAuthTransport) RoundTrip(request *http.Request) (*http.Response, er
 // SkipSSLTransport implements http.RoundTripper and sets the SSL Validation to match the provided property
 type SkipSSLTransport struct {
 	SkipSslValidation bool
+
+	Rt http.RoundTripper
 }
 
 var _ http.RoundTripper = &SkipSSLTransport{}
 
 // RoundTrip implements http.RoundTrip and adds skip SSL validation logic
-func (b SkipSSLTransport) RoundTrip(request *http.Request) (*http.Response, error) {
-	defaultTransport := http.DefaultTransport.(*http.Transport)
-	t := &http.Transport{
-		Proxy:                 defaultTransport.Proxy,
-		TLSHandshakeTimeout:   defaultTransport.TLSHandshakeTimeout,
-		ExpectContinueTimeout: defaultTransport.ExpectContinueTimeout,
+func (b *SkipSSLTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	if b.Rt == nil {
+		b.Rt = http.DefaultTransport
 	}
 
-	t.TLSClientConfig = &tls.Config{
-		InsecureSkipVerify: b.SkipSslValidation,
+	if defaultTransport, ok := b.Rt.(*http.Transport); ok {
+		defaultTransport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: b.SkipSslValidation,
+		}
 	}
-	return t.RoundTrip(request)
+
+	return b.Rt.RoundTrip(request)
 }
