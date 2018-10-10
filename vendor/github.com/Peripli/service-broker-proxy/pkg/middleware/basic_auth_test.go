@@ -1,3 +1,19 @@
+/*
+ * Copyright 2018 The Service Manager Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package middleware
 
 import (
@@ -17,6 +33,8 @@ var _ = Describe("Basic Authentication wrapper", func() {
 	const (
 		validUsername = "validUsername"
 		validPassword = "validPassword"
+		invalidUser = "invalidUser"
+		invalidPassword = "invalidPassword"
 	)
 	var (
 		httpRecorder   *httptest.ResponseRecorder
@@ -57,7 +75,7 @@ var _ = Describe("Basic Authentication wrapper", func() {
 		},
 		Entry("returns 401 for empty username", http.StatusUnauthorized, "Not Authorized", "", validPassword),
 		Entry("returns 401 for empty password", http.StatusUnauthorized, "Not Authorized", validUsername, ""),
-		Entry("returns 401 for invalid credentials", http.StatusUnauthorized, "Not Authorized", "test", "test"),
+		Entry("returns 401 for invalid credentials", http.StatusUnauthorized, "Not Authorized", invalidUser, invalidPassword),
 		Entry("returns 200 for valid credentials", http.StatusOK, "", validUsername, validPassword),
 	)
 })

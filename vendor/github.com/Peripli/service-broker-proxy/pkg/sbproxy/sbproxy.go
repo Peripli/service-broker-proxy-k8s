@@ -10,17 +10,17 @@ import (
 	"context"
 	"time"
 
-	"github.com/Peripli/service-broker-proxy/pkg/config"
 	"github.com/Peripli/service-broker-proxy/pkg/osb"
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/Peripli/service-broker-proxy/pkg/sm"
 	"github.com/Peripli/service-manager/api/filters"
-	smOsb "github.com/Peripli/service-manager/api/osb"
+	smosb "github.com/Peripli/service-manager/api/osb"
 	"github.com/Peripli/service-manager/pkg/env"
 	"github.com/Peripli/service-manager/pkg/server"
 	"github.com/Peripli/service-manager/pkg/web"
 	"github.com/robfig/cron"
 	"github.com/spf13/pflag"
+	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/reconcile"
 )
 
 const (
@@ -41,7 +41,7 @@ type SMProxyBuilder struct {
 	*cron.Cron
 
 	ctx   context.Context
-	cfg   *config.Settings
+	cfg   *Settings
 	group *sync.WaitGroup
 }
 
@@ -54,11 +54,11 @@ type SMProxy struct {
 	group     *sync.WaitGroup
 }
 
-// DefaultEnv creates a default environment that can be used to boot up a Service Manager
+// DefaultEnv creates a default environment that can be used to boot up a Service Broker proxy
 func DefaultEnv(additionalPFlags ...func(set *pflag.FlagSet)) env.Environment {
-	set := env.EmptyFlagSet()
+	set := pflag.NewFlagSet("Configuration Flags", pflag.ExitOnError)
 
-	config.AddPFlags(set)
+	AddPFlags(set)
 	for _, addFlags := range additionalPFlags {
 		addFlags(set)
 	}
@@ -70,11 +70,11 @@ func DefaultEnv(additionalPFlags ...func(set *pflag.FlagSet)) env.Environment {
 }
 
 // New creates service broker proxy that is configured from the provided environment and platform client.
-func New(ctx context.Context, env env.Environment, client platform.Client) *SMProxyBuilder {
+func New(ctx context.Context, env env.Environment, platformClient platform.Client) *SMProxyBuilder {
 	cronScheduler := cron.New()
 	var group sync.WaitGroup
 
-	cfg, err := config.New(env)
+	cfg, err := NewSettings(env)
 	if err != nil {
 		panic(err)
 	}
@@ -88,13 +88,12 @@ func New(ctx context.Context, env env.Environment, client platform.Client) *SMPr
 
 	api := &web.API{
 		Controllers: []web.Controller{
-			smOsb.NewController(&osb.BrokerTransport{
-				Tr: sm.SkipSSLTransport{
-					SkipSslValidation: cfg.Sm.SkipSSLValidation,
-				},
+			smosb.NewController(&osb.BrokerDetailsFetcher{
 				URL:      cfg.Sm.URL + cfg.Sm.OSBAPIPath,
 				Username: cfg.Sm.User,
 				Password: cfg.Sm.Password,
+			}, &sm.SkipSSLTransport{
+				SkipSslValidation: cfg.Sm.SkipSSLValidation,
 			}),
 		},
 		Filters: []web.Filter{
@@ -110,10 +109,12 @@ func New(ctx context.Context, env env.Environment, client platform.Client) *SMPr
 		group: &group,
 	}
 
-	regJob, err := defaultRegJob(ctx, &group, client, cfg.Sm, cfg.SelfURL)
+	smClient, _ := sm.NewClient(cfg.Sm)
 	if err != nil {
 		panic(err)
 	}
+
+	regJob := reconcile.NewTask(ctx, &group, platformClient, smClient, cfg.Reconcile.URL+APIPrefix)
 
 	resyncSchedule := "@every " + cfg.Sm.ResyncPeriod.String()
 	log.C(ctx).Info("Brokers and Access resync schedule: ", resyncSchedule)
@@ -149,15 +150,6 @@ func (p *SMProxy) Run() {
 	p.Server.Run(p.ctx)
 }
 
-func defaultRegJob(ctx context.Context, group *sync.WaitGroup, platformClient platform.Client, smConfig *sm.Settings, proxyHost string) (cron.Job, error) {
-	smClient, err := smConfig.CreateFunc(smConfig)
-	if err != nil {
-		return nil, err
-	}
-	regTask := NewTask(ctx, group, platformClient, smClient, proxyHost+APIPrefix)
-
-	return regTask, nil
-}
 
 // waitWithTimeout waits for a WaitGroup to finish for a certain duration and times out afterwards
 // WaitGroup parameter should be pointer or else the copy won't get notified about .Done() calls

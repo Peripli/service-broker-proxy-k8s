@@ -3,23 +3,23 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6103ab273af1420815a18e18beac470583d002e0e4b6b0d7fcdc002f9572d3b1"
+  digest = "1:6618adda5ae84f60a150f60229d4814dc835177eccf65f314f370d64cf46793a"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
-    "pkg/config",
     "pkg/logging",
     "pkg/middleware",
     "pkg/osb",
     "pkg/platform",
     "pkg/sbproxy",
+    "pkg/sbproxy/reconcile",
     "pkg/sm",
   ]
   pruneopts = ""
-  revision = "179b726d66b7f3072d5f53eea0060df805e10845"
+  revision = "eaf9eefe0765855056d52946790afbef96a1337a"
 
 [[projects]]
   branch = "master"
-  digest = "1:ddbe6d323fdf46da3f6dd75c8c0f646d9bc0d60a3436cc8a266d75c070f503ef"
+  digest = "1:ab6a9f93002b9afa01ec99e6649522164d57cc131bb57935db24f559a8dbcda7"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -44,7 +44,7 @@
     "storage",
   ]
   pruneopts = ""
-  revision = "11ca684ab38d0e30994ef0855b443c2ae232ab52"
+  revision = "a9dcbac9f21259013baac38a2d8264d3593488bb"
 
 [[projects]]
   digest = "1:d8ee1b165eb7f4fd9ada718e1e7eeb0bc1fd462592d0bd823df694443f448681"
@@ -466,7 +466,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:61a86f0be8b466d6e3fbdabb155aaa4006137cb5e3fd3b949329d103fa0ceb0f"
+  digest = "1:d10ba2393047dc9ba61df4d36c849a03017175edfa3ee4da23c3a12e10326443"
   name = "golang.org/x/crypto"
   packages = [
     "ed25519",
@@ -475,11 +475,11 @@
     "ssh/terminal",
   ]
   pruneopts = ""
-  revision = "0e37d006457bf46f9e6692014ba72ef82c33022c"
+  revision = "5295e8364332db77d75fce11f1d19c053919a9c9"
 
 [[projects]]
   branch = "master"
-  digest = "1:fbdbb6cf8db3278412c9425ad78b26bb8eb788181f26a3ffb3e4f216b314f86a"
+  digest = "1:08e41d63f8dac84d83797368b56cf0b339e42d0224e5e56668963c28aec95685"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -493,7 +493,7 @@
     "idna",
   ]
   pruneopts = ""
-  revision = "26e67e76b6c3f6ce91f7c52def5af501b4e0f3a2"
+  revision = "4dfa2610cdf3b287375bbba5b8f2a14d3b01d8de"
 
 [[projects]]
   branch = "master"
@@ -508,14 +508,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6f8f4a4fffbef9ef137261e37fd4da98981b978efeb79837434be05831bb87fc"
+  digest = "1:149a432fabebb8221a80f77731b1cd63597197ded4f14af606ebe3a0959004ec"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "ee1b12c67af419cf5a9be3bdbeea7fc1c5f32f11"
+  revision = "e4b3c5e9061176387e7cea65e4dc5853801f3fb7"
 
 [[projects]]
   digest = "1:5acd3512b047305d49e8763eef7ba423901e85d5dd2fd1e71778a0ea8de10bd4"
@@ -594,7 +594,7 @@
   version = "v0.9.1"
 
 [[projects]]
-  digest = "1:78c193a044c9c6f540da8158d8d8af12f3615d0261e7fa172e0cadcd05abd64f"
+  digest = "1:ddc5fa8f9159bea7d1ce58143e6d8fd8054018f7bc3709940aa7f7bc92855ed9"
   name = "gopkg.in/square/go-jose.v2"
   packages = [
     ".",
@@ -602,8 +602,8 @@
     "json",
   ]
   pruneopts = ""
-  revision = "8254d6c783765f38c8675fae4427a1fe73fbd09d"
-  version = "v2.1.8"
+  revision = "ef984e69dd356202fd4e4910d4d9c24468bdf0b8"
+  version = "v2.1.9"
 
 [[projects]]
   branch = "v1"
