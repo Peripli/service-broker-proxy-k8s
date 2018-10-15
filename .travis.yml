@@ -35,6 +35,9 @@ script:
   # Execute security scan
   # - gas ./...
 
+  # Change default docker image tag in values.yaml
+  - "sed -i -e 's/tag: master/tag: '${TRAVIS_TAG:-master}'/g' ./charts/service-broker-proxy-k8s/values.yaml"
+
   # Create helm-chart
   - mkdir out
   - helm package --app-version ${CHART_VERSION} --version ${CHART_VERSION} -d ./out charts/service-broker-proxy-k8s --save=false
