@@ -3,6 +3,12 @@ language: go
 go:
   - 1.10.x
 
+# set tag for helm chart
+env:
+  global:
+    - HELM_URL=https://storage.googleapis.com/kubernetes-helm/helm-v2.11.0-linux-amd64.tar.gz
+    - CHART_VERSION=`echo ${TRAVIS_TAG:-"v1.0.0"} | cut -c2-`
+
 # before_install:
 #   - go get -u github.com/golang/dep/cmd/dep
 #   - dep ensure --vendor-only -v
@@ -24,8 +30,31 @@ script:
   - go test ./... -coverpkg $(go list ./... | egrep -v "fakes|test" | paste -sd "," -) -coverprofile=profile.cov
   - goveralls -coverprofile profile.cov -service=travis-ci
 
-  #Execute security scan
+  # Execute security scan
   # - gas ./...
+
+before_deploy:
+  # Download and install helm
+  - wget ${HELM_URL} -O helm.tar.gz
+  - tar -xzf helm.tar.gz
+  - mv linux-amd64/helm $HOME/bin
+  - rm -rf helm.tar.gz linux-amd64
+
+  # Change default docker image tag in values.yaml
+  - "sed -i -e 's/tag: master/tag: '${TRAVIS_TAG:-master}'/g' ./charts/service-broker-proxy-k8s/values.yaml"
+
+  # Create helm-chart
+  - mkdir out
+  - helm package --app-version ${CHART_VERSION} --version ${CHART_VERSION} -d ./out charts/service-broker-proxy-k8s --save=false
+
+deploy:
+  provider: releases
+  file_glob: true
+  file: out/*
+  skip_cleanup: true
+  api_key: $GITHUB_TOKEN
+  on:
+    tags: true
 
 notifications:
   slack: openservicebrokerapi:KQo2QAC6LXeEeXPOemOXja48
