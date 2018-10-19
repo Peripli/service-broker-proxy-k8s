@@ -19,7 +19,6 @@ package class
 import (
 	"github.com/kubernetes-incubator/service-catalog/cmd/svcat/command"
 	"github.com/kubernetes-incubator/service-catalog/cmd/svcat/output"
-	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
 	"github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
 	"github.com/spf13/cobra"
 )
@@ -43,9 +42,11 @@ func NewGetCmd(cxt *command.Context) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "classes [NAME]",
 		Aliases: []string{"class", "cl"},
-		Short:   "List classes, optionally filtered by name",
+		Short:   "List classes, optionally filtered by name, scope or namespace",
 		Example: command.NormalizeExamples(`
   svcat get classes
+  svcat get classes --scope cluster
+  svcat get classes --scope namespace --namespace dev
   svcat get class mysqldb
   svcat get class --uuid 997b8372-8dac-40ac-ae65-758b4a5075a5
 `),
@@ -100,18 +101,18 @@ func (c *getCmd) getAll() error {
 }
 
 func (c *getCmd) get() error {
-	var class *v1beta1.ClusterServiceClass
+	var class servicecatalog.Class
 	var err error
 
 	if c.lookupByUUID {
 		class, err = c.App.RetrieveClassByID(c.uuid)
 	} else if c.name != "" {
-		class, err = c.App.RetrieveClassByName(c.name)
+		class, err = c.App.RetrieveClassByName(c.name, servicecatalog.ScopeOptions{Scope: c.Scope, Namespace: c.Namespace})
 	}
 	if err != nil {
 		return err
 	}
 
-	output.WriteClass(c.Output, c.OutputFormat, *class)
+	output.WriteClass(c.Output, c.OutputFormat, class)
 	return nil
 }

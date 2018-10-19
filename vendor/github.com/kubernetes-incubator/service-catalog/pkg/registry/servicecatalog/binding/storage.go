@@ -24,7 +24,9 @@ import (
 	scmeta "github.com/kubernetes-incubator/service-catalog/pkg/api/meta"
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog"
 	"github.com/kubernetes-incubator/service-catalog/pkg/registry/servicecatalog/server"
+	"github.com/kubernetes-incubator/service-catalog/pkg/registry/servicecatalog/tableconvertor"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -90,15 +92,9 @@ func Match(label labels.Selector, field fields.Selector) storage.SelectionPredic
 func toSelectableFields(binding *servicecatalog.ServiceBinding) fields.Set {
 	// If you add a new selectable field, you also need to modify
 	// pkg/apis/servicecatalog/v1beta1/conversion[_test].go
-	objectMetaFieldsSet := generic.ObjectMetaFieldsSet(&binding.ObjectMeta, true)
-
 	specFieldSet := make(fields.Set, 1)
-
-	if binding.Spec.ExternalID != "" {
-		specFieldSet["spec.externalID"] = binding.Spec.ExternalID
-	}
-
-	return generic.MergeFieldsSets(objectMetaFieldsSet, specFieldSet)
+	specFieldSet["spec.externalID"] = binding.Spec.ExternalID
+	return generic.AddObjectMetaFieldsSet(specFieldSet, &binding.ObjectMeta, true)
 }
 
 // GetAttrs returns labels and fields of a given object for filtering purposes.
@@ -144,6 +140,38 @@ func NewStorage(opts server.Options) (rest.Storage, rest.Storage, error) {
 		DeleteStrategy:          bindingRESTStrategies,
 		EnableGarbageCollection: true,
 
+		TableConvertor: tableconvertor.NewTableConvertor(
+			[]metav1beta1.TableColumnDefinition{
+				{Name: "Name", Type: "string", Format: "name"},
+				{Name: "Service-Instance", Type: "string"},
+				{Name: "Secret-Name", Type: "string"},
+				{Name: "Status", Type: "string"},
+				{Name: "Age", Type: "string"},
+			},
+			func(obj runtime.Object, m metav1.Object, name, age string) ([]interface{}, error) {
+				getStatus := func(status servicecatalog.ServiceBindingStatus) string {
+					if len(status.Conditions) > 0 {
+						condition := status.Conditions[len(status.Conditions)-1]
+						if condition.Status == servicecatalog.ConditionTrue {
+							return string(condition.Type)
+						}
+						return condition.Reason
+					}
+					return ""
+				}
+
+				binding := obj.(*servicecatalog.ServiceBinding)
+				cells := []interface{}{
+					name,
+					binding.Spec.ServiceInstanceRef.Name,
+					binding.Spec.SecretName,
+					getStatus(binding.Status),
+					age,
+				}
+				return cells, nil
+			},
+		),
+
 		Storage:     storageInterface,
 		DestroyFunc: dFunc,
 	}
@@ -185,6 +213,6 @@ func (r *StatusREST) Get(ctx context.Context, name string, options *metav1.GetOp
 
 // Update alters the status subset of an object and implements the rest.Updater
 // interface.
-func (r *StatusREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc) (runtime.Object, bool, error) {
-	return r.store.Update(ctx, name, objInfo, createValidation, updateValidation)
+func (r *StatusREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
+	return r.store.Update(ctx, name, objInfo, createValidation, updateValidation, forceAllowCreate, options)
 }
