@@ -34,7 +34,7 @@ spec:
           readOnly: true
         env:
         - name: APP_URL
-          value: http://{{ template "service-broker-proxy.name" . }}.{{ .Release.Namespace }}:{{ .Values.service.port }}
+          value: http://{{ template "service-broker-proxy.fullname" . }}.{{ .Release.Namespace }}:{{ .Values.service.port }}
         - name: SM_USER
           valueFrom:
             secretKeyRef:
