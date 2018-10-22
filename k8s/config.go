@@ -25,11 +25,9 @@ type SecretRef struct {
 	Name      string
 }
 
-// RegistrationDetails type represents the credentials and secret name used to register a broker at the k8s cluster
+// RegistrationDetails type represents the secret used to register a broker at the k8s cluster
 type RegistrationDetails struct {
-	User     string
-	Password string
-	Secret   *SecretRef
+	Secret *SecretRef
 }
 
 // ClientConfiguration type holds config info for building the k8s service catalog client
@@ -109,9 +107,6 @@ func (c *ClientConfiguration) Validate() error {
 
 // Validate validates the registration details and returns appropriate errors in case it is invalid
 func (r *RegistrationDetails) Validate() error {
-	if r.User == "" || r.Password == "" {
-		return errors.New("K8S broker registration credentials missing")
-	}
 	if r.Secret == nil {
 		return errors.New("K8S secret configuration for broker registration missing")
 	}

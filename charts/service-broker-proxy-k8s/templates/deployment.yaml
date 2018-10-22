@@ -33,8 +33,22 @@ spec:
           mountPath: {{ .Values.file.location }}
           readOnly: true
         env:
+        - name: K8S_REG_SECRET_NAME
+          value: {{ template "service-broker-proxy.fullname" . }}-regsecret
+        - name: K8S_REG_SECRET_NAMESPACE
+          value: {{ .Release.Namespace }}
         - name: APP_URL
           value: http://{{ template "service-broker-proxy.fullname" . }}.{{ .Release.Namespace }}:{{ .Values.service.port }}
+        - name: APP_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "service-broker-proxy.fullname" . }}-regsecret
+              key: username
+        - name: APP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ template "service-broker-proxy.fullname" . }}-regsecret
+              key: password
         - name: SM_USER
           valueFrom:
             secretKeyRef:
@@ -45,20 +59,6 @@ spec:
             secretKeyRef:
               name: {{ template "service-broker-proxy.fullname" . }}-secret
               key: sm_password
-        - name: K8S_REG_SECRET_NAME
-          value: {{ template "service-broker-proxy.fullname" . }}-regsecret
-        - name: K8S_REG_SECRET_NAMESPACE
-          value: {{ .Release.Namespace }}
-        - name: K8S_REG_USER
-          valueFrom:
-            secretKeyRef:
-              name: {{ template "service-broker-proxy.fullname" . }}-regsecret
-              key: username
-        - name: K8S_REG_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: {{ template "service-broker-proxy.fullname" . }}-regsecret
-              key: password
         ports:
         - name: http
           containerPort: 8081

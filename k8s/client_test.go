@@ -32,8 +32,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			}, nil
 		}
 		clientConfig = defaultClientConfiguration()
-		clientConfig.Reg.User = "user"
-		clientConfig.Reg.Password = "pass"
 		clientConfig.Reg.Secret.Name = "secretName"
 		clientConfig.Reg.Secret.Namespace = "secretNamespace"
 		clientConfig.K8sClientCreateFunc = newSvcatSDK
@@ -46,7 +44,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				config := defaultClientConfiguration()
 				_, err := NewClient(config)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("K8S broker registration credentials missing"))
+				Expect(err.Error()).To(Equal("Properties of K8S secret configuration for broker registration missing"))
 			})
 		})
 

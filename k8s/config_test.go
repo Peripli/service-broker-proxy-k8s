@@ -12,8 +12,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 			BeforeEach(func() {
 				config = defaultClientConfiguration()
-				config.Reg.User = "abc"
-				config.Reg.Password = "abc"
 				config.Reg.Secret.Name = "abc"
 				config.Reg.Secret.Namespace = "abc"
 			})
@@ -58,24 +56,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					err := config.Validate()
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("K8S broker registration configuration missing"))
-				})
-			})
-
-			Context("when Reg user is missing", func() {
-				It("should fail", func() {
-					config.Reg.User = ""
-					err := config.Validate()
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(Equal("K8S broker registration credentials missing"))
-				})
-			})
-
-			Context("when Reg password is missing", func() {
-				It("should fail", func() {
-					config.Reg.Password = ""
-					err := config.Validate()
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(Equal("K8S broker registration credentials missing"))
 				})
 			})
 
