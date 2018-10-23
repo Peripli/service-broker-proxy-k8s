@@ -23,7 +23,7 @@ sm:
   skip_ssl_validation: true
   resync_period: 1m
 app:
-  user: admin
+  username: admin
   password: admin
   url: http://localhost:8081
 k8s:
