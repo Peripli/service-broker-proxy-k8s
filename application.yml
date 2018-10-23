@@ -29,9 +29,8 @@ app:
 k8s:
   client:
     timeout: 6000ms
-  reg:
-    # To run locally you need to create a secret in the k8s
-    # cluster with username: app.user and password app.password
-    secret:
-      name: service-broker-proxy-regsecret
-      namespace: service-broker-proxy
+  # To run locally you need to create a secret in the k8s
+  # cluster with username: app.user and password app.password
+  secret:
+    name: service-broker-proxy-regsecret
+    namespace: service-broker-proxy

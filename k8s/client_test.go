@@ -32,8 +32,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			}, nil
 		}
 		clientConfig = defaultClientConfiguration()
-		clientConfig.Reg.Secret.Name = "secretName"
-		clientConfig.Reg.Secret.Namespace = "secretNamespace"
+		clientConfig.Secret.Name = "secretName"
+		clientConfig.Secret.Namespace = "secretNamespace"
 		clientConfig.K8sClientCreateFunc = newSvcatSDK
 		ctx = context.TODO()
 	})

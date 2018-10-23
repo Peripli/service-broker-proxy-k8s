@@ -12,8 +12,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 			BeforeEach(func() {
 				config = defaultClientConfiguration()
-				config.Reg.Secret.Name = "abc"
-				config.Reg.Secret.Namespace = "abc"
+				config.Secret.Name = "abc"
+				config.Secret.Namespace = "abc"
 			})
 
 			Context("when all properties available", func() {
@@ -50,36 +50,27 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				})
 			})
 
-			Context("when Reg is missing", func() {
+			Context("when Secret is missing", func() {
 				It("should fail", func() {
-					config.Reg = nil
+					config.Secret = nil
 					err := config.Validate()
 					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(Equal("K8S broker registration configuration missing"))
+					Expect(err.Error()).To(Equal("K8S broker secret missing"))
 				})
 			})
 
-			Context("when Reg secret is missing", func() {
+			Context("when secret Name is missing", func() {
 				It("should fail", func() {
-					config.Reg.Secret = nil
-					err := config.Validate()
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(Equal("K8S secret configuration for broker registration missing"))
-				})
-			})
-
-			Context("when Reg secret Name is missing", func() {
-				It("should fail", func() {
-					config.Reg.Secret.Name = ""
+					config.Secret.Name = ""
 					err := config.Validate()
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("Properties of K8S secret configuration for broker registration missing"))
 				})
 			})
 
-			Context("when Reg secret Namespace is missing", func() {
+			Context("when secret Namespace is missing", func() {
 				It("should fail", func() {
-					config.Reg.Secret.Namespace = ""
+					config.Secret.Namespace = ""
 					err := config.Validate()
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("Properties of K8S secret configuration for broker registration missing"))

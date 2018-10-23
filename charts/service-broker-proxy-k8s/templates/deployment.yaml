@@ -33,9 +33,9 @@ spec:
           mountPath: {{ .Values.file.location }}
           readOnly: true
         env:
-        - name: K8S_REG_SECRET_NAME
+        - name: K8S_SECRET_NAME
           value: {{ template "service-broker-proxy.fullname" . }}-regsecret
-        - name: K8S_REG_SECRET_NAMESPACE
+        - name: K8S_SECRET_NAMESPACE
           value: {{ .Release.Namespace }}
         - name: APP_URL
           value: http://{{ template "service-broker-proxy.fullname" . }}.{{ .Release.Namespace }}:{{ .Values.service.port }}

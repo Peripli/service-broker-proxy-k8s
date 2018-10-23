@@ -56,8 +56,8 @@ func NewClient(config *ClientConfiguration) (*PlatformClient, error) {
 	return &PlatformClient{
 		cli: svcatSDK,
 		regSecretRef: &v1beta1.ObjectReference{
-			Namespace: config.Reg.Secret.Namespace,
-			Name:      config.Reg.Secret.Name,
+			Namespace: config.Secret.Namespace,
+			Name:      config.Secret.Name,
 		},
 	}, nil
 }
