@@ -32,10 +32,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			}, nil
 		}
 		clientConfig = defaultClientConfiguration()
-		clientConfig.Reg.User = "user"
-		clientConfig.Reg.Password = "pass"
-		clientConfig.Reg.Secret.Name = "secretName"
-		clientConfig.Reg.Secret.Namespace = "secretNamespace"
+		clientConfig.Secret.Name = "secretName"
+		clientConfig.Secret.Namespace = "secretNamespace"
 		clientConfig.K8sClientCreateFunc = newSvcatSDK
 		ctx = context.TODO()
 	})
@@ -46,7 +44,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				config := defaultClientConfiguration()
 				_, err := NewClient(config)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("K8S broker registration credentials missing"))
+				Expect(err.Error()).To(Equal("Properties of K8S secret configuration for broker registration missing"))
 			})
 		})
 
@@ -159,7 +157,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				platformClient, err := NewClient(clientConfig)
 				Expect(err).ToNot(HaveOccurred())
 
-				retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) ([]v1beta1.ClusterServiceBroker, error) {
+				retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) (*v1beta1.ClusterServiceBrokerList, error) {
 					brokers := make([]v1beta1.ClusterServiceBroker, 0)
 					brokers = append(brokers, v1beta1.ClusterServiceBroker{
 						ObjectMeta: v1.ObjectMeta{
@@ -172,7 +170,9 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 							},
 						},
 					})
-					return brokers, nil
+					return &v1beta1.ClusterServiceBrokerList{
+						Items: brokers,
+					}, nil
 				}
 
 				brokers, err := platformClient.GetBrokers(ctx)
@@ -191,9 +191,11 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				platformClient, err := NewClient(clientConfig)
 				Expect(err).ToNot(HaveOccurred())
 
-				retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) ([]v1beta1.ClusterServiceBroker, error) {
+				retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) (*v1beta1.ClusterServiceBrokerList, error) {
 					brokers := make([]v1beta1.ClusterServiceBroker, 0)
-					return brokers, nil
+					return &v1beta1.ClusterServiceBrokerList{
+						Items: brokers,
+					}, nil
 				}
 
 				brokers, err := platformClient.GetBrokers(ctx)
@@ -209,14 +211,15 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				platformClient, err := NewClient(clientConfig)
 				Expect(err).ToNot(HaveOccurred())
 
-				retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) ([]v1beta1.ClusterServiceBroker, error) {
+				retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) (*v1beta1.ClusterServiceBrokerList, error) {
 					return nil, errors.New("Error getting clusterservicebrokers")
 				}
 
 				brokers, err := platformClient.GetBrokers(ctx)
 
 				Expect(brokers).To(BeNil())
-				Expect(err).To(Equal(errors.New("Error getting clusterservicebrokers")))
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("Error getting clusterservicebrokers"))
 			})
 		})
 	})

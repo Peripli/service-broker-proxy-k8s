@@ -2,6 +2,8 @@ package k8s
 
 import (
 	"context"
+	"fmt"
+
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
 	"github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
@@ -30,8 +32,8 @@ var deleteClusterServiceBroker = func(cli *servicecatalog.SDK, name string, opti
 	return cli.ServiceCatalog().ClusterServiceBrokers().Delete(name, options)
 }
 
-var retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) ([]v1beta1.ClusterServiceBroker, error) {
-	return cli.RetrieveBrokers()
+var retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) (*v1beta1.ClusterServiceBrokerList, error) {
+	return cli.ServiceCatalog().ClusterServiceBrokers().List(v1.ListOptions{})
 }
 
 var updateClusterServiceBroker = func(cli *servicecatalog.SDK, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
@@ -39,7 +41,7 @@ var updateClusterServiceBroker = func(cli *servicecatalog.SDK, broker *v1beta1.C
 }
 
 var syncClusterServiceBroker = func(cli *servicecatalog.SDK, name string, retries int) error {
-	return cli.Sync(name, 3)
+	return cli.Sync(name, servicecatalog.ScopeOptions{}, 3)
 }
 
 // NewClient create a client to communicate with the kubernetes service-catalog.
@@ -54,8 +56,8 @@ func NewClient(config *ClientConfiguration) (*PlatformClient, error) {
 	return &PlatformClient{
 		cli: svcatSDK,
 		regSecretRef: &v1beta1.ObjectReference{
-			Namespace: config.Reg.Secret.Namespace,
-			Name:      config.Reg.Secret.Name,
+			Namespace: config.Secret.Namespace,
+			Name:      config.Secret.Name,
 		},
 	}, nil
 }
@@ -64,10 +66,10 @@ func NewClient(config *ClientConfiguration) (*PlatformClient, error) {
 func (b PlatformClient) GetBrokers(ctx context.Context) ([]platform.ServiceBroker, error) {
 	brokers, err := retrieveClusterServiceBrokers(b.cli)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to list cluster-scoped brokers (%s)", err)
 	}
 	var clientBrokers = make([]platform.ServiceBroker, 0)
-	for _, broker := range brokers {
+	for _, broker := range brokers.Items {
 		serviceBroker := platform.ServiceBroker{
 			GUID:      string(broker.ObjectMeta.UID),
 			Name:      broker.Name,

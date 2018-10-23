@@ -222,46 +222,6 @@ func TestCreateServiceInstanceNonExistentClusterServiceBroker(t *testing.T) {
 	})
 }
 
-// TestCreateServiceInstanceWithAuthError tests creating a SerivceInstance when
-// the secret containing the broker authorization info cannot be found.
-func TestCreateServiceInstanceWithAuthError(t *testing.T) {
-	ct := &controllerTest{
-		t: t,
-		broker: func() *v1beta1.ClusterServiceBroker {
-			b := getTestBroker()
-			b.Spec.AuthInfo = &v1beta1.ClusterServiceBrokerAuthInfo{
-				Basic: &v1beta1.ClusterBasicAuthConfig{
-					SecretRef: &v1beta1.ObjectReference{
-						Namespace: testNamespace,
-						Name:      "secret-name",
-					},
-				},
-			}
-			return b
-		}(),
-		instance:                     getTestInstance(),
-		skipVerifyingInstanceSuccess: true,
-		preCreateBroker: func(ct *controllerTest) {
-			prependGetSecretReaction(ct.kubeClient, "secret-name", map[string][]byte{
-				"username": []byte("user"),
-				"password": []byte("pass"),
-			})
-		},
-		preCreateInstance: func(ct *controllerTest) {
-			prependGetSecretNotFoundReaction(ct.kubeClient)
-		},
-	}
-	ct.run(func(ct *controllerTest) {
-		if err := util.WaitForInstanceCondition(ct.client, testNamespace, testInstanceName, v1beta1.ServiceInstanceCondition{
-			Type:   v1beta1.ServiceInstanceConditionReady,
-			Status: v1beta1.ConditionFalse,
-			Reason: "ErrorGettingAuthCredentials",
-		}); err != nil {
-			t.Fatalf("error waiting for instance reconciliation to fail: %v", err)
-		}
-	})
-}
-
 // TestCreateServiceInstanceWithParameters tests creating a ServiceInstance
 // with parameters.
 func TestCreateServiceInstanceWithParameters(t *testing.T) {
@@ -958,6 +918,91 @@ func TestUpdateServiceInstanceUpdateParameters(t *testing.T) {
 				request := brokerAction.Request.(*osb.UpdateInstanceRequest)
 				if e, a := expectedParameters, request.Parameters; !reflect.DeepEqual(e, a) {
 					t.Fatalf("unexpected parameters: expected %v, got %v", e, a)
+				}
+			})
+		})
+	}
+}
+
+// TestCreateServiceInstanceWithRetries tests creating a ServiceInstance
+// with/without retries.
+func TestCreateServiceInstanceWithRetries(t *testing.T) {
+	cases := []struct {
+		name                        string
+		setup                func(ct *controllerTest)
+	}{
+		{
+			name: "no retry",
+			setup: func(ct *controllerTest) {
+				ct.osbClient.ProvisionReaction = &fakeosb.ProvisionReaction{
+					Response: &osb.ProvisionResponse{
+					},
+				}
+			},
+		},
+		{
+			name: "retry after temporary error without orphan mitigation",
+			setup: func(ct *controllerTest) {
+				ct.osbClient.ProvisionReaction = fakeosb.DynamicProvisionReaction(getProvisionResponseByPollCountReactions(2,
+					[]fakeosb.ProvisionReaction{
+						fakeosb.ProvisionReaction{
+							Error: osb.HTTPStatusCodeError{
+								StatusCode:   http.StatusUnauthorized,
+								ErrorMessage: strPtr("unauthorized; retry later"),
+								Description:  strPtr("temporary error that can be retried without orphan mitigation"),
+							},
+						},
+						fakeosb.ProvisionReaction{
+							Response: &osb.ProvisionResponse{
+							},
+						},
+					}))
+			},
+		},
+		{
+			name: "retry after temporary error with orphan mitigation",
+			setup: func(ct *controllerTest) {
+				ct.osbClient.ProvisionReaction = fakeosb.DynamicProvisionReaction(getProvisionResponseByPollCountReactions(2,
+					[]fakeosb.ProvisionReaction{
+						fakeosb.ProvisionReaction{
+							Error: osb.HTTPStatusCodeError{
+								StatusCode:   http.StatusInternalServerError,
+								ErrorMessage: strPtr("something is broken"),
+								Description:  strPtr("temporary error that can be retried after orphan mitigation"),
+							},
+						},
+						fakeosb.ProvisionReaction{
+							Response: &osb.ProvisionResponse{
+							},
+						},
+					}))
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ct := &controllerTest{
+				t:      t,
+				broker: getTestBroker(),
+				instance: getTestInstance(),
+			}
+			ct.setup = tc.setup
+			ct.run(func(ct *controllerTest) {
+				verifyCondition := v1beta1.ServiceInstanceCondition{
+					Type:   v1beta1.ServiceInstanceConditionReady,
+					Status: v1beta1.ConditionTrue,
+					Reason: "ProvisionedSuccessfully",
+				}
+				if err := util.WaitForInstanceCondition(ct.client, testNamespace, testInstanceName, verifyCondition); err != nil {
+					t.Fatalf("error waiting for instance condition: %v", err)
+				}
+				if ct.instance.Status.ProvisionStatus != v1beta1.ServiceInstanceProvisionStatusProvisioned {
+					t.Fatalf("expected provisioned status after successful provisioning, but got %s", ct.instance.Status.ProvisionStatus)
+				}
+				if ct.instance.Status.DeprovisionStatus != v1beta1.ServiceInstanceDeprovisionStatusRequired {
+					t.Fatalf("expected deprovision to be required after successful provisioning, but got %s", ct.instance.Status.DeprovisionStatus)
 				}
 			})
 		})

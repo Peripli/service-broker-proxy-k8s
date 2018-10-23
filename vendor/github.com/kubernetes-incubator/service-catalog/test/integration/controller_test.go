@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	sctestutil "github.com/kubernetes-incubator/service-catalog/test/util"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,7 +51,6 @@ import (
 	informers "github.com/kubernetes-incubator/service-catalog/pkg/client/informers_generated/externalversions/servicecatalog/v1beta1"
 	"github.com/kubernetes-incubator/service-catalog/pkg/controller"
 	scfeatures "github.com/kubernetes-incubator/service-catalog/pkg/features"
-	"github.com/kubernetes-incubator/service-catalog/pkg/registry/servicecatalog/server"
 	"github.com/kubernetes-incubator/service-catalog/test/util"
 )
 
@@ -230,8 +230,8 @@ func verifyUsernameInLastBrokerAction(t *testing.T, osbClient *fakeosb.FakeClien
 // as part of originating identity included in broker requests.
 func TestBasicFlowsWithOriginatingIdentity(t *testing.T) {
 	// Enable the OriginatingIdentity feature
-	utilfeature.DefaultFeatureGate.Set(fmt.Sprintf("%v=true", scfeatures.OriginatingIdentity))
-	defer utilfeature.DefaultFeatureGate.Set(fmt.Sprintf("%v=false", scfeatures.OriginatingIdentity))
+	prevOrigIDEnablement := sctestutil.EnableOriginatingIdentity(t, true)
+	defer utilfeature.DefaultFeatureGate.Set(fmt.Sprintf("%v=%v", scfeatures.OriginatingIdentity, prevOrigIDEnablement))
 
 	createChangeUsernameFunc := func(username string) func(*controllerTest) {
 		return func(ct *controllerTest) {
@@ -751,7 +751,7 @@ func newControllerTestTestController(ct *controllerTest) (
 	fakeKubeClient.Unlock()
 
 	// create an sc client and running server
-	catalogClient, catalogClientConfig, shutdownServer := getFreshApiserverAndClient(t, server.StorageTypeEtcd.String(), func() runtime.Object {
+	catalogClient, catalogClientConfig, shutdownServer := getFreshApiserverAndClient(t, func() runtime.Object {
 		return &servicecatalog.ClusterServiceBroker{}
 	})
 
@@ -911,7 +911,7 @@ func newTestController(t *testing.T) (
 	fakeKubeClient.Unlock()
 
 	// create an sc client and running server
-	catalogClient, catalogClientConfig, shutdownServer := getFreshApiserverAndClient(t, server.StorageTypeEtcd.String(), func() runtime.Object {
+	catalogClient, catalogClientConfig, shutdownServer := getFreshApiserverAndClient(t, func() runtime.Object {
 		return &servicecatalog.ClusterServiceBroker{}
 	})
 

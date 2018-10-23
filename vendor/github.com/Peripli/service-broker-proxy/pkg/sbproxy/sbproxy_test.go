@@ -34,11 +34,13 @@ import (
 
 var _ = Describe("Sbproxy", func() {
 	var ctx context.Context
+	var cancel context.CancelFunc
 	var fakePlatformClient *platformfakes.FakeClient
 	var fakeEnv *envfakes.FakeEnvironment
 
 	BeforeEach(func() {
 		ctx = context.TODO()
+		cancel = func() {}
 		fakePlatformClient = &platformfakes.FakeClient{}
 		fakeEnv = &envfakes.FakeEnvironment{}
 	})
@@ -49,7 +51,7 @@ var _ = Describe("Sbproxy", func() {
 				fakeEnv.UnmarshalReturns(fmt.Errorf("error"))
 
 				Expect(func() {
-					New(ctx, fakeEnv, fakePlatformClient)
+					New(ctx, cancel, fakeEnv, fakePlatformClient)
 				}).To(Panic())
 			})
 		})
@@ -57,7 +59,7 @@ var _ = Describe("Sbproxy", func() {
 		Context("when validating config fails", func() {
 			It("should panic", func() {
 				Expect(func() {
-					New(ctx, DefaultEnv(func(set *pflag.FlagSet) {
+					New(ctx, cancel, DefaultEnv(func(set *pflag.FlagSet) {
 						set.Set("app.url", "http://localhost:8080")
 						set.Set("sm.user", "")
 						set.Set("sm.password", "admin")
@@ -72,7 +74,7 @@ var _ = Describe("Sbproxy", func() {
 		Context("when creating sm client fails due to missing config properties", func() {
 			It("should panic", func() {
 				Expect(func() {
-					New(ctx, DefaultEnv(func(set *pflag.FlagSet) {
+					New(ctx, cancel, DefaultEnv(func(set *pflag.FlagSet) {
 						set.Set("app.url", "http://localhost:8080")
 						set.Set("sm.user", "")
 						set.Set("sm.password", "admin")
@@ -89,7 +91,7 @@ var _ = Describe("Sbproxy", func() {
 			BeforeEach(func() {
 				fakePlatformClient.GetBrokersReturns([]platform.ServiceBroker{}, nil)
 
-				proxy := New(ctx, DefaultEnv(func(set *pflag.FlagSet) {
+				proxy := New(ctx, cancel, DefaultEnv(func(set *pflag.FlagSet) {
 					set.Set("app.url", "http://localhost:8080")
 					set.Set("sm.user", "admin")
 					set.Set("sm.password", "admin")

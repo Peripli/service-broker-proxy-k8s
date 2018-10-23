@@ -24,7 +24,9 @@ import (
 	scmeta "github.com/kubernetes-incubator/service-catalog/pkg/api/meta"
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog"
 	"github.com/kubernetes-incubator/service-catalog/pkg/registry/servicecatalog/server"
+	"github.com/kubernetes-incubator/service-catalog/pkg/registry/servicecatalog/tableconvertor"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1beta1 "k8s.io/apimachinery/pkg/apis/meta/v1beta1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -90,23 +92,15 @@ func Match(label labels.Selector, field fields.Selector) storage.SelectionPredic
 func toSelectableFields(instance *servicecatalog.ServiceInstance) fields.Set {
 	// If you add a new selectable field, you also need to modify
 	// pkg/apis/servicecatalog/v1beta1/conversion[_test].go
-	objectMetaFieldsSet := generic.ObjectMetaFieldsSet(&instance.ObjectMeta, true)
-
 	specFieldSet := make(fields.Set, 3)
-
 	if instance.Spec.ClusterServiceClassRef != nil {
 		specFieldSet["spec.clusterServiceClassRef.name"] = instance.Spec.ClusterServiceClassRef.Name
 	}
-
 	if instance.Spec.ClusterServicePlanRef != nil {
 		specFieldSet["spec.clusterServicePlanRef.name"] = instance.Spec.ClusterServicePlanRef.Name
 	}
-
-	if instance.Spec.ExternalID != "" {
-		specFieldSet["spec.externalID"] = instance.Spec.ExternalID
-	}
-
-	return generic.MergeFieldsSets(objectMetaFieldsSet, specFieldSet)
+	specFieldSet["spec.externalID"] = instance.Spec.ExternalID
+	return generic.AddObjectMetaFieldsSet(specFieldSet, &instance.ObjectMeta, true)
 }
 
 // GetAttrs returns labels and fields of a given object for filtering purposes.
@@ -150,6 +144,48 @@ func NewStorage(opts server.Options) (rest.Storage, rest.Storage, rest.Storage) 
 		UpdateStrategy:          instanceRESTStrategies,
 		DeleteStrategy:          instanceRESTStrategies,
 		EnableGarbageCollection: true,
+
+		TableConvertor: tableconvertor.NewTableConvertor(
+			[]metav1beta1.TableColumnDefinition{
+				{Name: "Name", Type: "string", Format: "name"},
+				{Name: "Class", Type: "string"},
+				{Name: "Plan", Type: "string"},
+				{Name: "Status", Type: "string"},
+				{Name: "Age", Type: "string"},
+			},
+			func(obj runtime.Object, m metav1.Object, name, age string) ([]interface{}, error) {
+				getStatus := func(status servicecatalog.ServiceInstanceStatus) string {
+					if len(status.Conditions) > 0 {
+						condition := status.Conditions[len(status.Conditions)-1]
+						if condition.Status == servicecatalog.ConditionTrue {
+							return string(condition.Type)
+						}
+						return condition.Reason
+					}
+					return ""
+				}
+
+				instance := obj.(*servicecatalog.ServiceInstance)
+
+				var class, plan string
+				if instance.Spec.ClusterServiceClassSpecified() && instance.Spec.ClusterServicePlanSpecified() {
+					class = fmt.Sprintf("ClusterServiceClass/%s", instance.Spec.GetSpecifiedClusterServiceClass())
+					plan = instance.Spec.GetSpecifiedClusterServicePlan()
+				} else {
+					class = fmt.Sprintf("ServiceClass/%s", instance.Spec.GetSpecifiedServiceClass())
+					plan = instance.Spec.GetSpecifiedServicePlan()
+				}
+
+				cells := []interface{}{
+					name,
+					class,
+					plan,
+					getStatus(instance.Status),
+					age,
+				}
+				return cells, nil
+			},
+		),
 
 		Storage:     storageInterface,
 		DestroyFunc: dFunc,
@@ -195,8 +231,8 @@ var (
 
 // Update alters the status subset of an object and it
 // implements rest.Updater interface
-func (r *StatusREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc) (runtime.Object, bool, error) {
-	return r.store.Update(ctx, name, objInfo, createValidation, updateValidation)
+func (r *StatusREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
+	return r.store.Update(ctx, name, objInfo, createValidation, updateValidation, forceAllowCreate, options)
 }
 
 // ReferenceREST defines the REST operations for the reference subresource.
@@ -217,6 +253,6 @@ func (r *ReferenceREST) Get(ctx context.Context, name string, options *metav1.Ge
 
 // Update alters the reference subset of an object and it
 // implements rest.Updater interface
-func (r *ReferenceREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc) (runtime.Object, bool, error) {
-	return r.store.Update(ctx, name, objInfo, createValidation, updateValidation)
+func (r *ReferenceREST) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
+	return r.store.Update(ctx, name, objInfo, createValidation, updateValidation, forceAllowCreate, options)
 }

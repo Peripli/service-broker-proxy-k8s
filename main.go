@@ -1,18 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Peripli/service-broker-proxy-k8s/k8s"
-	"github.com/Peripli/service-broker-proxy/pkg/middleware"
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
-	"github.com/Peripli/service-manager/pkg/util"
 
 	"github.com/spf13/pflag"
 )
 
 func main() {
-	ctx, cancel := util.HandleInterrupts()
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	env := sbproxy.DefaultEnv(func(set *pflag.FlagSet) {
@@ -29,10 +28,8 @@ func main() {
 		panic(fmt.Errorf("error creating K8S client: %s", err))
 	}
 
-	proxyBuilder := sbproxy.New(ctx, env, platformClient)
+	proxyBuilder := sbproxy.New(ctx, cancel, env, platformClient)
 	proxy := proxyBuilder.Build()
-
-	proxy.Server.Use(middleware.BasicAuth(platformConfig.Reg.User, platformConfig.Reg.Password))
 
 	proxy.Run()
 }

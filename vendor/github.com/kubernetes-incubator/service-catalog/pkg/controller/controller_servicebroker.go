@@ -32,6 +32,7 @@ import (
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
 	"github.com/kubernetes-incubator/service-catalog/pkg/metrics"
 	"github.com/kubernetes-incubator/service-catalog/pkg/pretty"
+	osb "github.com/pmorie/go-open-service-broker-client/v2"
 )
 
 // the Message strings have a terminating period and space so they can
@@ -82,63 +83,15 @@ func (c *controller) serviceBrokerDelete(obj interface{}) {
 // returns true unless the broker has a ready condition with status true and
 // the controller's broker relist interval has not elapsed since the broker's
 // ready condition became true, or if the broker's RelistBehavior is set to Manual.
-func shouldReconcileServiceBroker(broker *v1beta1.ServiceBroker, now time.Time) bool {
-	// ERIK TODO: This should get refactored out into a shared method because it
-	// only relies on Common components.
-	pcb := pretty.NewServiceBrokerContextBuilder(broker)
-	if broker.Status.ReconciledGeneration != broker.Generation {
-		// If the spec has changed, we should reconcile the broker.
-		return true
-	}
-	if broker.DeletionTimestamp != nil || len(broker.Status.Conditions) == 0 {
-		// If the deletion timestamp is set or the broker has no status
-		// conditions, we should reconcile it.
-		return true
-	}
-
-	// find the ready condition in the broker's status
-	for _, condition := range broker.Status.Conditions {
-		if condition.Type == v1beta1.ServiceBrokerConditionReady {
-			// The broker has a ready condition
-
-			if condition.Status == v1beta1.ConditionTrue {
-
-				// The broker's ready condition has status true, meaning that
-				// at some point, we successfully listed the broker's catalog.
-				if broker.Spec.RelistBehavior == v1beta1.ServiceBrokerRelistBehaviorManual {
-					// If a broker is configured with RelistBehaviorManual, it should
-					// ignore the Duration and only relist based on spec changes
-
-					glog.V(10).Info(pcb.Message("Not processing because RelistBehavior is set to Manual"))
-					return false
-				}
-
-				if broker.Spec.RelistDuration == nil {
-					glog.Error(pcb.Message("Unable to process because RelistBehavior is set to Duration with a nil RelistDuration value"))
-					return false
-				}
-
-				// By default, the broker should relist if it has been longer than the
-				// RelistDuration since the last time we fetched the Catalog
-				duration := broker.Spec.RelistDuration.Duration
-				intervalPassed := true
-				if broker.Status.LastCatalogRetrievalTime != nil {
-					intervalPassed = now.After(broker.Status.LastCatalogRetrievalTime.Time.Add(duration))
-				}
-				if intervalPassed == false {
-					glog.V(10).Info(pcb.Message("Not processing because RelistDuration has not elapsed since the last relist"))
-				}
-				return intervalPassed
-			}
-
-			// The broker's ready condition wasn't true; we should try to re-
-			// list the broker.
-			return true
-		}
-	}
-
-	// The broker didn't have a ready condition; we should reconcile it.
-	return true
+func shouldReconcileServiceBroker(broker *v1beta1.ServiceBroker, now time.Time, defaultRelistInterval time.Duration) bool {
+	return shouldReconcileServiceBrokerCommon(
+		pretty.NewServiceBrokerContextBuilder(broker),
+		&broker.ObjectMeta,
+		&broker.Spec.CommonServiceBrokerSpec,
+		&broker.Status.CommonServiceBrokerStatus,
+		now,
+		defaultRelistInterval,
+	)
 }
 
 func (c *controller) reconcileServiceBrokerKey(key string) error {
@@ -150,6 +103,7 @@ func (c *controller) reconcileServiceBrokerKey(key string) error {
 	broker, err := c.serviceBrokerLister.ServiceBrokers(namespace).Get(name)
 	if errors.IsNotFound(err) {
 		glog.Info(pcb.Message("Not doing work because the ServiceBroker has been deleted"))
+		c.brokerClientManager.RemoveBrokerClient(NewServiceBrokerKey(namespace, name))
 		return nil
 	}
 	if err != nil {
@@ -160,6 +114,36 @@ func (c *controller) reconcileServiceBrokerKey(key string) error {
 	return c.reconcileServiceBroker(broker)
 }
 
+func (c *controller) updateServiceBrokerClient(broker *v1beta1.ServiceBroker) (osb.Client, error) {
+	pcb := pretty.NewServiceBrokerContextBuilder(broker)
+	authConfig, err := getAuthCredentialsFromServiceBroker(c.kubeClient, broker)
+	if err != nil {
+		s := fmt.Sprintf("Error getting broker auth credentials: %s", err)
+		glog.Info(pcb.Message(s))
+		c.recorder.Event(broker, corev1.EventTypeWarning, errorAuthCredentialsReason, s)
+		if err := c.updateServiceBrokerCondition(broker, v1beta1.ServiceBrokerConditionReady, v1beta1.ConditionFalse, errorFetchingCatalogReason, errorFetchingCatalogMessage+s); err != nil {
+			return nil, err
+		}
+		return nil, err
+	}
+
+	// clientConfig := NewClientConfigurationForBroker(broker, authConfig)
+	clientConfig := NewClientConfigurationForBroker(broker.ObjectMeta, &broker.Spec.CommonServiceBrokerSpec, authConfig)
+
+	brokerClient, err := c.brokerClientManager.UpdateBrokerClient(NewServiceBrokerKey(broker.Namespace, broker.Name), clientConfig)
+	if err != nil {
+		s := fmt.Sprintf("Error creating client for broker %q: %s", broker.Name, err)
+		glog.Info(pcb.Message(s))
+		c.recorder.Event(broker, corev1.EventTypeWarning, errorAuthCredentialsReason, s)
+		if err := c.updateServiceBrokerCondition(broker, v1beta1.ServiceBrokerConditionReady, v1beta1.ConditionFalse, errorFetchingCatalogReason, errorFetchingCatalogMessage+s); err != nil {
+			return nil, err
+		}
+		return nil, err
+	}
+
+	return brokerClient, nil
+}
+
 // reconcileServiceBroker is the control-loop that reconciles a ServiceBroker. An
 // error is returned to indicate that the binding has not been fully
 // processed and should be resubmitted at a later time.
@@ -167,41 +151,20 @@ func (c *controller) reconcileServiceBroker(broker *v1beta1.ServiceBroker) error
 	pcb := pretty.NewServiceBrokerContextBuilder(broker)
 	glog.V(4).Infof(pcb.Message("Processing"))
 
+	brokerClient, err := c.updateServiceBrokerClient(broker)
+	if err != nil {
+		return err
+	}
+
 	// * If the broker's ready condition is true and the RelistBehavior has been
 	// set to Manual, do not reconcile it.
 	// * If the broker's ready condition is true and the relist interval has not
 	// elapsed, do not reconcile it.
-	if !shouldReconcileServiceBroker(broker, time.Now()) {
+	if !shouldReconcileServiceBroker(broker, time.Now(), c.brokerRelistInterval) {
 		return nil
 	}
 
 	if broker.DeletionTimestamp == nil { // Add or update
-		authConfig, err := getAuthCredentialsFromServiceBroker(c.kubeClient, broker)
-		if err != nil {
-			s := fmt.Sprintf("Error getting broker auth credentials: %s", err)
-			glog.Info(pcb.Message(s))
-			c.recorder.Event(broker, corev1.EventTypeWarning, errorAuthCredentialsReason, s)
-			if err := c.updateServiceBrokerCondition(broker, v1beta1.ServiceBrokerConditionReady, v1beta1.ConditionFalse, errorFetchingCatalogReason, errorFetchingCatalogMessage+s); err != nil {
-				return err
-			}
-			return err
-		}
-
-		// clientConfig := NewClientConfigurationForBroker(broker, authConfig)
-		clientConfig := NewClientConfigurationForBroker(broker.ObjectMeta, &broker.Spec.CommonServiceBrokerSpec, authConfig)
-
-		glog.V(4).Info(pcb.Messagef("Creating client, URL: %v", broker.Spec.URL))
-		brokerClient, err := c.brokerClientCreateFunc(clientConfig)
-		if err != nil {
-			s := fmt.Sprintf("Error creating client for broker %q: %s", broker.Name, err)
-			glog.Info(pcb.Message(s))
-			c.recorder.Event(broker, corev1.EventTypeWarning, errorAuthCredentialsReason, s)
-			if err := c.updateServiceBrokerCondition(broker, v1beta1.ServiceBrokerConditionReady, v1beta1.ConditionFalse, errorFetchingCatalogReason, errorFetchingCatalogMessage+s); err != nil {
-				return err
-			}
-			return err
-		}
-
 		glog.V(4).Info(pcb.Message("Processing adding/update event"))
 
 		// get the broker's catalog

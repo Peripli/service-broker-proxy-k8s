@@ -25,17 +25,10 @@ type SecretRef struct {
 	Name      string
 }
 
-// RegistrationDetails type represents the credentials and secret name used to register a broker at the k8s cluster
-type RegistrationDetails struct {
-	User     string
-	Password string
-	Secret   *SecretRef
-}
-
 // ClientConfiguration type holds config info for building the k8s service catalog client
 type ClientConfiguration struct {
-	Client              *LibraryConfig       `mapstructure:"client"`
-	Reg                 *RegistrationDetails `mapstructure:"reg"`
+	Client              *LibraryConfig `mapstructure:"client"`
+	Secret              *SecretRef     `mapstructure:"secret"`
 	K8sClientCreateFunc func(*LibraryConfig) (*servicecatalog.SDK, error)
 }
 
@@ -75,9 +68,7 @@ func defaultClientConfiguration() *ClientConfiguration {
 		Client: &LibraryConfig{
 			Timeout: time.Second * 10,
 		},
-		Reg: &RegistrationDetails{
-			Secret: &SecretRef{},
-		},
+		Secret:              &SecretRef{},
 		K8sClientCreateFunc: newSvcatSDK,
 	}
 }
@@ -98,24 +89,18 @@ func (c *ClientConfiguration) Validate() error {
 	if err := c.Client.Validate(); err != nil {
 		return err
 	}
-	if c.Reg == nil {
-		return errors.New("K8S broker registration configuration missing")
+	if c.Secret == nil {
+		return errors.New("K8S broker secret missing")
 	}
-	if err := c.Reg.Validate(); err != nil {
+	if err := c.Secret.Validate(); err != nil {
 		return err
 	}
 	return nil
 }
 
 // Validate validates the registration details and returns appropriate errors in case it is invalid
-func (r *RegistrationDetails) Validate() error {
-	if r.User == "" || r.Password == "" {
-		return errors.New("K8S broker registration credentials missing")
-	}
-	if r.Secret == nil {
-		return errors.New("K8S secret configuration for broker registration missing")
-	}
-	if r.Secret.Name == "" || r.Secret.Namespace == "" {
+func (r *SecretRef) Validate() error {
+	if r.Name == "" || r.Namespace == "" {
 		return errors.New("Properties of K8S secret configuration for broker registration missing")
 	}
 	return nil
