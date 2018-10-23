@@ -22,13 +22,13 @@ sm:
   request_timeout: 6000ms
   skip_ssl_validation: true
   resync_period: 1m
+app:
+  user: admin
+  password: admin
 k8s:
   client:
     timeout: 6000ms
-  reg:
-    # To run locally you need to create a secret in the k8s cluster
-    user: admin
-    password: admin
-    secret:
-      name: service-broker-proxy-regsecret
-      namespace: service-broker-proxy
+  # To run locally you need to create a secret in the k8s cluster
+  secret:
+    name: service-broker-proxy-regsecret
+    namespace: service-broker-proxy

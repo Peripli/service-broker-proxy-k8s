@@ -23,7 +23,7 @@ sm:
   password: admin
 
 # Credentials used to register the proxy as a broker
-reg:
+app:
   user: admin
   password: admin
 
