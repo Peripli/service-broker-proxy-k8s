@@ -246,7 +246,7 @@ var _ = Describe("ReconcilationTask", func() {
 						platformbroker2,
 					},
 					reconcileCatalogCalledFor: []platform.ServiceBroker{},
-					reconcileAccessCalledFor: []osbc.CatalogResponse{},
+					reconcileAccessCalledFor:  []osbc.CatalogResponse{},
 				}
 			},
 		}),

@@ -146,7 +146,7 @@ var _ = Describe("Config", func() {
 
 		Context("when URL is missing", func() {
 			It("returns an error", func() {
-				config.URL= ""
+				config.URL = ""
 				assertErrorDuringValidate()
 			})
 		})

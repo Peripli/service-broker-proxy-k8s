@@ -23,9 +23,9 @@ import (
 	"time"
 
 	"github.com/Peripli/service-manager/pkg/log"
-	"github.com/Peripli/service-manager/security"
+	"github.com/Peripli/service-manager/pkg/security"
 	"github.com/jmoiron/sqlx"
-	)
+)
 
 const securityLockIndex = 111
 

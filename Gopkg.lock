@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:6618adda5ae84f60a150f60229d4814dc835177eccf65f314f370d64cf46793a"
+  branch = "auth"
+  digest = "1:ae822c898e17d54fae57d9fad03410580996b4f71c5ae4b1ed89db6e73ea0aa9"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
+    "pkg/filter",
     "pkg/logging",
-    "pkg/middleware",
     "pkg/osb",
     "pkg/platform",
     "pkg/sbproxy",
@@ -15,36 +15,37 @@
     "pkg/sm",
   ]
   pruneopts = ""
-  revision = "eaf9eefe0765855056d52946790afbef96a1337a"
+  revision = "8b671f233dff085573ec9cbd1dc049952943160f"
 
 [[projects]]
-  branch = "master"
-  digest = "1:ab6a9f93002b9afa01ec99e6649522164d57cc131bb57935db24f559a8dbcda7"
+  digest = "1:678912e5044d198bb261ebb41f329a629a58cbf0c6684ec11059f43eada94644"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
     "api/broker",
-    "api/catalog",
     "api/filters",
-    "api/filters/authn",
+    "api/filters/authn/basic",
+    "api/filters/authn/oauth",
     "api/healthcheck",
     "api/info",
     "api/osb",
     "api/platform",
     "pkg/env",
+    "pkg/health",
     "pkg/log",
+    "pkg/security",
+    "pkg/security/filters",
+    "pkg/security/middlewares",
     "pkg/server",
     "pkg/types",
     "pkg/util",
     "pkg/util/slice",
     "pkg/web",
-    "security",
-    "security/basic",
-    "security/oidc",
     "storage",
   ]
   pruneopts = ""
-  revision = "a9dcbac9f21259013baac38a2d8264d3593488bb"
+  revision = "04f873027c938d84832e90624f5ce0c14f5cdb7d"
+  version = "v0.1.1"
 
 [[projects]]
   digest = "1:d8ee1b165eb7f4fd9ada718e1e7eeb0bc1fd462592d0bd823df694443f448681"
@@ -763,7 +764,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/Peripli/service-broker-proxy/pkg/middleware",
     "github.com/Peripli/service-broker-proxy/pkg/platform",
     "github.com/Peripli/service-broker-proxy/pkg/sbproxy",
     "github.com/Peripli/service-manager/pkg/env",

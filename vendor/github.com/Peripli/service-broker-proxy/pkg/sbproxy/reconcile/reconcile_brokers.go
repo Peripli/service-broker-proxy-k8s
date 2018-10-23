@@ -50,13 +50,17 @@ type ReconcilationTask struct {
 
 // Settings type represents the sbproxy settings
 type Settings struct {
-	URL string
+	URL      string
+	Username string
+	Password string
 }
 
 // DefaultSettings creates default proxy settings
 func DefaultSettings() *Settings {
 	return &Settings{
-		URL: "",
+		URL:      "",
+		Username: "",
+		Password: "",
 	}
 }
 
@@ -75,6 +79,12 @@ func NewTask(ctx context.Context, group *sync.WaitGroup, platformClient platform
 func (c *Settings) Validate() error {
 	if c.URL == "" {
 		return fmt.Errorf("validate settings: missing host")
+	}
+	if len(c.Username) == 0 {
+		return errors.New("validate settings: missing username")
+	}
+	if len(c.Password) == 0 {
+		return errors.New("validate settings: missing password")
 	}
 	return nil
 }
@@ -179,7 +189,7 @@ func (r ReconcilationTask) getBrokersFromSM() ([]platform.ServiceBroker, error) 
 	return brokersFromSM, nil
 }
 
-func (r ReconcilationTask) fetchBrokerCatalog(broker *platform.ServiceBroker)  (err error) {
+func (r ReconcilationTask) fetchBrokerCatalog(broker *platform.ServiceBroker) (err error) {
 	if f, isFetcher := r.platformClient.(platform.CatalogFetcher); isFetcher {
 		logger := log.C(r.ctx)
 		logger.WithFields(logBroker(broker)).Debugf("ReconcilationTask task refetching catalog for broker")

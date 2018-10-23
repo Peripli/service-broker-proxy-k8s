@@ -28,7 +28,7 @@ import (
 	migratepg "github.com/golang-migrate/migrate/database/postgres"
 	_ "github.com/golang-migrate/migrate/source/file"
 	"github.com/jmoiron/sqlx"
-	)
+)
 
 // Storage defines the name of the PostgreSQL relational storage
 const Storage = "postgres"
@@ -66,9 +66,7 @@ func (storage *postgresStorage) Platform() storage.Platform {
 }
 
 func (storage *postgresStorage) Credentials() storage.Credentials {
-	if storage.db == nil {
-		log.D().Panicln("Storage is not yet Open")
-	}
+	storage.checkOpen()
 	return &credentialStorage{storage.db}
 }
 
