@@ -80,6 +80,12 @@ func (c *Settings) Validate() error {
 	if c.URL == "" {
 		return fmt.Errorf("validate settings: missing host")
 	}
+	if len(c.Username) == 0 {
+		return errors.New("validate settings: missing username")
+	}
+	if len(c.Password) == 0 {
+		return errors.New("validate settings: missing password")
+	}
 	return nil
 }
 
