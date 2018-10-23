@@ -93,6 +93,8 @@ var _ = Describe("Sbproxy", func() {
 
 				proxy := New(ctx, cancel, DefaultEnv(func(set *pflag.FlagSet) {
 					set.Set("app.url", "http://localhost:8080")
+					set.Set("app.username", "admin")
+					set.Set("app.password", "admin")
 					set.Set("sm.user", "admin")
 					set.Set("sm.password", "admin")
 					set.Set("sm.url", "http://localhost:8080")
