@@ -24,9 +24,9 @@ ARCH     ?= amd64
 
 BUILD_LDFLAGS =
 
-#  GOFLAGS -  extra "go build" flags to use - e.g. -v   (for verbose)
+# GO_FLAGS - extra "go build" flags to use - e.g. -v (for verbose)
 GO_BUILD = env CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) \
-           go build $(GOFLAGS) -ldflags '-s -w $(BUILD_LDFLAGS)'
+           go build $(GO_FLAGS) -ldflags '-s -w $(BUILD_LDFLAGS)'
 
 build: .init dep-vendor k8s-sbproxy
 
@@ -44,7 +44,7 @@ dep-reload: dep-check clean-vendor dep
 k8s-sbproxy: $(BINDIR)/k8s-sbproxy
 
 # Build k8s service-broker-proxy under ./bin/k8s-sbproxy
-$(BINDIR)/k8s-sbproxy: .init .
+$(BINDIR)/k8s-sbproxy: .init
 	 $(GO_BUILD) -o $@ $(PROJECT_PKG)
 
 # init creates the bin dir
@@ -57,7 +57,7 @@ test: build
 	@echo Running tests:
 	@go test ./... -p 1 -race -coverpkg $(shell go list ./... | egrep -v "fakes|test" | paste -sd "," -) -coverprofile=$(TEST_PROFILE)
 
-coverage: build test
+coverage: test
 	@go tool cover -html=$(TEST_PROFILE) -o "$(COVERAGE)"
 
 clean: clean-bin clean-test clean-coverage
