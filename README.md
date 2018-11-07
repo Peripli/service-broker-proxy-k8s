@@ -5,28 +5,12 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/Peripli/service-broker-proxy-k8s)](https://goreportcard.com/report/github.com/Peripli/service-broker-proxy-k8s)
 [![Docker Repository on Quay](https://quay.io/repository/service-manager/sb-proxy-k8s/status "Docker Repository on Quay")](https://quay.io/repository/service-manager/sb-proxy-k8s)
 
-K8S Specific Implementation for Service Broker Proxy Module
+Kubernetes specific implementation for Service Broker Proxy module
 
 ## Docker Images
 
-Docker Images are available on quay.io/service-manager/sb-proxy
+Docker Images are available on quay.io/service-manager/sb-proxy-k8s
 
 ## Installation of the service broker proxy on Kubernetes
 
-### Prerequisites
-
-* `tiller` is installed and configured in the Kubernetes cluster.
-* `helm` is installed and configured.
-* `service-catalog` is installed and configured in the Kubernetes cluster.
-
-### Installation
-
-The service-broker-proxy-k8s is installed via a helm chart.
-
-```bash
-helm install charts/service-broker-proxy-k8s --name service-broker-proxy --namespace service-broker-proxy --set config.sm.url=<SM_URL> --set sm.user=<USER> --set sm.password=<PASSWORD>
-```
-
-**Note:** Make sure you substitute <SM_URL> with the Service Manager url, <USER> and <PASSWORD> with the credentials for the Service Manager. The credentials can be obtained when registering the cluster in Service Manager.
-
-To use your own images you can set `image.repository`, `image.tag` and `image.pullPolicy` to the helm install command.
+The service-broker-proxy-k8s is installed via a helm chart. See [here](./charts/service-broker-proxy-k8s/README.md) for more details.
