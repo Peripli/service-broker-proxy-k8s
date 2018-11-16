@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Peripli/service-broker-proxy-k8s/version"
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
 	"github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
@@ -64,6 +65,9 @@ func NewClient(config *ClientConfiguration) (*PlatformClient, error) {
 
 // GetBrokers returns all service-brokers currently registered in kubernetes service-catalog.
 func (b PlatformClient) GetBrokers(ctx context.Context) ([]platform.ServiceBroker, error) {
+	// Log the version regularly so it is not lost with old log messages
+	version.Log()
+
 	brokers, err := retrieveClusterServiceBrokers(b.cli)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list cluster-scoped brokers (%s)", err)
