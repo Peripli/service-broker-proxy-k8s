@@ -18,7 +18,6 @@ package platform_test
 
 import (
 	"net/http"
-	"os"
 	"testing"
 
 	"github.com/Peripli/service-manager/test/common"
@@ -30,7 +29,6 @@ type array = common.Array
 
 // TestPlatforms tests for platform API
 func TestPlatforms(t *testing.T) {
-	os.Chdir("../..")
 	RunSpecs(t, "Platform API Tests Suite")
 }
 
@@ -76,7 +74,7 @@ var _ = Describe("Service Manager Platform API", func() {
 			})
 		})
 	})
-	Describe("GET All", func() {
+	Describe("List", func() {
 		Context("With no platforms", func() {
 			It("returns empty array", func() {
 				ctx.SMWithOAuth.GET("/v1/platforms").

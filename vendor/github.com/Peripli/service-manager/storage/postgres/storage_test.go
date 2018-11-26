@@ -17,6 +17,8 @@
 package postgres
 
 import (
+	"github.com/Peripli/service-manager/storage"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -48,7 +50,7 @@ var _ = Describe("Postgres Storage", func() {
 		})
 	})
 
-	Context("Security Storage", func() {
+	Context("Security", func() {
 		Context("Called with uninitialized db", func() {
 			It("Should panic", func() {
 				Expect(func() { pgStorage.Security() }).To(Panic())
@@ -67,15 +69,33 @@ var _ = Describe("Postgres Storage", func() {
 	Describe("Open", func() {
 		Context("Called with empty uri", func() {
 			It("Should return error", func() {
-				err := pgStorage.Open("", nil)
+				err := pgStorage.Open(&storage.Settings{
+					URI:           "",
+					MigrationsURL: "file://migrations",
+				})
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("storage URI cannot be empty"))
+			})
+		})
+
+		Context("Called with empty migrations", func() {
+			It("Should return error", func() {
+				err := pgStorage.Open(&storage.Settings{
+					MigrationsURL: "",
+				})
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
 		Context("Called with invalid postgres uri", func() {
 			It("Should panic", func() {
-				Expect(func() { pgStorage.Open("invalid_uri", nil) }).To(Panic())
+				Expect(func() {
+					pgStorage.Open(&storage.Settings{
+						URI:               "invalid",
+						MigrationsURL:     "invalid",
+						EncryptionKey:     "ejHjRNHbS0NaqARSRvnweVV9zcmhQEa8",
+						SkipSSLValidation: true,
+					})
+				}).To(Panic())
 			})
 		})
 	})

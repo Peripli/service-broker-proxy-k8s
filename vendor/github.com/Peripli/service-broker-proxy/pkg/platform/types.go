@@ -16,8 +16,11 @@
 
 package platform
 
-import "encoding/json"
-import osbc "github.com/pmorie/go-open-service-broker-client/v2"
+import (
+	"encoding/json"
+
+	"github.com/Peripli/service-manager/pkg/types"
+)
 
 // CreateServiceBrokerRequest type used for requests by the platform client
 type CreateServiceBrokerRequest struct {
@@ -40,11 +43,11 @@ type DeleteServiceBrokerRequest struct {
 
 // ServiceBroker type for responses from the platform client
 type ServiceBroker struct {
-	GUID      string                     `json:"guid"`
-	Name      string                     `json:"name"`
-	BrokerURL string                     `json:"broker_url"`
-	Catalog   *osbc.CatalogResponse      `json:"catalog"`
-	Metadata  map[string]json.RawMessage `json:"metadata"`
+	GUID             string                     `json:"guid"`
+	Name             string                     `json:"name"`
+	BrokerURL        string                     `json:"broker_url"`
+	ServiceOfferings []types.ServiceOffering    `json:"services"`
+	Metadata         map[string]json.RawMessage `json:"metadata"`
 }
 
 // ServiceBrokerList type for responses from the platform client
