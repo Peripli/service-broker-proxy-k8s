@@ -18,37 +18,97 @@ package common
 
 import (
 	"context"
+	"flag"
 	"net/http/httptest"
+	"path"
+	"runtime"
 
-	. "github.com/onsi/ginkgo"
+	"github.com/gofrs/uuid"
 	"github.com/spf13/pflag"
 
 	"github.com/Peripli/service-manager/pkg/env"
 	"github.com/Peripli/service-manager/pkg/sm"
 	"github.com/Peripli/service-manager/pkg/web"
 	"github.com/gavv/httpexpect"
+	. "github.com/onsi/ginkgo"
 )
 
+var (
+	e          env.Environment
+	_, b, _, _ = runtime.Caller(0)
+	basePath   = path.Dir(b)
+)
+
+type FlagValue struct {
+	pflagValue pflag.Value
+}
+
+func (f FlagValue) Set(s string) error {
+	return f.pflagValue.Set(s)
+}
+
+func (f FlagValue) String() string {
+	return f.pflagValue.String()
+}
+
+func init() {
+	e = TestEnv()
+}
+
+func SetTestFileLocation(set *pflag.FlagSet) {
+	set.Set("file.location", basePath)
+}
+
+func TestEnv(additionalFlagFuncs ...func(set *pflag.FlagSet)) env.Environment {
+	f := func(set *pflag.FlagSet) {
+		if set == nil {
+			return
+		}
+
+		set.VisitAll(func(pflag *pflag.Flag) {
+			if flag.Lookup(pflag.Name) != nil {
+				return
+			}
+
+			flag.Var(FlagValue{
+				pflagValue: pflag.Value,
+			}, pflag.Name, pflag.Usage)
+		})
+	}
+
+	additionalFlagFuncs = append(additionalFlagFuncs, f)
+
+	// will be used as default value and overridden if --file.location={{location}} is passed to go test
+	additionalFlagFuncs = append(additionalFlagFuncs, SetTestFileLocation)
+
+	return sm.DefaultEnv(additionalFlagFuncs...)
+}
+
 type ContextParams struct {
-	Environment        env.Environment
 	RegisterExtensions func(api *web.API)
 	DefaultTokenClaims map[string]interface{}
+	Env                env.Environment
 }
 
-func LoadEnvironment(confgiFileDir string) env.Environment {
-	return sm.DefaultEnv(func(set *pflag.FlagSet) {
-		set.Set("file.location", confgiFileDir)
-	})
-}
-
-func buildSM(params *ContextParams, issuerURL string) *httptest.Server {
-	if params.Environment == nil {
-		params.Environment = LoadEnvironment("./test/common")
+func NewSMServer(params *ContextParams, issuerURL string) *httptest.Server {
+	var smEnv env.Environment
+	if params.Env != nil {
+		smEnv = params.Env
+	} else {
+		smEnv = e
 	}
-	params.Environment.Set("api.token_issuer_url", issuerURL)
+
+	flag.VisitAll(func(flag *flag.Flag) {
+		if flag.Value.String() != "" {
+			smEnv.Set(flag.Name, flag.Value.String())
+		}
+	})
+	if flag.Lookup("api.token_issuer_url") != nil && flag.Lookup("api.token_issuer_url").Value.String() == "" {
+		smEnv.Set("api.token_issuer_url", issuerURL)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	smanagerBuilder := sm.New(ctx, cancel, params.Environment)
+	smanagerBuilder := sm.New(ctx, cancel, smEnv)
 	if params.RegisterExtensions != nil {
 		params.RegisterExtensions(smanagerBuilder.API)
 	}
@@ -64,7 +124,7 @@ func NewTestContext(params *ContextParams) *TestContext {
 	oauthServer := NewOAuthServer()
 	oauthServer.Start()
 
-	smServer := buildSM(params, oauthServer.URL)
+	smServer := NewSMServer(params, oauthServer.URL)
 	SM := httpexpect.New(GinkgoT(), smServer.URL)
 
 	accessToken := oauthServer.CreateToken(params.DefaultTokenClaims)
@@ -76,7 +136,7 @@ func NewTestContext(params *ContextParams) *TestContext {
 	RemoveAllPlatforms(SMWithOAuth)
 
 	platformJSON := MakePlatform("ctx-platform-test", "ctx-platform-test", "platform-type", "test-platform")
-	platform := RegisterPlatform(platformJSON, SMWithOAuth)
+	platform := RegisterPlatformInSM(platformJSON, SMWithOAuth)
 	SMWithBasic := SM.Builder(func(req *httpexpect.Request) {
 		username, password := platform.Credentials.Basic.Username, platform.Credentials.Basic.Password
 		req.WithBasicAuth(username, password)
@@ -86,7 +146,7 @@ func NewTestContext(params *ContextParams) *TestContext {
 		SM:          SM,
 		SMWithOAuth: SMWithOAuth,
 		SMWithBasic: SMWithBasic,
-		brokers:     make(map[string]*Broker),
+		brokers:     make(map[string]*BrokerServer),
 		smServer:    smServer,
 		OAuthServer: oauthServer,
 	}
@@ -99,33 +159,40 @@ type TestContext struct {
 
 	smServer    *httptest.Server
 	OAuthServer *OAuthServer
-	brokers     map[string]*Broker
+	brokers     map[string]*BrokerServer
 }
 
-func (ctx *TestContext) RegisterBroker(name string, server *httptest.Server) *Broker {
-	broker := &Broker{}
-	if server == nil {
-		server = httptest.NewServer(broker)
+func (ctx *TestContext) RegisterBroker() (string, *BrokerServer) {
+	brokerServer := NewBrokerServer()
+	UUID, err := uuid.NewV4()
+	if err != nil {
+		panic(err)
 	}
-	brokerJSON := MakeBroker(name, server.URL, "")
-	broker.ID = RegisterBroker(brokerJSON, ctx.SMWithOAuth)
+	brokerJSON := Object{
+		"name":        UUID.String(),
+		"broker_url":  brokerServer.URL,
+		"description": "",
+		"credentials": Object{
+			"basic": Object{
+				"username": brokerServer.Username,
+				"password": brokerServer.Password,
+			},
+		},
+	}
 
-	broker.OSBURL = "/v1/osb/" + broker.ID
-	broker.Server = server
-
-	broker.Request = nil
-
-	ctx.brokers[name] = broker
-	return broker
+	brokerID := RegisterBrokerInSM(brokerJSON, ctx.SMWithOAuth)
+	brokerServer.ResetCallHistory()
+	ctx.brokers[brokerID] = brokerServer
+	return brokerID, brokerServer
 }
 
-func (ctx *TestContext) CleanupBroker(name string) {
-	broker := ctx.brokers[name]
-	ctx.SMWithOAuth.DELETE("/v1/service_brokers/" + broker.ID).Expect()
-	if broker.Server != nil {
+func (ctx *TestContext) CleanupBroker(id string) {
+	broker := ctx.brokers[id]
+	ctx.SMWithOAuth.DELETE("/v1/service_brokers/" + id).Expect()
+	if broker != nil && broker.Server != nil {
 		broker.Server.Close()
 	}
-	delete(ctx.brokers, name)
+	delete(ctx.brokers, id)
 }
 
 func (ctx *TestContext) Cleanup() {
@@ -139,7 +206,7 @@ func (ctx *TestContext) Cleanup() {
 	}
 
 	for _, broker := range ctx.brokers {
-		if broker.Server != nil {
+		if broker != nil && broker.Server != nil {
 			broker.Server.Close()
 		}
 	}

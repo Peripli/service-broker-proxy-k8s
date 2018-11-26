@@ -19,7 +19,7 @@ package sm
 import (
 	"encoding/json"
 
-	osbc "github.com/pmorie/go-open-service-broker-client/v2"
+	"github.com/Peripli/service-manager/pkg/types"
 )
 
 // Brokers type used for responses from the Service Manager client
@@ -32,6 +32,6 @@ type Broker struct {
 	ID        string `json:"id"`
 	BrokerURL string `json:"broker_url"`
 
-	Catalog  *osbc.CatalogResponse      `json:"catalog"`
-	Metadata map[string]json.RawMessage `json:"metadata,omitempty"`
+	ServiceOfferings []types.ServiceOffering    `json:"services"`
+	Metadata         map[string]json.RawMessage `json:"metadata,omitempty"`
 }
