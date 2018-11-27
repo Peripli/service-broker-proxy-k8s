@@ -37,15 +37,19 @@ spec:
             secretKeyRef:
               name: {{ template "service-manager.fullname" . }}-secret
               key: uri
-        - name: API_SECURITY_ENCRYPTION_KEY
+        - name: STORAGE_ENCRYPTION_KEY
           valueFrom:
             secretKeyRef:
               name: {{ template "service-manager.fullname" . }}-secret
               key: encryption_key
         args:
+        {{- if .Values.storage.migrations_url }}
+         - "--storage.migrations_url={{ .Values.storage.migrations_url }}"
+        {{- end }}
          - "--file.location={{ .Values.file.location }}"
          - "--file.name={{ .Values.file.name }}"
          - "--file.format={{ .Values.file.format }}"
+         - "--storage.skip_ssl_validation={{ .Values.storage.skip_ssl_validation }}"
       ports:
       - name: http
         containerPort: 8080

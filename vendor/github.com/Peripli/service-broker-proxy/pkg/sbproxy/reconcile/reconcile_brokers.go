@@ -18,18 +18,21 @@ package reconcile
 
 import (
 	"context"
-	"github.com/Peripli/service-manager/pkg/log"
 	"sync"
+
+	"github.com/Peripli/service-manager/pkg/types"
+
+	"github.com/Peripli/service-manager/pkg/log"
 
 	"strings"
 
 	"encoding/json"
 
 	"fmt"
+
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/Peripli/service-broker-proxy/pkg/sm"
 	"github.com/pkg/errors"
-	osbc "github.com/pmorie/go-open-service-broker-client/v2"
 	"github.com/sirupsen/logrus"
 )
 
@@ -177,10 +180,10 @@ func (r ReconcilationTask) getBrokersFromSM() ([]platform.ServiceBroker, error) 
 	brokersFromSM := make([]platform.ServiceBroker, 0, len(proxyBrokers))
 	for _, broker := range proxyBrokers {
 		brokerReg := platform.ServiceBroker{
-			GUID:      broker.ID,
-			BrokerURL: broker.BrokerURL,
-			Catalog:   broker.Catalog,
-			Metadata:  broker.Metadata,
+			GUID:             broker.ID,
+			BrokerURL:        broker.BrokerURL,
+			ServiceOfferings: broker.ServiceOfferings,
+			Metadata:         broker.Metadata,
 		}
 		brokersFromSM = append(brokersFromSM, brokerReg)
 	}
@@ -242,16 +245,15 @@ func (r ReconcilationTask) enableServiceAccessVisibilities(broker *platform.Serv
 		logger := log.C(r.ctx)
 		logger.WithFields(logBroker(broker)).Info("ReconcilationTask task attempting to enable service access for broker...")
 
-		catalog := broker.Catalog
-		if catalog == nil {
+		if len(broker.ServiceOfferings) == 0 {
 			logger.WithFields(logBroker(broker)).Error("Error enabling service access due to missing catalog details")
 			return
 		}
 
-		for _, service := range catalog.Services {
+		for _, service := range broker.ServiceOfferings {
 			logger.WithFields(logService(service)).Debug("ReconcilationTask task attempting to enable service access for service...")
-			if err := f.EnableAccessForService(r.ctx, emptyContext, service.ID); err != nil {
-				logger.WithFields(logService(service)).WithError(err).Errorf("Error enabling service access for service with ID=%s...", service.ID)
+			if err := f.EnableAccessForService(r.ctx, emptyContext, service.CatalogID); err != nil {
+				logger.WithFields(logService(service)).WithError(err).Errorf("Error enabling service access for service with ID=%s...", service.CatalogID)
 			}
 			logger.WithFields(logService(service)).Debug("ReconcilationTask task finished enabling service access for service...")
 		}
@@ -271,9 +273,9 @@ func logBroker(broker *platform.ServiceBroker) logrus.Fields {
 	}
 }
 
-func logService(service osbc.Service) logrus.Fields {
+func logService(service types.ServiceOffering) logrus.Fields {
 	return logrus.Fields{
-		"service_guid": service.ID,
+		"service_guid": service.CatalogID,
 		"service_name": service.Name,
 	}
 }

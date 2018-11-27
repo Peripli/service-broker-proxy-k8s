@@ -22,8 +22,8 @@ import (
 	"github.com/Peripli/service-manager/pkg/env"
 	"github.com/Peripli/service-manager/pkg/log"
 	"github.com/Peripli/service-manager/pkg/server"
-	"github.com/spf13/pflag"
 	"github.com/Peripli/service-manager/pkg/util"
+	"github.com/spf13/pflag"
 )
 
 // Settings type holds all config properties for the sbproxy

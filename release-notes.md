@@ -1,5 +1,12 @@
 # Service Broker Proxy K8S Release Notes
 
+## v0.2.0
+
+2018-11-27
+
+* Use go 1.11
+* Update service-broker-proxy to support new Service Manager broker api.
+
 ## v0.1.1
 
 2018-10-23

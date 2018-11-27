@@ -19,15 +19,16 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/Peripli/service-broker-proxy/pkg/platform/platformfakes"
 	"github.com/Peripli/service-broker-proxy/pkg/sm"
 	"github.com/Peripli/service-broker-proxy/pkg/sm/smfakes"
+	"github.com/Peripli/service-manager/pkg/types"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
-	osbc "github.com/pmorie/go-open-service-broker-client/v2"
-	"sync"
 )
 
 var _ = Describe("ReconcilationTask", func() {
@@ -92,25 +93,23 @@ var _ = Describe("ReconcilationTask", func() {
 		smbroker1 = sm.Broker{
 			ID:        "smBrokerID1",
 			BrokerURL: "https://smBroker1.com",
-			Catalog: &osbc.CatalogResponse{
-				Services: []osbc.Service{
-					{
-						ID:                  "smBroker1ServiceID1",
-						Name:                "smBroker1Service1",
-						Description:         "description",
-						Bindable:            true,
-						BindingsRetrievable: true,
-						Plans: []osbc.Plan{
-							{
-								ID:          "smBroker1ServiceID1PlanID1",
-								Name:        "smBroker1Service1Plan1",
-								Description: "description",
-							},
-							{
-								ID:          "smBroker1ServiceID1PlanID2",
-								Name:        "smBroker1Service1Plan2",
-								Description: "description",
-							},
+			ServiceOfferings: []types.ServiceOffering{
+				{
+					ID:                  "smBroker1ServiceID1",
+					Name:                "smBroker1Service1",
+					Description:         "description",
+					Bindable:            true,
+					BindingsRetrievable: true,
+					Plans: []*types.ServicePlan{
+						{
+							ID:          "smBroker1ServiceID1PlanID1",
+							Name:        "smBroker1Service1Plan1",
+							Description: "description",
+						},
+						{
+							ID:          "smBroker1ServiceID1PlanID2",
+							Name:        "smBroker1Service1Plan2",
+							Description: "description",
 						},
 					},
 				},
@@ -120,25 +119,23 @@ var _ = Describe("ReconcilationTask", func() {
 		smbroker2 = sm.Broker{
 			ID:        "smBrokerID2",
 			BrokerURL: "https://smBroker2.com",
-			Catalog: &osbc.CatalogResponse{
-				Services: []osbc.Service{
-					{
-						ID:                  "smBroker2ServiceID1",
-						Name:                "smBroker2Service1",
-						Description:         "description",
-						Bindable:            true,
-						BindingsRetrievable: true,
-						Plans: []osbc.Plan{
-							{
-								ID:          "smBroker2ServiceID1PlanID1",
-								Name:        "smBroker2Service1Plan1",
-								Description: "description",
-							},
-							{
-								ID:          "smBroker2ServiceID1PlanID2",
-								Name:        "smBroker2Service1Plan2",
-								Description: "description",
-							},
+			ServiceOfferings: []types.ServiceOffering{
+				{
+					ID:                  "smBroker2ServiceID1",
+					Name:                "smBroker2Service1",
+					Description:         "description",
+					Bindable:            true,
+					BindingsRetrievable: true,
+					Plans: []*types.ServicePlan{
+						{
+							ID:          "smBroker2ServiceID1PlanID1",
+							Name:        "smBroker2Service1Plan1",
+							Description: "description",
+						},
+						{
+							ID:          "smBroker2ServiceID1PlanID2",
+							Name:        "smBroker2Service1Plan2",
+							Description: "description",
 						},
 					},
 				},
@@ -164,11 +161,14 @@ var _ = Describe("ReconcilationTask", func() {
 		}
 	})
 
+	type catalog struct {
+		ServiceOfferings []types.ServiceOffering
+	}
 	type expectations struct {
 		reconcileCreateCalledFor  []platform.ServiceBroker
 		reconcileDeleteCalledFor  []platform.ServiceBroker
 		reconcileCatalogCalledFor []platform.ServiceBroker
-		reconcileAccessCalledFor  []osbc.CatalogResponse
+		reconcileAccessCalledFor  []catalog
 	}
 
 	type testCase struct {
@@ -195,7 +195,7 @@ var _ = Describe("ReconcilationTask", func() {
 					reconcileCreateCalledFor:  []platform.ServiceBroker{},
 					reconcileDeleteCalledFor:  []platform.ServiceBroker{},
 					reconcileCatalogCalledFor: []platform.ServiceBroker{},
-					reconcileAccessCalledFor:  []osbc.CatalogResponse{},
+					reconcileAccessCalledFor:  []catalog{},
 				}
 			},
 		}),
@@ -215,7 +215,7 @@ var _ = Describe("ReconcilationTask", func() {
 					reconcileCreateCalledFor:  []platform.ServiceBroker{},
 					reconcileDeleteCalledFor:  []platform.ServiceBroker{},
 					reconcileCatalogCalledFor: []platform.ServiceBroker{},
-					reconcileAccessCalledFor:  []osbc.CatalogResponse{},
+					reconcileAccessCalledFor:  []catalog{},
 				}
 			},
 		}),
@@ -246,7 +246,7 @@ var _ = Describe("ReconcilationTask", func() {
 						platformbroker2,
 					},
 					reconcileCatalogCalledFor: []platform.ServiceBroker{},
-					reconcileAccessCalledFor: []osbc.CatalogResponse{},
+					reconcileAccessCalledFor:  []catalog{},
 				}
 			},
 		}),
@@ -262,7 +262,7 @@ var _ = Describe("ReconcilationTask", func() {
 				}, nil
 			},
 			smBrokers: func() ([]sm.Broker, error) {
-				smbroker1.Catalog = nil
+				smbroker1.ServiceOfferings = nil
 				return []sm.Broker{
 					smbroker1,
 					smbroker2,
@@ -276,8 +276,10 @@ var _ = Describe("ReconcilationTask", func() {
 						platformbroker1,
 						platformbroker2,
 					},
-					reconcileAccessCalledFor: []osbc.CatalogResponse{
-						*smbroker2.Catalog,
+					reconcileAccessCalledFor: []catalog{
+						{
+							ServiceOfferings: smbroker2.ServiceOfferings,
+						},
 					},
 				}
 			},
@@ -304,9 +306,13 @@ var _ = Describe("ReconcilationTask", func() {
 					},
 					reconcileDeleteCalledFor:  []platform.ServiceBroker{},
 					reconcileCatalogCalledFor: []platform.ServiceBroker{},
-					reconcileAccessCalledFor: []osbc.CatalogResponse{
-						*smbroker1.Catalog,
-						*smbroker2.Catalog,
+					reconcileAccessCalledFor: []catalog{
+						{
+							ServiceOfferings: smbroker1.ServiceOfferings,
+						},
+						{
+							ServiceOfferings: smbroker2.ServiceOfferings,
+						},
 					},
 				}
 			},
@@ -333,8 +339,10 @@ var _ = Describe("ReconcilationTask", func() {
 					reconcileCatalogCalledFor: []platform.ServiceBroker{
 						platformbroker1,
 					},
-					reconcileAccessCalledFor: []osbc.CatalogResponse{
-						*smbroker1.Catalog,
+					reconcileAccessCalledFor: []catalog{
+						{
+							ServiceOfferings: smbroker1.ServiceOfferings,
+						},
 					},
 				}
 			},
@@ -359,7 +367,7 @@ var _ = Describe("ReconcilationTask", func() {
 						platformbroker1,
 					},
 					reconcileCatalogCalledFor: []platform.ServiceBroker{},
-					reconcileAccessCalledFor:  []osbc.CatalogResponse{},
+					reconcileAccessCalledFor:  []catalog{},
 				}
 			},
 		}),
@@ -381,7 +389,7 @@ var _ = Describe("ReconcilationTask", func() {
 					reconcileCreateCalledFor:  []platform.ServiceBroker{},
 					reconcileDeleteCalledFor:  []platform.ServiceBroker{},
 					reconcileCatalogCalledFor: []platform.ServiceBroker{},
-					reconcileAccessCalledFor:  []osbc.CatalogResponse{},
+					reconcileAccessCalledFor:  []catalog{},
 				}
 			},
 		}),
@@ -435,9 +443,9 @@ var _ = Describe("ReconcilationTask", func() {
 		servicesCount := 0
 		index := 0
 		for _, catalog := range expected.reconcileAccessCalledFor {
-			for _, service := range catalog.Services {
+			for _, service := range catalog.ServiceOfferings {
 				_, _, serviceID := fakePlatformServiceAccess.EnableAccessForServiceArgsForCall(index)
-				Expect(serviceID).To(Equal(service.ID))
+				Expect(serviceID).To(Equal(service.CatalogID))
 				servicesCount++
 				index++
 			}

@@ -95,7 +95,7 @@ func New(ctx context.Context, cancel context.CancelFunc, env env.Environment) *S
 	util.HandleInterrupts(ctx, cancel)
 
 	// setup smStorage
-	smStorage, err := storage.Use(ctx, postgres.Storage, cfg.Storage.URI, []byte(cfg.API.Security.EncryptionKey))
+	smStorage, err := storage.Use(ctx, postgres.Storage, cfg.Storage)
 	if err != nil {
 		panic(fmt.Sprintf("error using smStorage: %s", err))
 	}
@@ -114,6 +114,8 @@ func New(ctx context.Context, cancel context.CancelFunc, env env.Environment) *S
 	if err != nil {
 		panic(fmt.Sprintf("error creating core api: %s", err))
 	}
+
+	API.AddHealthIndicator(&storage.HealthIndicator{Pinger: storage.PingFunc(smStorage.Ping)})
 
 	return &ServiceManagerBuilder{
 		ctx: ctx,
