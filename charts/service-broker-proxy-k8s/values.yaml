@@ -21,6 +21,10 @@ file:
 sm:
   user: admin
   password: admin
+  
+##
+# Security context
+securityContext: {}
 
 # Credentials used to register the proxy as a broker
 app:
