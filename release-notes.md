@@ -1,5 +1,11 @@
 # Service Broker Proxy K8S Release Notes
 
+## v0.2.1
+
+2018-12-13
+
+* Adapt credentials endpoint support.
+
 ## v0.2.0
 
 2018-11-27
