@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Peripli/service-broker-proxy-k8s/k8s"
+	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s"
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
 
 	"github.com/spf13/pflag"
