@@ -11,16 +11,23 @@ import (
 	. "github.com/onsi/ginkgo"
 
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
-	"github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
+	servicecatalog "github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
 
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 )
 
 var _ = Describe("Kubernetes Broker Proxy", func() {
 	var clientConfig *ClientConfiguration
 	var ctx context.Context
+
+	newDefaultPlatformClient := func() *PlatformClient {
+		client, err := NewClient(clientConfig)
+		Expect(err).ToNot(HaveOccurred())
+		return client
+	}
+
 	BeforeSuite(func() {
 		os.Setenv("KUBERNETES_SERVICE_HOST", "test")
 		os.Setenv("KUBERNETES_SERVICE_PORT", "1234")
@@ -59,14 +66,32 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				Expect(err.Error()).To(Equal("expected"))
 			})
 		})
+
+		Context("With valid config", func() {
+
+			It("should handle broker operations", func() {
+				client := newDefaultPlatformClient()
+				Expect(client.Broker()).ToNot(BeNil())
+			})
+
+			It("should handle catalog fetch operations", func() {
+				client := newDefaultPlatformClient()
+				Expect(client.CatalogFetcher()).ToNot(BeNil())
+			})
+
+			It("should not handle visibility operations", func() {
+				client := newDefaultPlatformClient()
+				Expect(client.Visibility()).To(BeNil())
+			})
+		})
 	})
 
 	Describe("Create a service broker", func() {
 
 		Context("with no error", func() {
 			It("returns broker", func() {
-				platformClient, err := NewClient(clientConfig)
-				Expect(err).ToNot(HaveOccurred())
+				platformClient := newDefaultPlatformClient()
+
 				createClusterServiceBroker = func(cli *servicecatalog.SDK, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
 					return &v1beta1.ClusterServiceBroker{
 						ObjectMeta: v1.ObjectMeta{
@@ -96,8 +121,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 		Context("with an error", func() {
 			It("returns error", func() {
-				platformClient, err := NewClient(clientConfig)
-				Expect(err).ToNot(HaveOccurred())
+				platformClient := newDefaultPlatformClient()
 
 				createClusterServiceBroker = func(cli *servicecatalog.SDK, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
 					return nil, errors.New("Error from service-catalog")
@@ -115,8 +139,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 	Describe("Delete a service broker", func() {
 		Context("with no error", func() {
 			It("returns no error", func() {
-				platformClient, err := NewClient(clientConfig)
-				Expect(err).ToNot(HaveOccurred())
+				platformClient := newDefaultPlatformClient()
 
 				deleteClusterServiceBroker = func(cli *servicecatalog.SDK, name string, options *v1.DeleteOptions) error {
 					return nil
@@ -127,7 +150,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Name: "fake-broker",
 				}
 
-				err = platformClient.DeleteBroker(ctx, requestBroker)
+				err := platformClient.DeleteBroker(ctx, requestBroker)
 
 				Expect(err).To(BeNil())
 			})
@@ -135,8 +158,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 		Context("with an error", func() {
 			It("returns the error", func() {
-				platformClient, err := NewClient(clientConfig)
-				Expect(err).ToNot(HaveOccurred())
+				platformClient := newDefaultPlatformClient()
 
 				deleteClusterServiceBroker = func(cli *servicecatalog.SDK, name string, options *v1.DeleteOptions) error {
 					return errors.New("Error deleting clusterservicebroker")
@@ -144,7 +166,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 				requestBroker := &platform.DeleteServiceBrokerRequest{}
 
-				err = platformClient.DeleteBroker(ctx, requestBroker)
+				err := platformClient.DeleteBroker(ctx, requestBroker)
 
 				Expect(err).To(Equal(errors.New("Error deleting clusterservicebroker")))
 			})
@@ -154,8 +176,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 	Describe("Get all service brokers", func() {
 		Context("with no error", func() {
 			It("returns brokers", func() {
-				platformClient, err := NewClient(clientConfig)
-				Expect(err).ToNot(HaveOccurred())
+				platformClient := newDefaultPlatformClient()
 
 				retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) (*v1beta1.ClusterServiceBrokerList, error) {
 					brokers := make([]v1beta1.ClusterServiceBroker, 0)
@@ -188,8 +209,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 		Context("when no service brokers are registered", func() {
 			It("returns empty array", func() {
-				platformClient, err := NewClient(clientConfig)
-				Expect(err).ToNot(HaveOccurred())
+				platformClient := newDefaultPlatformClient()
 
 				retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) (*v1beta1.ClusterServiceBrokerList, error) {
 					brokers := make([]v1beta1.ClusterServiceBroker, 0)
@@ -208,8 +228,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 		Context("with an error", func() {
 			It("returns the error", func() {
-				platformClient, err := NewClient(clientConfig)
-				Expect(err).ToNot(HaveOccurred())
+				platformClient := newDefaultPlatformClient()
 
 				retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) (*v1beta1.ClusterServiceBrokerList, error) {
 					return nil, errors.New("Error getting clusterservicebrokers")
@@ -227,8 +246,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 	Describe("Update a service broker", func() {
 		Context("with no errors", func() {
 			It("returns updated broker", func() {
-				platformClient, err := NewClient(clientConfig)
-				Expect(err).ToNot(HaveOccurred())
+				platformClient := newDefaultPlatformClient()
 
 				updateClusterServiceBroker = func(cli *servicecatalog.SDK, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
 					// Return a new fake clusterservicebroker with the three attributes relevant for the OSBAPI guid, name and broker url.
@@ -263,8 +281,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 		Context("with an error", func() {
 			It("returns the error", func() {
-				platformClient, err := NewClient(clientConfig)
-				Expect(err).ToNot(HaveOccurred())
+				platformClient := newDefaultPlatformClient()
 
 				updateClusterServiceBroker = func(cli *servicecatalog.SDK, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
 					return nil, errors.New("Error updating clusterservicebroker")
@@ -283,8 +300,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 	Describe("Fetch the catalog information of a service broker", func() {
 		Context("with no errors", func() {
 			It("returns nil", func() {
-				platformClient, err := NewClient(clientConfig)
-				Expect(err).ToNot(HaveOccurred())
+				platformClient := newDefaultPlatformClient()
 
 				requestBroker := &platform.ServiceBroker{
 					GUID:      "1234",
@@ -296,7 +312,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					return nil
 				}
 
-				err = platformClient.Fetch(ctx, requestBroker)
+				err := platformClient.Fetch(ctx, requestBroker)
 
 				Expect(err).To(BeNil())
 			})
@@ -304,15 +320,14 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 		Context("with an error", func() {
 			It("returns the error", func() {
-				platformClient, err := NewClient(clientConfig)
-				Expect(err).ToNot(HaveOccurred())
+				platformClient := newDefaultPlatformClient()
 
 				requestBroker := &platform.ServiceBroker{}
 				syncClusterServiceBroker = func(cli *servicecatalog.SDK, name string, retries int) error {
 					return errors.New("Error syncing service broker")
 				}
 
-				err = platformClient.Fetch(ctx, requestBroker)
+				err := platformClient.Fetch(ctx, requestBroker)
 
 				Expect(err).To(Equal(errors.New("Error syncing service broker")))
 			})
