@@ -19,7 +19,12 @@ package postgres
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
+
+	"github.com/Peripli/service-manager/pkg/util/slice"
+
+	"github.com/gofrs/uuid"
 
 	"github.com/Peripli/service-manager/pkg/types"
 	sqlxtypes "github.com/jmoiron/sqlx/types"
@@ -32,9 +37,20 @@ const (
 	// brokerTable db table name for brokers
 	brokerTable = "brokers"
 
+	// brokerLabelsTable db table for broker labels
+	brokerLabelsTable = "broker_labels"
+
+	// serviceOfferingTable db table for service offerings
 	serviceOfferingTable = "service_offerings"
 
+	// servicePlanTable db table for service plans
 	servicePlanTable = "service_plans"
+
+	// visibilityTable db table for visibilities
+	visibilityTable = "visibilities"
+
+	// visibilityLabelsTable db table for visibilities table
+	visibilityLabelsTable = "visibility_labels"
 )
 
 // Safe represents a secret entity
@@ -108,6 +124,151 @@ type ServicePlan struct {
 	ServiceOfferingID string `db:"service_offering_id"`
 }
 
+type Visibility struct {
+	ID            string         `db:"id"`
+	PlatformID    sql.NullString `db:"platform_id"`
+	ServicePlanID string         `db:"service_plan_id"`
+	CreatedAt     time.Time      `db:"created_at"`
+	UpdatedAt     time.Time      `db:"updated_at"`
+}
+
+// Labelable is an interface that entities that support can be labelled should implement
+type Labelable interface {
+	Label() (labelTableName string, referenceColumnName string, primaryColumnName string)
+}
+
+type brokerLabels []*BrokerLabel
+
+func (bls brokerLabels) Validate() error {
+	pairs := make(map[string][]string)
+	for _, bl := range bls {
+		newKey := bl.Key.String
+		newValue := bl.Val.String
+		val, exists := pairs[newKey]
+		if exists && slice.StringsAnyEquals(val, newValue) {
+			return fmt.Errorf("duplicate label with key %s and value %s", newKey, newValue)
+		}
+		pairs[newKey] = append(pairs[newKey], newValue)
+	}
+	return nil
+}
+
+func (bls *brokerLabels) FromDTO(brokerID string, labels types.Labels) error {
+	now := time.Now()
+	for key, values := range labels {
+		for _, labelValue := range values {
+			UUID, err := uuid.NewV4()
+			if err != nil {
+				return fmt.Errorf("could not generate GUID for broker label: %s", err)
+			}
+			id := UUID.String()
+			bLabel := &BrokerLabel{
+				ID:        toNullString(id),
+				Key:       toNullString(key),
+				Val:       toNullString(labelValue),
+				CreatedAt: &now,
+				UpdatedAt: &now,
+				BrokerID:  toNullString(brokerID),
+			}
+			*bls = append(*bls, bLabel)
+		}
+	}
+	return nil
+}
+
+func (bls *brokerLabels) ToDTO() types.Labels {
+	labelValues := make(map[string][]string)
+	for _, label := range *bls {
+		values, exists := labelValues[label.Key.String]
+		if exists {
+			labelValues[label.Key.String] = append(values, label.Val.String)
+		} else {
+			labelValues[label.Key.String] = []string{label.Val.String}
+		}
+	}
+	return labelValues
+}
+
+type BrokerLabel struct {
+	ID        sql.NullString `db:"id"`
+	Key       sql.NullString `db:"key"`
+	Val       sql.NullString `db:"val"`
+	CreatedAt *time.Time     `db:"created_at"`
+	UpdatedAt *time.Time     `db:"updated_at"`
+	BrokerID  sql.NullString `db:"broker_id"`
+}
+
+func (bl *BrokerLabel) Label() (labelTableName string, referenceColumnName string, primaryColumnName string) {
+	labelTableName, referenceColumnName, primaryColumnName = brokerLabelsTable, "broker_id", "id"
+	return
+}
+
+type visibilityLabels []*VisibilityLabel
+
+func (vls visibilityLabels) Validate() error {
+	pairs := make(map[string][]string)
+	for _, vl := range vls {
+		newKey := vl.Key.String
+		newValue := vl.Val.String
+		val, exists := pairs[newKey]
+		if exists && slice.StringsAnyEquals(val, newValue) {
+			return fmt.Errorf("duplicate label with key %s and value %s", newKey, newValue)
+		}
+		pairs[newKey] = append(pairs[newKey], newValue)
+	}
+	return nil
+}
+
+func (vls *visibilityLabels) FromDTO(visibilityID string, labels types.Labels) error {
+	now := time.Now()
+	for key, values := range labels {
+		for _, labelValue := range values {
+			UUID, err := uuid.NewV4()
+			if err != nil {
+				return fmt.Errorf("could not generate GUID for visibility label: %s", err)
+			}
+			id := UUID.String()
+			visLabel := &VisibilityLabel{
+				ID:                  toNullString(id),
+				Key:                 toNullString(key),
+				Val:                 toNullString(labelValue),
+				CreatedAt:           &now,
+				UpdatedAt:           &now,
+				ServiceVisibilityID: toNullString(visibilityID),
+			}
+			*vls = append(*vls, visLabel)
+		}
+	}
+	return nil
+}
+
+func (vls *visibilityLabels) ToDTO() types.Labels {
+	labelValues := make(map[string][]string)
+	for _, label := range *vls {
+		values, exists := labelValues[label.Key.String]
+		if exists {
+			labelValues[label.Key.String] = append(values, label.Val.String)
+		} else {
+			labelValues[label.Key.String] = []string{label.Val.String}
+		}
+	}
+	return labelValues
+}
+
+type VisibilityLabel struct {
+	ID                  sql.NullString `db:"id"`
+	Key                 sql.NullString `db:"key"`
+	Val                 sql.NullString `db:"val"`
+	CreatedAt           *time.Time     `db:"created_at"`
+	UpdatedAt           *time.Time     `db:"updated_at"`
+	ServiceVisibilityID sql.NullString `db:"visibility_id"`
+}
+
+func (vl *VisibilityLabel) Label() (labelTableName string, referenceColumnName string, primaryColumnName string) {
+	labelTableName, referenceColumnName, primaryColumnName = visibilityLabelsTable, "visibility_id", "id"
+	return
+}
+
 func (b *Broker) ToDTO() *types.Broker {
 	broker := &types.Broker{
 		ID:          b.ID,
@@ -122,6 +283,7 @@ func (b *Broker) ToDTO() *types.Broker {
 				Password: b.Password,
 			},
 		},
+		Labels: make(map[string][]string),
 	}
 	return broker
 }
@@ -129,7 +291,7 @@ func (b *Broker) ToDTO() *types.Broker {
 func (b *Broker) FromDTO(broker *types.Broker) {
 	*b = Broker{
 		ID:          broker.ID,
-		Description: sql.NullString{String: broker.Description},
+		Description: toNullString(broker.Description),
 		Name:        broker.Name,
 		BrokerURL:   broker.BrokerURL,
 		CreatedAt:   broker.CreatedAt,
@@ -168,7 +330,7 @@ func (p *Platform) FromDTO(platform *types.Platform) {
 		Type:        platform.Type,
 		Name:        platform.Name,
 		CreatedAt:   platform.CreatedAt,
-		Description: sql.NullString{String: platform.Description},
+		Description: toNullString(platform.Description),
 		UpdatedAt:   platform.UpdatedAt,
 	}
 
@@ -194,9 +356,9 @@ func (so *ServiceOffering) ToDTO() *types.ServiceOffering {
 		PlanUpdatable:        so.PlanUpdatable,
 		CatalogID:            so.CatalogID,
 		CatalogName:          so.CatalogName,
-		Tags:                 json.RawMessage(so.Tags),
-		Requires:             json.RawMessage(so.Requires),
-		Metadata:             json.RawMessage(so.Metadata),
+		Tags:                 getJSONRawMessage(so.Tags),
+		Requires:             getJSONRawMessage(so.Requires),
+		Metadata:             getJSONRawMessage(so.Metadata),
 		BrokerID:             so.BrokerID,
 	}
 }
@@ -214,9 +376,9 @@ func (so *ServiceOffering) FromDTO(offering *types.ServiceOffering) {
 		PlanUpdatable:        offering.PlanUpdatable,
 		CatalogID:            offering.CatalogID,
 		CatalogName:          offering.CatalogName,
-		Tags:                 sqlxtypes.JSONText(offering.Tags),
-		Requires:             sqlxtypes.JSONText(offering.Requires),
-		Metadata:             sqlxtypes.JSONText(offering.Metadata),
+		Tags:                 getJSONText(offering.Tags),
+		Requires:             getJSONText(offering.Requires),
+		Metadata:             getJSONText(offering.Metadata),
 		BrokerID:             offering.BrokerID,
 	}
 }
@@ -233,8 +395,8 @@ func (sp *ServicePlan) ToDTO() *types.ServicePlan {
 		Free:              sp.Free,
 		Bindable:          sp.Bindable,
 		PlanUpdatable:     sp.PlanUpdatable,
-		Metadata:          json.RawMessage(sp.Metadata),
-		Schemas:           json.RawMessage(sp.Schemas),
+		Metadata:          getJSONRawMessage(sp.Metadata),
+		Schemas:           getJSONRawMessage(sp.Schemas),
 		ServiceOfferingID: sp.ServiceOfferingID,
 	}
 }
@@ -251,8 +413,47 @@ func (sp *ServicePlan) FromDTO(plan *types.ServicePlan) {
 		PlanUpdatable:     plan.PlanUpdatable,
 		CatalogID:         plan.CatalogID,
 		CatalogName:       plan.CatalogName,
-		Metadata:          sqlxtypes.JSONText(plan.Metadata),
-		Schemas:           sqlxtypes.JSONText(plan.Schemas),
+		Metadata:          getJSONText(plan.Metadata),
+		Schemas:           getJSONText(plan.Schemas),
 		ServiceOfferingID: plan.ServiceOfferingID,
 	}
+}
+
+func (v *Visibility) ToDTO() *types.Visibility {
+	return &types.Visibility{
+		ID:            v.ID,
+		PlatformID:    v.PlatformID.String,
+		ServicePlanID: v.ServicePlanID,
+		CreatedAt:     v.CreatedAt,
+		UpdatedAt:     v.UpdatedAt,
+		Labels:        make(map[string][]string),
+	}
+}
+
+func (v *Visibility) FromDTO(visibility *types.Visibility) {
+	*v = Visibility{
+		ID: visibility.ID,
+		// API cannot send nulls right now and storage cannot store empty string for this column as it is FK
+		PlatformID:    toNullString(visibility.PlatformID),
+		ServicePlanID: visibility.ServicePlanID,
+		CreatedAt:     visibility.CreatedAt,
+		UpdatedAt:     visibility.UpdatedAt,
+	}
+}
+
+func getJSONText(item json.RawMessage) sqlxtypes.JSONText {
+	if len(item) == len("null") && string(item) == "null" {
+		return sqlxtypes.JSONText("{}")
+	}
+	return sqlxtypes.JSONText(item)
+}
+
+func getJSONRawMessage(item sqlxtypes.JSONText) json.RawMessage {
+	if len(item) <= len("null") {
+		itemStr := string(item)
+		if itemStr == "{}" || itemStr == "null" {
+			return nil
+		}
+	}
+	return json.RawMessage(item)
 }

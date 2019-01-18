@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Peripli/service-manager/pkg/query"
+
 	"github.com/Peripli/service-manager/pkg/log"
 )
 
@@ -87,10 +89,15 @@ var (
 	ErrAlreadyExistsInStorage = errors.New("unique constraint violation")
 )
 
+type ErrBadRequestStorage error
+
 // HandleStorageError handles storage errors by converting them to relevant HTTPErrors
-func HandleStorageError(err error, entityName, entityID string) error {
+func HandleStorageError(err error, entityName string) error {
 	if err == nil {
 		return nil
+	}
+	if entityName == "" {
+		entityName = "entity"
 	}
 	switch err {
 	case ErrAlreadyExistsInStorage:
@@ -102,9 +109,52 @@ func HandleStorageError(err error, entityName, entityID string) error {
 	case ErrNotFoundInStorage:
 		return &HTTPError{
 			ErrorType:   "NotFound",
-			Description: fmt.Sprintf("could not find %s with id %s", entityName, entityID),
+			Description: fmt.Sprintf("could not find such %s", entityName),
 			StatusCode:  http.StatusNotFound,
+		}
+	default:
+		// in case we did not replace the pg.Error in the DB layer, propagate it as response message to give the caller relevant info
+		storageErr, ok := err.(ErrBadRequestStorage)
+		if ok {
+			return &HTTPError{
+				ErrorType:   "BadRequest",
+				Description: fmt.Sprintf("storage err: %s", storageErr.Error()),
+				StatusCode:  http.StatusBadRequest,
+			}
 		}
 	}
 	return fmt.Errorf("unknown error type returned from storage layer: %s", err)
+}
+
+func HandleSelectionError(err error, entityName ...string) error {
+	if err == nil {
+		return nil
+	}
+
+	if _, ok := err.(*query.UnsupportedQueryError); ok {
+		return &HTTPError{
+			Description: err.Error(),
+			ErrorType:   "BadRequest",
+			StatusCode:  http.StatusBadRequest,
+		}
+	}
+	if len(entityName) == 0 {
+		entityName = []string{"entity"}
+	}
+	return HandleStorageError(err, entityName[0])
+}
+
+func HandleLabelChangeError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if _, ok := err.(*query.LabelChangeError); ok {
+		return &HTTPError{
+			Description: err.Error(),
+			ErrorType:   "BadRequest",
+			StatusCode:  http.StatusBadRequest,
+		}
+	}
+	return HandleStorageError(err, "")
 }

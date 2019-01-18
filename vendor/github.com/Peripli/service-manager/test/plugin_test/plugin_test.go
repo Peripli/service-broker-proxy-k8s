@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/Peripli/service-manager/pkg/sm"
+
 	"github.com/Peripli/service-manager/test/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -37,12 +39,12 @@ var _ = Describe("Service Manager Plugins", func() {
 	Describe("Partial plugin", func() {
 		BeforeEach(func() {
 			ctx = common.NewTestContext(&common.ContextParams{
-				RegisterExtensions: func(api *web.API) {
-					api.RegisterPlugins(&PartialPlugin{})
+				RegisterExtensions: func(smb *sm.ServiceManagerBuilder) {
+					smb.API.RegisterPlugins(&PartialPlugin{})
 				},
 			})
 			var brokerID string
-			brokerID, brokerServer = ctx.RegisterBroker()
+			brokerID, _, brokerServer = ctx.RegisterBroker()
 			osbURL = "/v1/osb/" + brokerID
 		})
 
@@ -66,12 +68,12 @@ var _ = Describe("Service Manager Plugins", func() {
 			testPlugin = TestPlugin{}
 
 			ctx = common.NewTestContext(&common.ContextParams{
-				RegisterExtensions: func(api *web.API) {
-					api.RegisterPlugins(testPlugin)
+				RegisterExtensions: func(smb *sm.ServiceManagerBuilder) {
+					smb.API.RegisterPlugins(testPlugin)
 				},
 			})
 			var brokerID string
-			brokerID, brokerServer = ctx.RegisterBroker()
+			brokerID, _, brokerServer = ctx.RegisterBroker()
 			osbURL = "/v1/osb/" + brokerID
 		})
 
@@ -120,7 +122,7 @@ var _ = Describe("Service Manager Plugins", func() {
 		})
 
 		It("Plugin modifies the request & response headers", func() {
-			testPlugin["fetchCatalog"] = web.MiddlewareFunc(func(req *web.Request, next web.Handler) (*web.Response, error) {
+			testPlugin["provision"] = web.MiddlewareFunc(func(req *web.Request, next web.Handler) (*web.Response, error) {
 				h := req.Header.Get("extra")
 				req.Header.Set("extra", h+"-request")
 
@@ -133,8 +135,8 @@ var _ = Describe("Service Manager Plugins", func() {
 				return res, nil
 			})
 
-			ctx.SMWithBasic.GET(osbURL+"/v2/catalog").WithHeader("extra", "value").
-				Expect().Status(http.StatusOK).Header("extra").Equal("value-response")
+			ctx.SMWithBasic.PUT(osbURL+"/v2/service_instances/123").WithHeader("extra", "value").WithJSON(object{}).
+				Expect().Status(http.StatusCreated).Header("extra").Equal("value-response")
 
 			Expect(brokerServer.LastRequest.Header.Get("extra")).To(Equal("value-request"))
 		})

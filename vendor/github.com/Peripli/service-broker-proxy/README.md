@@ -10,4 +10,4 @@ Framework for writing Serrvice Manager broker proxies.
 ## Purpose
 
 Contains code to write proxy agents for the Service Manager.
-It provides logic for service broker registration and access reconcilation between the Service Manager and the platform that the proxy represents as well as logic for proxying OSB API calls. It's first consumers are `github.com/Peripli/service-broker-proxy-k8s` and `github.com/Peripli/service-broker-proxy-cf`.
+It provides logic for service broker registration and access reconciliation between the Service Manager and the platform that the proxy represents as well as logic for proxying OSB API calls. It's first consumers are `github.com/Peripli/service-broker-proxy-k8s` and `github.com/Peripli/service-broker-proxy-cf`.
