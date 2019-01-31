@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Peripli/service-manager/api/visibility"
+
 	"github.com/Peripli/service-manager/api/broker"
 	"github.com/Peripli/service-manager/api/platform"
 
@@ -40,20 +42,6 @@ import (
 	"github.com/Peripli/service-manager/storage"
 	osbc "github.com/pmorie/go-open-service-broker-client/v2"
 )
-
-// Security is the configuration used for the encryption of data
-type Security struct {
-	// EncryptionKey is the encryption key from the environment
-	EncryptionKey string `mapstructure:"encryption_key"`
-}
-
-// Validate validates the API Security settings
-func (s *Security) Validate() error {
-	if len(s.EncryptionKey) != 32 {
-		return fmt.Errorf("validate Settings: SecurityEncryptionkey length must be exactly 32")
-	}
-	return nil
-}
 
 // Settings type to be loaded from the environment
 type Settings struct {
@@ -103,13 +91,20 @@ func New(ctx context.Context, repository storage.Repository, settings *Settings,
 			&service_plan.Controller{
 				ServicePlanStorage: repository.ServicePlan(),
 			},
+			&visibility.Controller{
+				Repository: repository,
+			},
 			&info.Controller{
 				TokenIssuer: settings.TokenIssuerURL,
 			},
 			osb.NewController(&osb.StorageBrokerFetcher{
 				BrokerStorage: repository.Broker(),
 				Encrypter:     encrypter,
-			}, http.DefaultTransport),
+			}, &osb.StorageCatalogFetcher{
+				CatalogStorage: repository.ServiceOffering(),
+			},
+				http.DefaultTransport,
+			),
 		},
 		// Default filters - more filters can be registered using the relevant API methods
 		Filters: []web.Filter{
@@ -117,6 +112,11 @@ func New(ctx context.Context, repository storage.Repository, settings *Settings,
 			basic.NewFilter(repository.Credentials(), encrypter),
 			bearerAuthnFilter,
 			secfilters.NewRequiredAuthnFilter(),
+			&filters.SelectionCriteria{},
+			// disable until next phase
+			//&filters.FreeServicePlansFilter{
+			//	Repository: repository,
+			//},
 		},
 		Registry: health.NewDefaultRegistry(),
 	}, nil

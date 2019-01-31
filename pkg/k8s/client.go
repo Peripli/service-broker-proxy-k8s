@@ -6,8 +6,8 @@ import (
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
-	"github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	servicecatalog "github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 )
 
@@ -19,7 +19,6 @@ type PlatformClient struct {
 }
 
 var _ platform.Client = &PlatformClient{}
-var _ platform.CatalogFetcher = &PlatformClient{}
 
 // restInClusterConfig function returns config object which uses the service account kubernetes gives to pods
 var restInClusterConfig = rest.InClusterConfig
@@ -62,8 +61,23 @@ func NewClient(config *ClientConfiguration) (*PlatformClient, error) {
 	}, nil
 }
 
+// Broker returns the platform client which handles broker operations
+func (b *PlatformClient) Broker() platform.BrokerClient {
+	return b
+}
+
+// CatalogFetcher returns the platform client which handles catalog fetch operations
+func (b *PlatformClient) CatalogFetcher() platform.CatalogFetcher {
+	return b
+}
+
+// Visibility returns nil as the platform client cannot handle visibilities operations
+func (b *PlatformClient) Visibility() platform.VisibilityClient {
+	return nil
+}
+
 // GetBrokers returns all service-brokers currently registered in kubernetes service-catalog.
-func (b PlatformClient) GetBrokers(ctx context.Context) ([]platform.ServiceBroker, error) {
+func (b *PlatformClient) GetBrokers(ctx context.Context) ([]platform.ServiceBroker, error) {
 	brokers, err := retrieveClusterServiceBrokers(b.cli)
 	if err != nil {
 		return nil, fmt.Errorf("unable to list cluster-scoped brokers (%s)", err)
@@ -81,7 +95,7 @@ func (b PlatformClient) GetBrokers(ctx context.Context) ([]platform.ServiceBroke
 }
 
 // CreateBroker registers a new broker in kubernetes service-catalog.
-func (b PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
+func (b *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
 	broker := newServiceBroker(r.Name, r.BrokerURL, b.regSecretRef)
 	broker.Spec.CommonServiceBrokerSpec.RelistBehavior = "Manual"
 
@@ -97,12 +111,12 @@ func (b PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateServ
 }
 
 // DeleteBroker deletes an existing broker in from kubernetes service-catalog.
-func (b PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteServiceBrokerRequest) error {
+func (b *PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteServiceBrokerRequest) error {
 	return deleteClusterServiceBroker(b.cli, r.Name, &v1.DeleteOptions{})
 }
 
 // UpdateBroker updates a service broker in the kubernetes service-catalog.
-func (b PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
+func (b *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
 	// Name and broker url are updateable
 	broker := newServiceBroker(r.Name, r.BrokerURL, b.regSecretRef)
 
@@ -119,7 +133,7 @@ func (b PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateServ
 
 // Fetch the new catalog information from reach service-broker registered in kubernetes,
 // so that it is visible in the kubernetes service-catalog.
-func (b PlatformClient) Fetch(ctx context.Context, serviceBroker *platform.ServiceBroker) error {
+func (b *PlatformClient) Fetch(ctx context.Context, serviceBroker *platform.ServiceBroker) error {
 	return syncClusterServiceBroker(b.cli, serviceBroker.Name, 3)
 }
 

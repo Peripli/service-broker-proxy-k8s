@@ -102,7 +102,45 @@ var _ = Describe("Client", func() {
 			})
 		})
 	})
-	const okResponse = `{
+
+	type testCase struct {
+		expectations *common.HTTPExpectations
+		reaction     *common.HTTPReaction
+
+		expectedErr      error
+		expectedResponse interface{}
+	}
+
+	newClient := func(t *testCase) *ServiceManagerClient {
+		client, err := NewClient(&Settings{
+			User:              "admin",
+			Password:          "admin",
+			URL:               "http://example.com",
+			OSBAPIPath:        "/osb",
+			RequestTimeout:    2 * time.Second,
+			ResyncPeriod:      5 * time.Second,
+			SkipSSLValidation: false,
+			Transport:         httpClient(t.reaction, t.expectations),
+		})
+		Expect(err).ShouldNot(HaveOccurred())
+		return client
+	}
+
+	assertResponse := func(t *testCase, resp interface{}, err error) {
+		if t.expectedErr != nil {
+			Expect(errors.Cause(err).Error()).To(ContainSubstring(t.expectedErr.Error()))
+		} else {
+			Expect(err).To(BeNil())
+		}
+
+		if t.expectedResponse != nil {
+			Expect(resp).To(Equal(t.expectedResponse))
+		} else {
+			Expect(resp).To(BeNil())
+		}
+	}
+
+	const okBrokerResponse = `{
 		"brokers": [
 		{
 			"id": "brokerID",
@@ -234,33 +272,22 @@ var _ = Describe("Client", func() {
 		{
 			ID:               "brokerID",
 			BrokerURL:        "https://service-broker-url",
-			ServiceOfferings: catalogObject(okResponse),
+			ServiceOfferings: catalogObject(okBrokerResponse),
 			Metadata:         map[string]json.RawMessage{},
 		},
 	}
 
-	type testCase struct {
-		expectations *common.HTTPExpectations
-		reaction     *common.HTTPReaction
-
-		expectedErr      error
-		expectedResponse []Broker
-	}
-
-	entries := []TableEntry{
+	brokerEntries := []TableEntry{
 		Entry("Successfully obtain brokers", testCase{
 			expectations: &common.HTTPExpectations{
 				URL: fmt.Sprintf(APIInternalBrokers, "http://example.com"),
-				Params: map[string]string{
-					"catalog": "true",
-				},
 				Headers: map[string]string{
 					"Authorization": "Basic " + basicAuth("admin", "admin"),
 				},
 			},
 			reaction: &common.HTTPReaction{
 				Status: http.StatusOK,
-				Body:   okResponse,
+				Body:   okBrokerResponse,
 				Err:    nil,
 			},
 			expectedResponse: clientBrokersResponse,
@@ -270,9 +297,6 @@ var _ = Describe("Client", func() {
 		Entry("Returns error when API returns error", testCase{
 			expectations: &common.HTTPExpectations{
 				URL: fmt.Sprintf(APIInternalBrokers, "http://example.com"),
-				Params: map[string]string{
-					"catalog": "true",
-				},
 				Headers: map[string]string{
 					"Authorization": "Basic " + basicAuth("admin", "admin"),
 				},
@@ -288,9 +312,6 @@ var _ = Describe("Client", func() {
 		Entry("Returns error when API response body is invalid", testCase{
 			expectations: &common.HTTPExpectations{
 				URL: fmt.Sprintf(APIInternalBrokers, "http://example.com"),
-				Params: map[string]string{
-					"catalog": "true",
-				},
 				Headers: map[string]string{
 					"Authorization": "Basic " + basicAuth("admin", "admin"),
 				},
@@ -307,9 +328,6 @@ var _ = Describe("Client", func() {
 		Entry("Returns error when API returns error", testCase{
 			expectations: &common.HTTPExpectations{
 				URL: fmt.Sprintf(APIInternalBrokers, "http://example.com"),
-				Params: map[string]string{
-					"catalog": "true",
-				},
 				Headers: map[string]string{
 					"Authorization": "Basic " + basicAuth("admin", "admin"),
 				},
@@ -325,30 +343,146 @@ var _ = Describe("Client", func() {
 	}
 
 	DescribeTable("GETBrokers", func(t testCase) {
-		client, err := NewClient(&Settings{
-			User:              "admin",
-			Password:          "admin",
-			URL:               "http://example.com",
-			OSBAPIPath:        "/osb",
-			RequestTimeout:    2 * time.Second,
-			ResyncPeriod:      5 * time.Second,
-			SkipSSLValidation: false,
-			Transport:         httpClient(t.reaction, t.expectations),
-		})
-		Expect(err).ShouldNot(HaveOccurred())
+		client := newClient(&t)
 		resp, err := client.GetBrokers(context.TODO())
+		assertResponse(&t, resp, err)
+	}, brokerEntries...)
 
-		if t.expectedErr != nil {
-			Expect(errors.Cause(err).Error()).To(ContainSubstring(t.expectedErr.Error()))
-		} else {
-			Expect(err).To(BeNil())
+	const okPlanResponse = `{
+		"service_plans": [
+			 {
+				  "created_at": "2018-12-27T09:14:54Z",
+				  "updated_at": "2018-12-27T09:14:54Z",
+				  "id": "180dd7fb-1c6e-41fe-95ee-aefb51513032",
+				  "name": "dummy1plan1",
+				  "description": "dummy 1 example plan 1",
+				  "catalog_id": "1f400825-1434-5278-9913-dfcf63fcd647",
+				  "catalog_name": "dummy1plan1",
+				  "free": false,
+				  "bindable": true,
+				  "plan_updateable": false,
+				  "service_offering_id": "47c7790a-3cd1-4520-a030-471f91dc616e"
+			 }
+		]
+	}`
+
+	servicePlans := func(servicePlans string) []*types.ServicePlan {
+		c := make(map[string][]*types.ServicePlan)
+		err := json.Unmarshal([]byte(servicePlans), &c)
+		if err != nil {
+			panic(err)
 		}
-
-		if t.expectedResponse != nil {
-			Expect(resp).To(Equal(t.expectedResponse))
-		} else {
-			Expect(resp).To(BeNil())
+		if c["service_plans"] == nil {
+			panic("could not unmarshal service plans")
 		}
+		return c["service_plans"]
+	}
 
-	}, entries...)
+	planEntries := []TableEntry{
+		Entry("Successfully obtain plans", testCase{
+			expectations: &common.HTTPExpectations{
+				URL: fmt.Sprintf(APIPlans, "http://example.com"),
+				Headers: map[string]string{
+					"Authorization": "Basic " + basicAuth("admin", "admin"),
+				},
+			},
+			reaction: &common.HTTPReaction{
+				Status: http.StatusOK,
+				Body:   okPlanResponse,
+				Err:    nil,
+			},
+			expectedResponse: servicePlans(okPlanResponse),
+			expectedErr:      nil,
+		}),
+
+		Entry("Returns error when API returns error", testCase{
+			expectations: &common.HTTPExpectations{
+				URL: fmt.Sprintf(APIPlans, "http://example.com"),
+				Headers: map[string]string{
+					"Authorization": "Basic " + basicAuth("admin", "admin"),
+				},
+			},
+			reaction: &common.HTTPReaction{
+				Status: http.StatusInternalServerError,
+				Body:   okPlanResponse,
+				Err:    fmt.Errorf("expected error"),
+			},
+			expectedResponse: nil,
+			expectedErr:      fmt.Errorf("expected error"),
+		}),
+	}
+
+	DescribeTable("GETPlans", func(t testCase) {
+		client := newClient(&t)
+		resp, err := client.GetPlans(context.TODO())
+		assertResponse(&t, resp, err)
+	}, planEntries...)
+
+	const okVisibilityResponse = `{
+		"visibilities": [
+			 {
+				  "id": "127b5b3a-c0bc-45be-bcaf-f1083566214f",
+				  "platform_id": "bf092091-76ba-4398-a301-40472b794aea",
+				  "service_plan_id": "180dd7fb-1c6e-41fe-95ee-aefb51513032",
+				  "labels": {
+						"organization_guid": [
+							"d0761213-012d-4bc5-8a7b-7780875d8913",
+							"15317fc3-693c-423a-90ba-6f86d6559abe"
+						],
+						"something": ["generic"]
+				  },
+				  "created_at": "2018-12-27T14:35:23Z",
+				  "updated_at": "2018-12-27T14:35:23Z"
+			 }
+		]
+   }`
+
+	serviceVisibilities := func(serviceVisibilities string) []*types.Visibility {
+		c := types.Visibilities{}
+		err := json.Unmarshal([]byte(serviceVisibilities), &c)
+		if err != nil {
+			panic(err)
+		}
+		return c.Visibilities
+	}
+
+	visibilitiesEntries := []TableEntry{
+		Entry("Successfully obtain visibilities", testCase{
+			expectations: &common.HTTPExpectations{
+				URL: fmt.Sprintf(APIVisibilities, "http://example.com"),
+				Headers: map[string]string{
+					"Authorization": "Basic " + basicAuth("admin", "admin"),
+				},
+			},
+			reaction: &common.HTTPReaction{
+				Status: http.StatusOK,
+				Body:   okVisibilityResponse,
+				Err:    nil,
+			},
+			expectedResponse: serviceVisibilities(okVisibilityResponse),
+			expectedErr:      nil,
+		}),
+
+		Entry("Returns error when API returns error", testCase{
+			expectations: &common.HTTPExpectations{
+				URL: fmt.Sprintf(APIVisibilities, "http://example.com"),
+				Headers: map[string]string{
+					"Authorization": "Basic " + basicAuth("admin", "admin"),
+				},
+			},
+			reaction: &common.HTTPReaction{
+				Status: http.StatusInternalServerError,
+				Body:   okPlanResponse,
+				Err:    fmt.Errorf("expected error"),
+			},
+			expectedResponse: nil,
+			expectedErr:      fmt.Errorf("expected error"),
+		}),
+	}
+
+	DescribeTable("GETPlans", func(t testCase) {
+		client := newClient(&t)
+		resp, err := client.GetVisibilities(context.TODO())
+		assertResponse(&t, resp, err)
+	}, visibilitiesEntries...)
 })

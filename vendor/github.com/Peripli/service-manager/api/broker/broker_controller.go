@@ -21,8 +21,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
+
+	"github.com/tidwall/sjson"
+
+	"github.com/Peripli/service-manager/pkg/query"
 
 	"github.com/Peripli/service-manager/pkg/log"
 	"github.com/Peripli/service-manager/pkg/security"
@@ -36,8 +39,7 @@ import (
 )
 
 const (
-	reqBrokerID  = "broker_id"
-	catalogParam = "catalog"
+	reqBrokerID = "broker_id"
 )
 
 // Controller broker controller
@@ -85,8 +87,9 @@ func (c *Controller) createBroker(r *web.Request) (*web.Response, error) {
 	}
 
 	if err := c.Repository.InTransaction(ctx, func(ctx context.Context, storage storage.Warehouse) error {
-		if err := storage.Broker().Create(ctx, broker); err != nil {
-			return util.HandleStorageError(err, "broker", broker.ID)
+		var brokerID string
+		if brokerID, err = storage.Broker().Create(ctx, broker); err != nil {
+			return util.HandleStorageError(err, "broker")
 		}
 		for _, service := range catalog.Services {
 			serviceOffering := &types.ServiceOffering{}
@@ -101,14 +104,21 @@ func (c *Controller) createBroker(r *web.Request) (*web.Response, error) {
 			serviceOffering.ID = serviceUUID.String()
 			serviceOffering.CreatedAt = broker.CreatedAt
 			serviceOffering.UpdatedAt = broker.UpdatedAt
-			serviceOffering.BrokerID = broker.ID
+			serviceOffering.BrokerID = brokerID
 
 			if err := serviceOffering.Validate(); err != nil {
-				return fmt.Errorf("service offering constructed during catalog insertion for broker %s is invalid: %s", broker.ID, err)
+				return &util.HTTPError{
+					ErrorType:   "BadRequest",
+					Description: fmt.Sprintf("service offering constructed during catalog insertion for broker %s is invalid: %s", broker.ID, err),
+					StatusCode:  http.StatusBadRequest,
+				}
 			}
-			if err := storage.ServiceOffering().Create(ctx, serviceOffering); err != nil {
-				return util.HandleStorageError(err, "service_offering", service.ID)
+
+			var serviceID string
+			if serviceID, err = storage.ServiceOffering().Create(ctx, serviceOffering); err != nil {
+				return util.HandleStorageError(err, "service_offering")
 			}
+			serviceOffering.ID = serviceID
 			for planIndex := range service.Plans {
 				servicePlan := &types.ServicePlan{}
 				err := osbcCatalogPlanToServicePlan(servicePlan, &catalogPlanWithServiceOfferingID{
@@ -127,11 +137,15 @@ func (c *Controller) createBroker(r *web.Request) (*web.Response, error) {
 				servicePlan.UpdatedAt = broker.UpdatedAt
 
 				if err := servicePlan.Validate(); err != nil {
-					return fmt.Errorf("service plan constructed during catalog insertion for broker %s is invalid: %s", broker.ID, err)
+					return &util.HTTPError{
+						ErrorType:   "BadRequest",
+						Description: fmt.Sprintf("service plan constructed during catalog insertion for broker %s is invalid: %s", broker.ID, err),
+						StatusCode:  http.StatusBadRequest,
+					}
 				}
 
-				if err := storage.ServicePlan().Create(ctx, servicePlan); err != nil {
-					return util.HandleStorageError(err, "service_plan", service.Plans[planIndex].ID)
+				if _, err := storage.ServicePlan().Create(ctx, servicePlan); err != nil {
+					return util.HandleStorageError(err, "service_plan")
 				}
 			}
 		}
@@ -151,7 +165,7 @@ func (c *Controller) getBroker(r *web.Request) (*web.Response, error) {
 
 	broker, err := c.Repository.Broker().Get(ctx, brokerID)
 	if err != nil {
-		return nil, util.HandleStorageError(err, "broker", brokerID)
+		return nil, util.HandleStorageError(err, "broker")
 	}
 
 	broker.Credentials = nil
@@ -163,21 +177,10 @@ func (c *Controller) listBrokers(r *web.Request) (*web.Response, error) {
 	var err error
 	ctx := r.Context()
 	log.C(ctx).Debug("Getting all brokers")
-	includeCatalog := strings.ToLower(r.FormValue(catalogParam)) == "true"
 
-	brokers, err = c.Repository.Broker().List(ctx)
+	brokers, err = c.Repository.Broker().List(ctx, query.CriteriaForContext(ctx)...)
 	if err != nil {
-		return nil, err
-	}
-	if includeCatalog {
-		for _, broker := range brokers {
-			offerings, err := c.Repository.ServiceOffering().ListWithServicePlansByBrokerID(ctx, broker.ID)
-			if err != nil {
-				return nil, err
-			}
-			broker.Services = offerings
-
-		}
+		return nil, util.HandleSelectionError(err)
 	}
 
 	for _, broker := range brokers {
@@ -189,13 +192,24 @@ func (c *Controller) listBrokers(r *web.Request) (*web.Response, error) {
 	})
 }
 
+func (c *Controller) deleteBrokers(r *web.Request) (*web.Response, error) {
+	ctx := r.Context()
+	log.C(ctx).Debugf("Deleting visibilities...")
+
+	if err := c.Repository.Broker().Delete(ctx, query.CriteriaForContext(ctx)...); err != nil {
+		return nil, util.HandleSelectionError(err, "broker")
+	}
+	return util.NewJSONResponse(http.StatusOK, map[string]string{})
+}
+
 func (c *Controller) deleteBroker(r *web.Request) (*web.Response, error) {
 	brokerID := r.PathParams[reqBrokerID]
 	ctx := r.Context()
 	log.C(ctx).Debugf("Deleting broker with id %s", brokerID)
 
-	if err := c.Repository.Broker().Delete(ctx, brokerID); err != nil {
-		return nil, util.HandleStorageError(err, "broker", brokerID)
+	byID := query.ByField(query.EqualsOperator, "id", brokerID)
+	if err := c.Repository.Broker().Delete(ctx, byID); err != nil {
+		return nil, util.HandleStorageError(err, "broker")
 	}
 	return util.NewJSONResponse(http.StatusOK, map[string]int{})
 }
@@ -207,11 +221,20 @@ func (c *Controller) patchBroker(r *web.Request) (*web.Response, error) {
 
 	broker, err := c.Repository.Broker().Get(ctx, brokerID)
 	if err != nil {
-		return nil, util.HandleStorageError(err, "broker", brokerID)
+		return nil, util.HandleStorageError(err, "broker")
+	}
+
+	if err := transformBrokerCredentials(ctx, broker, c.Encrypter.Decrypt); err != nil {
+		return nil, err
 	}
 
 	createdAt := broker.CreatedAt
-	if err := transformBrokerCredentials(ctx, broker, c.Encrypter.Decrypt); err != nil {
+
+	changes, err := query.LabelChangesFromJSON(r.Body)
+	if err != nil {
+		return nil, util.HandleLabelChangeError(err)
+	}
+	if r.Body, err = sjson.DeleteBytes(r.Body, "labels"); err != nil {
 		return nil, err
 	}
 
@@ -222,11 +245,17 @@ func (c *Controller) patchBroker(r *web.Request) (*web.Response, error) {
 	broker.ID = brokerID
 	broker.CreatedAt = createdAt
 	broker.UpdatedAt = time.Now().UTC()
-	if err := c.resyncBrokerAndCatalog(ctx, broker); err != nil {
+
+	catalog, err := c.getBrokerCatalog(ctx, broker)
+	if err != nil {
 		return nil, err
 	}
 
 	if err := transformBrokerCredentials(ctx, broker, c.Encrypter.Encrypt); err != nil {
+		return nil, err
+	}
+
+	if err := c.resyncBrokerAndCatalog(ctx, broker, catalog, changes); err != nil {
 		return nil, err
 	}
 
@@ -255,7 +284,11 @@ func (c *Controller) getBrokerCatalog(ctx context.Context, broker *types.Broker)
 	}
 	catalog, err := osbClient.GetCatalog()
 	if err != nil {
-		return nil, fmt.Errorf("error fetching catalog from broker %s: %s", broker.Name, err)
+		return nil, &util.HTTPError{
+			ErrorType:   "BrokerError",
+			Description: fmt.Sprintf("error fetching catalog from broker %s: %v", broker.Name, err),
+			StatusCode:  http.StatusBadRequest,
+		}
 	}
 
 	return catalog, nil
@@ -364,21 +397,19 @@ func boolPointerToBool(value *bool, defaultValue bool) bool {
 	return *value
 }
 
-func (c *Controller) resyncBrokerAndCatalog(ctx context.Context, broker *types.Broker) error {
-	catalog, err := c.getBrokerCatalog(ctx, broker)
-	if err != nil {
-		return err
-	}
+func (c *Controller) resyncBrokerAndCatalog(ctx context.Context, broker *types.Broker, catalog *osbc.CatalogResponse, changes []*query.LabelChange) error {
 	log.C(ctx).Debugf("Updating catalog storage for broker with id %s", broker.ID)
-	if err := c.Repository.InTransaction(ctx, func(ctx context.Context, storage storage.Warehouse) error {
-		if err := storage.Broker().Update(ctx, broker); err != nil {
-			return util.HandleStorageError(err, "broker", broker.ID)
+	if err := c.Repository.InTransaction(ctx, func(ctx context.Context, txStorage storage.Warehouse) error {
+		if err := txStorage.Broker().Update(ctx, broker, changes...); err != nil {
+			return util.HandleStorageError(err, "broker")
 		}
 
-		existingServiceOfferingsWithServicePlans, err := storage.ServiceOffering().ListWithServicePlansByBrokerID(ctx, broker.ID)
+		existingServiceOfferingsWithServicePlans, err := txStorage.ServiceOffering().ListWithServicePlansByBrokerID(ctx, broker.ID)
 		if err != nil {
-			return err
+			return fmt.Errorf("error getting catalog for broker with id %s from SM DB: %s", broker.ID, err)
+
 		}
+
 		existingServicesOfferingsMap, existingServicePlansMap := convertExistingCatalogToMaps(existingServiceOfferingsWithServicePlans)
 		log.C(ctx).Debugf("Found %d services and %d plans currently known for broker", len(existingServicesOfferingsMap), len(existingServicePlansMap))
 
@@ -401,31 +432,42 @@ func (c *Controller) resyncBrokerAndCatalog(ctx context.Context, broker *types.B
 				existingServiceOffering.UpdatedAt = time.Now().UTC()
 
 				if err := existingServiceOffering.Validate(); err != nil {
-					return fmt.Errorf("service offering constructed during catalog update for broker %s is invalid: %s", broker.ID, err)
+					return &util.HTTPError{
+						ErrorType:   "BadRequest",
+						Description: fmt.Sprintf("service offering constructed during catalog update for broker %s is invalid: %s", broker.ID, err),
+						StatusCode:  http.StatusBadRequest,
+					}
 				}
-				if err := c.Repository.ServiceOffering().Update(ctx, existingServiceOffering); err != nil {
-					return util.HandleStorageError(err, "service_offering", existingServiceOffering.ID)
+				if err := txStorage.ServiceOffering().Update(ctx, existingServiceOffering); err != nil {
+					return util.HandleStorageError(err, "service_offering")
 				}
 			} else {
 				serviceUUID, err := uuid.NewV4()
 				if err != nil {
 					return fmt.Errorf("could not generate GUID for service_plan: %s", err)
 				}
-				serviceOffering := &types.ServiceOffering{}
-				if err := osbcCatalogServiceToServiceOffering(serviceOffering, catalogService); err != nil {
+				existingServiceOffering = &types.ServiceOffering{}
+				if err := osbcCatalogServiceToServiceOffering(existingServiceOffering, catalogService); err != nil {
 					return err
 				}
-				serviceOffering.ID = serviceUUID.String()
-				serviceOffering.CreatedAt = time.Now().UTC()
-				serviceOffering.UpdatedAt = time.Now().UTC()
-				serviceOffering.BrokerID = broker.ID
+				existingServiceOffering.ID = serviceUUID.String()
+				existingServiceOffering.CreatedAt = time.Now().UTC()
+				existingServiceOffering.UpdatedAt = time.Now().UTC()
+				existingServiceOffering.BrokerID = broker.ID
 
-				if err := serviceOffering.Validate(); err != nil {
-					return fmt.Errorf("service offering constructed during catalog update for broker %s is invalid: %s", broker.ID, err)
+				if err := existingServiceOffering.Validate(); err != nil {
+					return &util.HTTPError{
+						ErrorType:   "BadRequest",
+						Description: fmt.Sprintf("service offering constructed during catalog update for broker %s is invalid: %s", broker.ID, err),
+						StatusCode:  http.StatusBadRequest,
+					}
 				}
-				if err := c.Repository.ServiceOffering().Create(ctx, serviceOffering); err != nil {
-					return util.HandleStorageError(err, "service_offering", existingServiceOffering.ID)
+
+				var dbServiceID string
+				if dbServiceID, err = txStorage.ServiceOffering().Create(ctx, existingServiceOffering); err != nil {
+					return util.HandleStorageError(err, "service_offering")
 				}
+				existingServiceOffering.ID = dbServiceID
 			}
 
 			catalogPlansForService := catalogPlansMap[catalogService.ID]
@@ -439,8 +481,9 @@ func (c *Controller) resyncBrokerAndCatalog(ctx context.Context, broker *types.B
 		}
 
 		for _, existingServiceOffering := range existingServicesOfferingsMap {
-			if err := c.Repository.ServiceOffering().Delete(ctx, existingServiceOffering.ID); err != nil {
-				return util.HandleStorageError(err, "service_offering", existingServiceOffering.ID)
+			byID := query.ByField(query.EqualsOperator, "id", existingServiceOffering.ID)
+			if err := txStorage.ServiceOffering().Delete(ctx, byID); err != nil {
+				return util.HandleStorageError(err, "service_offering")
 			}
 		}
 		log.C(ctx).Debugf("Successfully resynced service offerings for broker with id %s", broker.ID)
@@ -456,10 +499,15 @@ func (c *Controller) resyncBrokerAndCatalog(ctx context.Context, broker *types.B
 				existingServicePlan.UpdatedAt = time.Now().UTC()
 
 				if err := existingServicePlan.Validate(); err != nil {
-					return fmt.Errorf("service plan constructed during catalog update for broker %s is invalid: %s", broker.ID, err)
+					return &util.HTTPError{
+						ErrorType:   "BadRequest",
+						Description: fmt.Sprintf("service plan constructed during catalog update for broker %s is invalid: %s", broker.ID, err),
+						StatusCode:  http.StatusBadRequest,
+					}
 				}
-				if err := c.Repository.ServicePlan().Update(ctx, existingServicePlan); err != nil {
-					return util.HandleStorageError(err, "service_plan", existingServicePlan.ID)
+
+				if err := txStorage.ServicePlan().Update(ctx, existingServicePlan); err != nil {
+					return util.HandleStorageError(err, "service_plan")
 				}
 			} else {
 				planUUID, err := uuid.NewV4()
@@ -474,21 +522,27 @@ func (c *Controller) resyncBrokerAndCatalog(ctx context.Context, broker *types.B
 				servicePlan.CreatedAt = time.Now().UTC()
 				servicePlan.UpdatedAt = time.Now().UTC()
 				if err := servicePlan.Validate(); err != nil {
-					return fmt.Errorf("service plan constructed during catalog update for broker %s is invalid: %s", broker.ID, err)
+					return &util.HTTPError{
+						ErrorType:   "BadRequest",
+						Description: fmt.Sprintf("service plan constructed during catalog update for broker %s is invalid: %s", broker.ID, err),
+						StatusCode:  http.StatusBadRequest,
+					}
 				}
-				if err := c.Repository.ServicePlan().Create(ctx, servicePlan); err != nil {
-					return util.HandleStorageError(err, "service_plan", existingServicePlan.ID)
+
+				if _, err := txStorage.ServicePlan().Create(ctx, servicePlan); err != nil {
+					return util.HandleStorageError(err, "service_plan")
 				}
 			}
 		}
 
 		for _, existingServicePlan := range existingServicePlansMap {
-			if err := c.Repository.ServicePlan().Delete(ctx, existingServicePlan.ID); err != nil {
+			byID := query.ByField(query.EqualsOperator, "id", existingServicePlan.ID)
+			if err := txStorage.ServicePlan().Delete(ctx, byID); err != nil {
 				if err == util.ErrNotFoundInStorage {
 					// If the service for the plan was deleted, plan would already be gone
 					continue
 				}
-				return util.HandleStorageError(err, "service_plan", existingServicePlan.ID)
+				return util.HandleStorageError(err, "service_plan")
 			}
 		}
 		log.C(ctx).Debugf("Successfully resynced service plans for broker with id %s", broker.ID)

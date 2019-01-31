@@ -2,17 +2,18 @@
 package smfakes
 
 import (
-	"context"
-	"sync"
+	context "context"
+	sync "sync"
 
-	"github.com/Peripli/service-broker-proxy/pkg/sm"
+	sm "github.com/Peripli/service-broker-proxy/pkg/sm"
+	types "github.com/Peripli/service-manager/pkg/types"
 )
 
 type FakeClient struct {
-	GetBrokersStub        func(ctx context.Context) ([]sm.Broker, error)
+	GetBrokersStub        func(context.Context) ([]sm.Broker, error)
 	getBrokersMutex       sync.RWMutex
 	getBrokersArgsForCall []struct {
-		ctx context.Context
+		arg1 context.Context
 	}
 	getBrokersReturns struct {
 		result1 []sm.Broker
@@ -22,25 +23,52 @@ type FakeClient struct {
 		result1 []sm.Broker
 		result2 error
 	}
+	GetPlansStub        func(context.Context) ([]*types.ServicePlan, error)
+	getPlansMutex       sync.RWMutex
+	getPlansArgsForCall []struct {
+		arg1 context.Context
+	}
+	getPlansReturns struct {
+		result1 []*types.ServicePlan
+		result2 error
+	}
+	getPlansReturnsOnCall map[int]struct {
+		result1 []*types.ServicePlan
+		result2 error
+	}
+	GetVisibilitiesStub        func(context.Context) ([]*types.Visibility, error)
+	getVisibilitiesMutex       sync.RWMutex
+	getVisibilitiesArgsForCall []struct {
+		arg1 context.Context
+	}
+	getVisibilitiesReturns struct {
+		result1 []*types.Visibility
+		result2 error
+	}
+	getVisibilitiesReturnsOnCall map[int]struct {
+		result1 []*types.Visibility
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeClient) GetBrokers(ctx context.Context) ([]sm.Broker, error) {
+func (fake *FakeClient) GetBrokers(arg1 context.Context) ([]sm.Broker, error) {
 	fake.getBrokersMutex.Lock()
 	ret, specificReturn := fake.getBrokersReturnsOnCall[len(fake.getBrokersArgsForCall)]
 	fake.getBrokersArgsForCall = append(fake.getBrokersArgsForCall, struct {
-		ctx context.Context
-	}{ctx})
-	fake.recordInvocation("GetBrokers", []interface{}{ctx})
+		arg1 context.Context
+	}{arg1})
+	fake.recordInvocation("GetBrokers", []interface{}{arg1})
 	fake.getBrokersMutex.Unlock()
 	if fake.GetBrokersStub != nil {
-		return fake.GetBrokersStub(ctx)
+		return fake.GetBrokersStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.getBrokersReturns.result1, fake.getBrokersReturns.result2
+	fakeReturns := fake.getBrokersReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeClient) GetBrokersCallCount() int {
@@ -49,13 +77,22 @@ func (fake *FakeClient) GetBrokersCallCount() int {
 	return len(fake.getBrokersArgsForCall)
 }
 
+func (fake *FakeClient) GetBrokersCalls(stub func(context.Context) ([]sm.Broker, error)) {
+	fake.getBrokersMutex.Lock()
+	defer fake.getBrokersMutex.Unlock()
+	fake.GetBrokersStub = stub
+}
+
 func (fake *FakeClient) GetBrokersArgsForCall(i int) context.Context {
 	fake.getBrokersMutex.RLock()
 	defer fake.getBrokersMutex.RUnlock()
-	return fake.getBrokersArgsForCall[i].ctx
+	argsForCall := fake.getBrokersArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *FakeClient) GetBrokersReturns(result1 []sm.Broker, result2 error) {
+	fake.getBrokersMutex.Lock()
+	defer fake.getBrokersMutex.Unlock()
 	fake.GetBrokersStub = nil
 	fake.getBrokersReturns = struct {
 		result1 []sm.Broker
@@ -64,6 +101,8 @@ func (fake *FakeClient) GetBrokersReturns(result1 []sm.Broker, result2 error) {
 }
 
 func (fake *FakeClient) GetBrokersReturnsOnCall(i int, result1 []sm.Broker, result2 error) {
+	fake.getBrokersMutex.Lock()
+	defer fake.getBrokersMutex.Unlock()
 	fake.GetBrokersStub = nil
 	if fake.getBrokersReturnsOnCall == nil {
 		fake.getBrokersReturnsOnCall = make(map[int]struct {
@@ -77,11 +116,141 @@ func (fake *FakeClient) GetBrokersReturnsOnCall(i int, result1 []sm.Broker, resu
 	}{result1, result2}
 }
 
+func (fake *FakeClient) GetPlans(arg1 context.Context) ([]*types.ServicePlan, error) {
+	fake.getPlansMutex.Lock()
+	ret, specificReturn := fake.getPlansReturnsOnCall[len(fake.getPlansArgsForCall)]
+	fake.getPlansArgsForCall = append(fake.getPlansArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	fake.recordInvocation("GetPlans", []interface{}{arg1})
+	fake.getPlansMutex.Unlock()
+	if fake.GetPlansStub != nil {
+		return fake.GetPlansStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.getPlansReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeClient) GetPlansCallCount() int {
+	fake.getPlansMutex.RLock()
+	defer fake.getPlansMutex.RUnlock()
+	return len(fake.getPlansArgsForCall)
+}
+
+func (fake *FakeClient) GetPlansCalls(stub func(context.Context) ([]*types.ServicePlan, error)) {
+	fake.getPlansMutex.Lock()
+	defer fake.getPlansMutex.Unlock()
+	fake.GetPlansStub = stub
+}
+
+func (fake *FakeClient) GetPlansArgsForCall(i int) context.Context {
+	fake.getPlansMutex.RLock()
+	defer fake.getPlansMutex.RUnlock()
+	argsForCall := fake.getPlansArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeClient) GetPlansReturns(result1 []*types.ServicePlan, result2 error) {
+	fake.getPlansMutex.Lock()
+	defer fake.getPlansMutex.Unlock()
+	fake.GetPlansStub = nil
+	fake.getPlansReturns = struct {
+		result1 []*types.ServicePlan
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeClient) GetPlansReturnsOnCall(i int, result1 []*types.ServicePlan, result2 error) {
+	fake.getPlansMutex.Lock()
+	defer fake.getPlansMutex.Unlock()
+	fake.GetPlansStub = nil
+	if fake.getPlansReturnsOnCall == nil {
+		fake.getPlansReturnsOnCall = make(map[int]struct {
+			result1 []*types.ServicePlan
+			result2 error
+		})
+	}
+	fake.getPlansReturnsOnCall[i] = struct {
+		result1 []*types.ServicePlan
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeClient) GetVisibilities(arg1 context.Context) ([]*types.Visibility, error) {
+	fake.getVisibilitiesMutex.Lock()
+	ret, specificReturn := fake.getVisibilitiesReturnsOnCall[len(fake.getVisibilitiesArgsForCall)]
+	fake.getVisibilitiesArgsForCall = append(fake.getVisibilitiesArgsForCall, struct {
+		arg1 context.Context
+	}{arg1})
+	fake.recordInvocation("GetVisibilities", []interface{}{arg1})
+	fake.getVisibilitiesMutex.Unlock()
+	if fake.GetVisibilitiesStub != nil {
+		return fake.GetVisibilitiesStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.getVisibilitiesReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeClient) GetVisibilitiesCallCount() int {
+	fake.getVisibilitiesMutex.RLock()
+	defer fake.getVisibilitiesMutex.RUnlock()
+	return len(fake.getVisibilitiesArgsForCall)
+}
+
+func (fake *FakeClient) GetVisibilitiesCalls(stub func(context.Context) ([]*types.Visibility, error)) {
+	fake.getVisibilitiesMutex.Lock()
+	defer fake.getVisibilitiesMutex.Unlock()
+	fake.GetVisibilitiesStub = stub
+}
+
+func (fake *FakeClient) GetVisibilitiesArgsForCall(i int) context.Context {
+	fake.getVisibilitiesMutex.RLock()
+	defer fake.getVisibilitiesMutex.RUnlock()
+	argsForCall := fake.getVisibilitiesArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeClient) GetVisibilitiesReturns(result1 []*types.Visibility, result2 error) {
+	fake.getVisibilitiesMutex.Lock()
+	defer fake.getVisibilitiesMutex.Unlock()
+	fake.GetVisibilitiesStub = nil
+	fake.getVisibilitiesReturns = struct {
+		result1 []*types.Visibility
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeClient) GetVisibilitiesReturnsOnCall(i int, result1 []*types.Visibility, result2 error) {
+	fake.getVisibilitiesMutex.Lock()
+	defer fake.getVisibilitiesMutex.Unlock()
+	fake.GetVisibilitiesStub = nil
+	if fake.getVisibilitiesReturnsOnCall == nil {
+		fake.getVisibilitiesReturnsOnCall = make(map[int]struct {
+			result1 []*types.Visibility
+			result2 error
+		})
+	}
+	fake.getVisibilitiesReturnsOnCall[i] = struct {
+		result1 []*types.Visibility
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeClient) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.getBrokersMutex.RLock()
 	defer fake.getBrokersMutex.RUnlock()
+	fake.getPlansMutex.RLock()
+	defer fake.getPlansMutex.RUnlock()
+	fake.getVisibilitiesMutex.RLock()
+	defer fake.getVisibilitiesMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

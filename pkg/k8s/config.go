@@ -7,7 +7,7 @@ import (
 
 	"github.com/Peripli/service-manager/pkg/env"
 	svcatclient "github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
-	"github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
+	servicecatalog "github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
 
 	k8sclient "k8s.io/client-go/kubernetes"
 

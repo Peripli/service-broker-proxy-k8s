@@ -2,285 +2,211 @@
 package platformfakes
 
 import (
-	"context"
-	"sync"
+	sync "sync"
 
-	"github.com/Peripli/service-broker-proxy/pkg/platform"
+	platform "github.com/Peripli/service-broker-proxy/pkg/platform"
 )
 
 type FakeClient struct {
-	GetBrokersStub        func(ctx context.Context) ([]platform.ServiceBroker, error)
-	getBrokersMutex       sync.RWMutex
-	getBrokersArgsForCall []struct {
-		ctx context.Context
+	BrokerStub        func() platform.BrokerClient
+	brokerMutex       sync.RWMutex
+	brokerArgsForCall []struct {
 	}
-	getBrokersReturns struct {
-		result1 []platform.ServiceBroker
-		result2 error
+	brokerReturns struct {
+		result1 platform.BrokerClient
 	}
-	getBrokersReturnsOnCall map[int]struct {
-		result1 []platform.ServiceBroker
-		result2 error
+	brokerReturnsOnCall map[int]struct {
+		result1 platform.BrokerClient
 	}
-	CreateBrokerStub        func(ctx context.Context, r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error)
-	createBrokerMutex       sync.RWMutex
-	createBrokerArgsForCall []struct {
-		ctx context.Context
-		r   *platform.CreateServiceBrokerRequest
+	CatalogFetcherStub        func() platform.CatalogFetcher
+	catalogFetcherMutex       sync.RWMutex
+	catalogFetcherArgsForCall []struct {
 	}
-	createBrokerReturns struct {
-		result1 *platform.ServiceBroker
-		result2 error
+	catalogFetcherReturns struct {
+		result1 platform.CatalogFetcher
 	}
-	createBrokerReturnsOnCall map[int]struct {
-		result1 *platform.ServiceBroker
-		result2 error
+	catalogFetcherReturnsOnCall map[int]struct {
+		result1 platform.CatalogFetcher
 	}
-	DeleteBrokerStub        func(ctx context.Context, r *platform.DeleteServiceBrokerRequest) error
-	deleteBrokerMutex       sync.RWMutex
-	deleteBrokerArgsForCall []struct {
-		ctx context.Context
-		r   *platform.DeleteServiceBrokerRequest
+	VisibilityStub        func() platform.VisibilityClient
+	visibilityMutex       sync.RWMutex
+	visibilityArgsForCall []struct {
 	}
-	deleteBrokerReturns struct {
-		result1 error
+	visibilityReturns struct {
+		result1 platform.VisibilityClient
 	}
-	deleteBrokerReturnsOnCall map[int]struct {
-		result1 error
-	}
-	UpdateBrokerStub        func(ctx context.Context, r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error)
-	updateBrokerMutex       sync.RWMutex
-	updateBrokerArgsForCall []struct {
-		ctx context.Context
-		r   *platform.UpdateServiceBrokerRequest
-	}
-	updateBrokerReturns struct {
-		result1 *platform.ServiceBroker
-		result2 error
-	}
-	updateBrokerReturnsOnCall map[int]struct {
-		result1 *platform.ServiceBroker
-		result2 error
+	visibilityReturnsOnCall map[int]struct {
+		result1 platform.VisibilityClient
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeClient) GetBrokers(ctx context.Context) ([]platform.ServiceBroker, error) {
-	fake.getBrokersMutex.Lock()
-	ret, specificReturn := fake.getBrokersReturnsOnCall[len(fake.getBrokersArgsForCall)]
-	fake.getBrokersArgsForCall = append(fake.getBrokersArgsForCall, struct {
-		ctx context.Context
-	}{ctx})
-	fake.recordInvocation("GetBrokers", []interface{}{ctx})
-	fake.getBrokersMutex.Unlock()
-	if fake.GetBrokersStub != nil {
-		return fake.GetBrokersStub(ctx)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.getBrokersReturns.result1, fake.getBrokersReturns.result2
-}
-
-func (fake *FakeClient) GetBrokersCallCount() int {
-	fake.getBrokersMutex.RLock()
-	defer fake.getBrokersMutex.RUnlock()
-	return len(fake.getBrokersArgsForCall)
-}
-
-func (fake *FakeClient) GetBrokersArgsForCall(i int) context.Context {
-	fake.getBrokersMutex.RLock()
-	defer fake.getBrokersMutex.RUnlock()
-	return fake.getBrokersArgsForCall[i].ctx
-}
-
-func (fake *FakeClient) GetBrokersReturns(result1 []platform.ServiceBroker, result2 error) {
-	fake.GetBrokersStub = nil
-	fake.getBrokersReturns = struct {
-		result1 []platform.ServiceBroker
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeClient) GetBrokersReturnsOnCall(i int, result1 []platform.ServiceBroker, result2 error) {
-	fake.GetBrokersStub = nil
-	if fake.getBrokersReturnsOnCall == nil {
-		fake.getBrokersReturnsOnCall = make(map[int]struct {
-			result1 []platform.ServiceBroker
-			result2 error
-		})
-	}
-	fake.getBrokersReturnsOnCall[i] = struct {
-		result1 []platform.ServiceBroker
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeClient) CreateBroker(ctx context.Context, r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	fake.createBrokerMutex.Lock()
-	ret, specificReturn := fake.createBrokerReturnsOnCall[len(fake.createBrokerArgsForCall)]
-	fake.createBrokerArgsForCall = append(fake.createBrokerArgsForCall, struct {
-		ctx context.Context
-		r   *platform.CreateServiceBrokerRequest
-	}{ctx, r})
-	fake.recordInvocation("CreateBroker", []interface{}{ctx, r})
-	fake.createBrokerMutex.Unlock()
-	if fake.CreateBrokerStub != nil {
-		return fake.CreateBrokerStub(ctx, r)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	return fake.createBrokerReturns.result1, fake.createBrokerReturns.result2
-}
-
-func (fake *FakeClient) CreateBrokerCallCount() int {
-	fake.createBrokerMutex.RLock()
-	defer fake.createBrokerMutex.RUnlock()
-	return len(fake.createBrokerArgsForCall)
-}
-
-func (fake *FakeClient) CreateBrokerArgsForCall(i int) (context.Context, *platform.CreateServiceBrokerRequest) {
-	fake.createBrokerMutex.RLock()
-	defer fake.createBrokerMutex.RUnlock()
-	return fake.createBrokerArgsForCall[i].ctx, fake.createBrokerArgsForCall[i].r
-}
-
-func (fake *FakeClient) CreateBrokerReturns(result1 *platform.ServiceBroker, result2 error) {
-	fake.CreateBrokerStub = nil
-	fake.createBrokerReturns = struct {
-		result1 *platform.ServiceBroker
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeClient) CreateBrokerReturnsOnCall(i int, result1 *platform.ServiceBroker, result2 error) {
-	fake.CreateBrokerStub = nil
-	if fake.createBrokerReturnsOnCall == nil {
-		fake.createBrokerReturnsOnCall = make(map[int]struct {
-			result1 *platform.ServiceBroker
-			result2 error
-		})
-	}
-	fake.createBrokerReturnsOnCall[i] = struct {
-		result1 *platform.ServiceBroker
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *FakeClient) DeleteBroker(ctx context.Context, r *platform.DeleteServiceBrokerRequest) error {
-	fake.deleteBrokerMutex.Lock()
-	ret, specificReturn := fake.deleteBrokerReturnsOnCall[len(fake.deleteBrokerArgsForCall)]
-	fake.deleteBrokerArgsForCall = append(fake.deleteBrokerArgsForCall, struct {
-		ctx context.Context
-		r   *platform.DeleteServiceBrokerRequest
-	}{ctx, r})
-	fake.recordInvocation("DeleteBroker", []interface{}{ctx, r})
-	fake.deleteBrokerMutex.Unlock()
-	if fake.DeleteBrokerStub != nil {
-		return fake.DeleteBrokerStub(ctx, r)
+func (fake *FakeClient) Broker() platform.BrokerClient {
+	fake.brokerMutex.Lock()
+	ret, specificReturn := fake.brokerReturnsOnCall[len(fake.brokerArgsForCall)]
+	fake.brokerArgsForCall = append(fake.brokerArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Broker", []interface{}{})
+	fake.brokerMutex.Unlock()
+	if fake.BrokerStub != nil {
+		return fake.BrokerStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.deleteBrokerReturns.result1
+	fakeReturns := fake.brokerReturns
+	return fakeReturns.result1
 }
 
-func (fake *FakeClient) DeleteBrokerCallCount() int {
-	fake.deleteBrokerMutex.RLock()
-	defer fake.deleteBrokerMutex.RUnlock()
-	return len(fake.deleteBrokerArgsForCall)
+func (fake *FakeClient) BrokerCallCount() int {
+	fake.brokerMutex.RLock()
+	defer fake.brokerMutex.RUnlock()
+	return len(fake.brokerArgsForCall)
 }
 
-func (fake *FakeClient) DeleteBrokerArgsForCall(i int) (context.Context, *platform.DeleteServiceBrokerRequest) {
-	fake.deleteBrokerMutex.RLock()
-	defer fake.deleteBrokerMutex.RUnlock()
-	return fake.deleteBrokerArgsForCall[i].ctx, fake.deleteBrokerArgsForCall[i].r
+func (fake *FakeClient) BrokerCalls(stub func() platform.BrokerClient) {
+	fake.brokerMutex.Lock()
+	defer fake.brokerMutex.Unlock()
+	fake.BrokerStub = stub
 }
 
-func (fake *FakeClient) DeleteBrokerReturns(result1 error) {
-	fake.DeleteBrokerStub = nil
-	fake.deleteBrokerReturns = struct {
-		result1 error
+func (fake *FakeClient) BrokerReturns(result1 platform.BrokerClient) {
+	fake.brokerMutex.Lock()
+	defer fake.brokerMutex.Unlock()
+	fake.BrokerStub = nil
+	fake.brokerReturns = struct {
+		result1 platform.BrokerClient
 	}{result1}
 }
 
-func (fake *FakeClient) DeleteBrokerReturnsOnCall(i int, result1 error) {
-	fake.DeleteBrokerStub = nil
-	if fake.deleteBrokerReturnsOnCall == nil {
-		fake.deleteBrokerReturnsOnCall = make(map[int]struct {
-			result1 error
+func (fake *FakeClient) BrokerReturnsOnCall(i int, result1 platform.BrokerClient) {
+	fake.brokerMutex.Lock()
+	defer fake.brokerMutex.Unlock()
+	fake.BrokerStub = nil
+	if fake.brokerReturnsOnCall == nil {
+		fake.brokerReturnsOnCall = make(map[int]struct {
+			result1 platform.BrokerClient
 		})
 	}
-	fake.deleteBrokerReturnsOnCall[i] = struct {
-		result1 error
+	fake.brokerReturnsOnCall[i] = struct {
+		result1 platform.BrokerClient
 	}{result1}
 }
 
-func (fake *FakeClient) UpdateBroker(ctx context.Context, r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	fake.updateBrokerMutex.Lock()
-	ret, specificReturn := fake.updateBrokerReturnsOnCall[len(fake.updateBrokerArgsForCall)]
-	fake.updateBrokerArgsForCall = append(fake.updateBrokerArgsForCall, struct {
-		ctx context.Context
-		r   *platform.UpdateServiceBrokerRequest
-	}{ctx, r})
-	fake.recordInvocation("UpdateBroker", []interface{}{ctx, r})
-	fake.updateBrokerMutex.Unlock()
-	if fake.UpdateBrokerStub != nil {
-		return fake.UpdateBrokerStub(ctx, r)
+func (fake *FakeClient) CatalogFetcher() platform.CatalogFetcher {
+	fake.catalogFetcherMutex.Lock()
+	ret, specificReturn := fake.catalogFetcherReturnsOnCall[len(fake.catalogFetcherArgsForCall)]
+	fake.catalogFetcherArgsForCall = append(fake.catalogFetcherArgsForCall, struct {
+	}{})
+	fake.recordInvocation("CatalogFetcher", []interface{}{})
+	fake.catalogFetcherMutex.Unlock()
+	if fake.CatalogFetcherStub != nil {
+		return fake.CatalogFetcherStub()
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1
 	}
-	return fake.updateBrokerReturns.result1, fake.updateBrokerReturns.result2
+	fakeReturns := fake.catalogFetcherReturns
+	return fakeReturns.result1
 }
 
-func (fake *FakeClient) UpdateBrokerCallCount() int {
-	fake.updateBrokerMutex.RLock()
-	defer fake.updateBrokerMutex.RUnlock()
-	return len(fake.updateBrokerArgsForCall)
+func (fake *FakeClient) CatalogFetcherCallCount() int {
+	fake.catalogFetcherMutex.RLock()
+	defer fake.catalogFetcherMutex.RUnlock()
+	return len(fake.catalogFetcherArgsForCall)
 }
 
-func (fake *FakeClient) UpdateBrokerArgsForCall(i int) (context.Context, *platform.UpdateServiceBrokerRequest) {
-	fake.updateBrokerMutex.RLock()
-	defer fake.updateBrokerMutex.RUnlock()
-	return fake.updateBrokerArgsForCall[i].ctx, fake.updateBrokerArgsForCall[i].r
+func (fake *FakeClient) CatalogFetcherCalls(stub func() platform.CatalogFetcher) {
+	fake.catalogFetcherMutex.Lock()
+	defer fake.catalogFetcherMutex.Unlock()
+	fake.CatalogFetcherStub = stub
 }
 
-func (fake *FakeClient) UpdateBrokerReturns(result1 *platform.ServiceBroker, result2 error) {
-	fake.UpdateBrokerStub = nil
-	fake.updateBrokerReturns = struct {
-		result1 *platform.ServiceBroker
-		result2 error
-	}{result1, result2}
+func (fake *FakeClient) CatalogFetcherReturns(result1 platform.CatalogFetcher) {
+	fake.catalogFetcherMutex.Lock()
+	defer fake.catalogFetcherMutex.Unlock()
+	fake.CatalogFetcherStub = nil
+	fake.catalogFetcherReturns = struct {
+		result1 platform.CatalogFetcher
+	}{result1}
 }
 
-func (fake *FakeClient) UpdateBrokerReturnsOnCall(i int, result1 *platform.ServiceBroker, result2 error) {
-	fake.UpdateBrokerStub = nil
-	if fake.updateBrokerReturnsOnCall == nil {
-		fake.updateBrokerReturnsOnCall = make(map[int]struct {
-			result1 *platform.ServiceBroker
-			result2 error
+func (fake *FakeClient) CatalogFetcherReturnsOnCall(i int, result1 platform.CatalogFetcher) {
+	fake.catalogFetcherMutex.Lock()
+	defer fake.catalogFetcherMutex.Unlock()
+	fake.CatalogFetcherStub = nil
+	if fake.catalogFetcherReturnsOnCall == nil {
+		fake.catalogFetcherReturnsOnCall = make(map[int]struct {
+			result1 platform.CatalogFetcher
 		})
 	}
-	fake.updateBrokerReturnsOnCall[i] = struct {
-		result1 *platform.ServiceBroker
-		result2 error
-	}{result1, result2}
+	fake.catalogFetcherReturnsOnCall[i] = struct {
+		result1 platform.CatalogFetcher
+	}{result1}
+}
+
+func (fake *FakeClient) Visibility() platform.VisibilityClient {
+	fake.visibilityMutex.Lock()
+	ret, specificReturn := fake.visibilityReturnsOnCall[len(fake.visibilityArgsForCall)]
+	fake.visibilityArgsForCall = append(fake.visibilityArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Visibility", []interface{}{})
+	fake.visibilityMutex.Unlock()
+	if fake.VisibilityStub != nil {
+		return fake.VisibilityStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.visibilityReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeClient) VisibilityCallCount() int {
+	fake.visibilityMutex.RLock()
+	defer fake.visibilityMutex.RUnlock()
+	return len(fake.visibilityArgsForCall)
+}
+
+func (fake *FakeClient) VisibilityCalls(stub func() platform.VisibilityClient) {
+	fake.visibilityMutex.Lock()
+	defer fake.visibilityMutex.Unlock()
+	fake.VisibilityStub = stub
+}
+
+func (fake *FakeClient) VisibilityReturns(result1 platform.VisibilityClient) {
+	fake.visibilityMutex.Lock()
+	defer fake.visibilityMutex.Unlock()
+	fake.VisibilityStub = nil
+	fake.visibilityReturns = struct {
+		result1 platform.VisibilityClient
+	}{result1}
+}
+
+func (fake *FakeClient) VisibilityReturnsOnCall(i int, result1 platform.VisibilityClient) {
+	fake.visibilityMutex.Lock()
+	defer fake.visibilityMutex.Unlock()
+	fake.VisibilityStub = nil
+	if fake.visibilityReturnsOnCall == nil {
+		fake.visibilityReturnsOnCall = make(map[int]struct {
+			result1 platform.VisibilityClient
+		})
+	}
+	fake.visibilityReturnsOnCall[i] = struct {
+		result1 platform.VisibilityClient
+	}{result1}
 }
 
 func (fake *FakeClient) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.getBrokersMutex.RLock()
-	defer fake.getBrokersMutex.RUnlock()
-	fake.createBrokerMutex.RLock()
-	defer fake.createBrokerMutex.RUnlock()
-	fake.deleteBrokerMutex.RLock()
-	defer fake.deleteBrokerMutex.RUnlock()
-	fake.updateBrokerMutex.RLock()
-	defer fake.updateBrokerMutex.RUnlock()
+	fake.brokerMutex.RLock()
+	defer fake.brokerMutex.RUnlock()
+	fake.catalogFetcherMutex.RLock()
+	defer fake.catalogFetcherMutex.RUnlock()
+	fake.visibilityMutex.RLock()
+	defer fake.visibilityMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

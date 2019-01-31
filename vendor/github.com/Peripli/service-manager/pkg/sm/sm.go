@@ -46,8 +46,9 @@ import (
 type ServiceManagerBuilder struct {
 	*web.API
 
-	ctx context.Context
-	cfg *server.Settings
+	Storage storage.Storage
+	ctx     context.Context
+	cfg     *server.Settings
 }
 
 // ServiceManager  struct
@@ -95,6 +96,7 @@ func New(ctx context.Context, cancel context.CancelFunc, env env.Environment) *S
 	util.HandleInterrupts(ctx, cancel)
 
 	// setup smStorage
+	log.C(ctx).Info("Setting up Service Manager storage...")
 	smStorage, err := storage.Use(ctx, postgres.Storage, cfg.Storage)
 	if err != nil {
 		panic(fmt.Sprintf("error using smStorage: %s", err))
@@ -110,6 +112,7 @@ func New(ctx context.Context, cancel context.CancelFunc, env env.Environment) *S
 	}
 
 	// setup core api
+	log.C(ctx).Info("Setting up Service Manager core API...")
 	API, err := api.New(ctx, smStorage, cfg.API, encrypter)
 	if err != nil {
 		panic(fmt.Sprintf("error creating core api: %s", err))
@@ -118,9 +121,10 @@ func New(ctx context.Context, cancel context.CancelFunc, env env.Environment) *S
 	API.AddHealthIndicator(&storage.HealthIndicator{Pinger: storage.PingFunc(smStorage.Ping)})
 
 	return &ServiceManagerBuilder{
-		ctx: ctx,
-		cfg: cfg.Server,
-		API: API,
+		ctx:     ctx,
+		cfg:     cfg.Server,
+		API:     API,
+		Storage: smStorage,
 	}
 }
 
@@ -146,6 +150,7 @@ func (smb *ServiceManagerBuilder) installHealth() {
 
 // Run starts the Service Manager
 func (sm *ServiceManager) Run() {
+	log.C(sm.ctx).Info("Running Service Manager...")
 	sm.Server.Run(sm.ctx)
 }
 
@@ -162,16 +167,16 @@ func initializeSecureStorage(ctx context.Context, secureStorage storage.Security
 	}
 	if len(encryptionKey) == 0 {
 		logger := log.C(ctx)
-		logger.Debug("No encryption key is present. Generating new one...")
+		logger.Info("No encryption key is present. Generating new one...")
 		newEncryptionKey := make([]byte, 32)
 		if _, err := rand.Read(newEncryptionKey); err != nil {
-			return fmt.Errorf("Could not generate encryption key: %v", err)
+			return fmt.Errorf("could not generate encryption key: %v", err)
 		}
 		keySetter := secureStorage.Setter()
 		if err := keySetter.SetEncryptionKey(ctx, newEncryptionKey); err != nil {
 			return err
 		}
-		logger.Debug("Successfully generated new encryption key")
+		logger.Info("Successfully generated new encryption key")
 	}
 	return secureStorage.Unlock(ctx)
 }
