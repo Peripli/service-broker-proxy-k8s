@@ -2,18 +2,18 @@
 package platformfakes
 
 import (
-	"context"
-	"sync"
+	context "context"
+	sync "sync"
 
-	"github.com/Peripli/service-broker-proxy/pkg/platform"
+	platform "github.com/Peripli/service-broker-proxy/pkg/platform"
 )
 
 type FakeCatalogFetcher struct {
-	FetchStub        func(ctx context.Context, serviceBroker *platform.ServiceBroker) error
+	FetchStub        func(context.Context, *platform.ServiceBroker) error
 	fetchMutex       sync.RWMutex
 	fetchArgsForCall []struct {
-		ctx           context.Context
-		serviceBroker *platform.ServiceBroker
+		arg1 context.Context
+		arg2 *platform.ServiceBroker
 	}
 	fetchReturns struct {
 		result1 error
@@ -25,22 +25,23 @@ type FakeCatalogFetcher struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeCatalogFetcher) Fetch(ctx context.Context, serviceBroker *platform.ServiceBroker) error {
+func (fake *FakeCatalogFetcher) Fetch(arg1 context.Context, arg2 *platform.ServiceBroker) error {
 	fake.fetchMutex.Lock()
 	ret, specificReturn := fake.fetchReturnsOnCall[len(fake.fetchArgsForCall)]
 	fake.fetchArgsForCall = append(fake.fetchArgsForCall, struct {
-		ctx           context.Context
-		serviceBroker *platform.ServiceBroker
-	}{ctx, serviceBroker})
-	fake.recordInvocation("Fetch", []interface{}{ctx, serviceBroker})
+		arg1 context.Context
+		arg2 *platform.ServiceBroker
+	}{arg1, arg2})
+	fake.recordInvocation("Fetch", []interface{}{arg1, arg2})
 	fake.fetchMutex.Unlock()
 	if fake.FetchStub != nil {
-		return fake.FetchStub(ctx, serviceBroker)
+		return fake.FetchStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.fetchReturns.result1
+	fakeReturns := fake.fetchReturns
+	return fakeReturns.result1
 }
 
 func (fake *FakeCatalogFetcher) FetchCallCount() int {
@@ -49,13 +50,22 @@ func (fake *FakeCatalogFetcher) FetchCallCount() int {
 	return len(fake.fetchArgsForCall)
 }
 
+func (fake *FakeCatalogFetcher) FetchCalls(stub func(context.Context, *platform.ServiceBroker) error) {
+	fake.fetchMutex.Lock()
+	defer fake.fetchMutex.Unlock()
+	fake.FetchStub = stub
+}
+
 func (fake *FakeCatalogFetcher) FetchArgsForCall(i int) (context.Context, *platform.ServiceBroker) {
 	fake.fetchMutex.RLock()
 	defer fake.fetchMutex.RUnlock()
-	return fake.fetchArgsForCall[i].ctx, fake.fetchArgsForCall[i].serviceBroker
+	argsForCall := fake.fetchArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeCatalogFetcher) FetchReturns(result1 error) {
+	fake.fetchMutex.Lock()
+	defer fake.fetchMutex.Unlock()
 	fake.FetchStub = nil
 	fake.fetchReturns = struct {
 		result1 error
@@ -63,6 +73,8 @@ func (fake *FakeCatalogFetcher) FetchReturns(result1 error) {
 }
 
 func (fake *FakeCatalogFetcher) FetchReturnsOnCall(i int, result1 error) {
+	fake.fetchMutex.Lock()
+	defer fake.fetchMutex.Unlock()
 	fake.FetchStub = nil
 	if fake.fetchReturnsOnCall == nil {
 		fake.fetchReturnsOnCall = make(map[int]struct {

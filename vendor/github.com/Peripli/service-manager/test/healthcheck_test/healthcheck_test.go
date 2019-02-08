@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/ginkgo"
 )
 
-func Test(t *testing.T) {
+func TestHealth(t *testing.T) {
 	RunSpecs(t, "Healthcheck Suite")
 }
 
@@ -34,7 +34,7 @@ var _ = Describe("Healthcheck API", func() {
 	var ctx *common.TestContext
 
 	BeforeSuite(func() {
-		ctx = common.NewTestContext(nil)
+		ctx = common.DefaultTestContext()
 	})
 
 	AfterSuite(func() {

@@ -58,6 +58,11 @@ func (ts *transactionalWarehouse) ServicePlan() storage.ServicePlan {
 	return &servicePlanStorage{db: ts.tx}
 }
 
+func (ts *transactionalWarehouse) Visibility() storage.Visibility {
+	ts.checkOpen()
+	return &visibilityStorage{db: ts.tx}
+}
+
 func (ts *transactionalWarehouse) Security() storage.Security {
 	ts.checkOpen()
 	return &securityStorage{db: ts.tx}
@@ -141,6 +146,10 @@ func (ps *postgresStorage) ServicePlan() storage.ServicePlan {
 	return &servicePlanStorage{ps.db}
 }
 
+func (ps *postgresStorage) Visibility() storage.Visibility {
+	return &visibilityStorage{ps.db}
+}
+
 func (ps *postgresStorage) Security() storage.Security {
 	ps.checkOpen()
 	return &securityStorage{ps.db, ps.encryptionKey, false, &sync.Mutex{}}
@@ -192,6 +201,7 @@ func (ps *postgresStorage) updateSchema(migrationsURL string) error {
 	if err != nil {
 		return err
 	}
+	m.Log = migrateLogger{}
 	err = m.Up()
 	if err == migrate.ErrNoChange {
 		log.D().Debug("Database schema already up to date")
@@ -204,4 +214,14 @@ func (ps *postgresStorage) checkOpen() {
 	if ps.db == nil {
 		log.D().Panicln("Repository is not yet Open")
 	}
+}
+
+type migrateLogger struct{}
+
+func (migrateLogger) Printf(format string, v ...interface{}) {
+	log.D().Debugf(format, v...)
+}
+
+func (migrateLogger) Verbose() bool {
+	return true
 }

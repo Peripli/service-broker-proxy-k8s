@@ -45,7 +45,14 @@ func (c *Controller) Routes() []web.Route {
 				Method: http.MethodGet,
 				Path:   web.PlatformsURL,
 			},
-			Handler: c.getAllPlatforms,
+			Handler: c.listPlatforms,
+		},
+		{
+			Endpoint: web.Endpoint{
+				Method: http.MethodDelete,
+				Path:   web.PlatformsURL,
+			},
+			Handler: c.deletePlatforms,
 		},
 		{
 			Endpoint: web.Endpoint{

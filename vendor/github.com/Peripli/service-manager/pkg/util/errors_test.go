@@ -17,6 +17,7 @@
 package util_test
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -96,7 +97,7 @@ var _ = Describe("Errors", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 
 				err = util.HandleResponseError(response)
-				validateHTTPErrorOccured(err, response.StatusCode)
+				validateHTTPErrorOccurred(err, response.StatusCode)
 
 			})
 		})
@@ -104,9 +105,11 @@ var _ = Describe("Errors", func() {
 		Context("when response contains standard error", func() {
 			It("returns an error containing information about the error handling failure", func() {
 				e := fmt.Errorf("test error")
+				r := http.Request{}
 				response := &http.Response{
 					StatusCode: http.StatusTeapot,
 					Body:       common.Closer(e.Error()),
+					Request:    r.WithContext(context.TODO()),
 				}
 
 				err := util.HandleResponseError(response)
@@ -117,9 +120,11 @@ var _ = Describe("Errors", func() {
 		Context("when response contains JSON error that has no description", func() {
 			It("returns an error containing the response body", func() {
 				e := `{"key":"value"}`
+				r := http.Request{}
 				response := &http.Response{
 					StatusCode: http.StatusTeapot,
 					Body:       common.Closer(e),
+					Request:    r.WithContext(context.TODO()),
 				}
 
 				err := util.HandleResponseError(response)
@@ -130,7 +135,7 @@ var _ = Describe("Errors", func() {
 		Describe("HandleStorageError", func() {
 			Context("with no errors", func() {
 				It("returns nil", func() {
-					err := util.HandleStorageError(nil, "", "")
+					err := util.HandleStorageError(nil, "")
 
 					Expect(err).To(Not(HaveOccurred()))
 				})
@@ -138,24 +143,24 @@ var _ = Describe("Errors", func() {
 
 			Context("with unique constraint violation storage error", func() {
 				It("returns proper HTTPError", func() {
-					err := util.HandleStorageError(util.ErrAlreadyExistsInStorage, "entityName", "entityID")
+					err := util.HandleStorageError(util.ErrAlreadyExistsInStorage, "entityName")
 
-					validateHTTPErrorOccured(err, http.StatusConflict)
+					validateHTTPErrorOccurred(err, http.StatusConflict)
 				})
 			})
 
 			Context("with not found in storage error", func() {
 				It("returns proper HTTPError", func() {
-					err := util.HandleStorageError(util.ErrNotFoundInStorage, "entityName", "entityID")
+					err := util.HandleStorageError(util.ErrNotFoundInStorage, "entityName")
 
-					validateHTTPErrorOccured(err, http.StatusNotFound)
+					validateHTTPErrorOccurred(err, http.StatusNotFound)
 				})
 			})
 
 			Context("with unrecongized error", func() {
 				It("propagates it", func() {
 					e := errors.New("test error")
-					err := util.HandleStorageError(e, "entityName", "entityID")
+					err := util.HandleStorageError(e, "entityName")
 
 					Expect(err.Error()).To(ContainSubstring(e.Error()))
 				})

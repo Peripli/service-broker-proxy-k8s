@@ -17,6 +17,7 @@
 package common
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -28,205 +29,33 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var Catalog = `
-{
-  "services": [{
-    "name": "fake-service",
-    "id": "acb56d7c-XXXX-XXXX-XXXX-feb140a59a66",
-    "description": "A fake service.",
-    "tags": ["no-sql", "relational"],
-    "requires": ["route_forwarding"],
-    "bindable": true,
-    "instances_retrievable": true,
-    "bindings_retrievable": true,
-    "metadata": {
-      "provider": {
-        "name": "The name"
-      },
-      "listing": {
-        "imageUrl": "http://example.com/cat.gif",
-        "blurb": "Add a blurb here",
-        "longDescription": "A long time ago, in a galaxy far far away..."
-      },
-      "displayName": "The Fake Service Broker"
-    },
-    "plan_updateable": true,
-    "plans": [{
-      "name": "fake-plan-1",
-      "id": "d3031751-XXXX-XXXX-XXXX-a42377d3320e",
-      "description": "Shared fake Server, 5tb persistent disk, 40 max concurrent connections.",
-      "free": false,
-      "metadata": {
-        "max_storage_tb": 5,
-        "costs":[
-            {
-               "amount":{
-                  "usd":99.0
-               },
-               "unit":"MONTHLY"
-            },
-            {
-               "amount":{
-                  "usd":0.99
-               },
-               "unit":"1GB of messages over 20GB"
-            }
-         ],
-        "bullets": [
-          "Shared fake server",
-          "5 TB storage",
-          "40 concurrent connections"
-        ]
-      },
-      "schemas": {
-        "service_instance": {
-          "create": {
-            "parameters": {
-              "$schema": "http://json-schema.org/draft-04/schema#",
-              "type": "object",
-              "properties": {
-                "billing-account": {
-                  "description": "Billing account number used to charge use of shared fake server.",
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "update": {
-            "parameters": {
-              "$schema": "http://json-schema.org/draft-04/schema#",
-              "type": "object",
-              "properties": {
-                "billing-account": {
-                  "description": "Billing account number used to charge use of shared fake server.",
-                  "type": "string"
-                }
-              }
-            }
-          }
-        },
-        "service_binding": {
-          "create": {
-            "parameters": {
-              "$schema": "http://json-schema.org/draft-04/schema#",
-              "type": "object",
-              "properties": {
-                "billing-account": {
-                  "description": "Billing account number used to charge use of shared fake server.",
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    }, 
-	{
-      "name": "fake-plan-2",
-      "id": "0f4008b5-XXXX-XXXX-XXXX-dace631cd648",
-      "description": "Shared fake Server, 5tb persistent disk, 40 max concurrent connections. 100 async.",
-      "free": false,
-      "metadata": {
-        "max_storage_tb": 5,
-        "costs":[
-            {
-               "amount":{
-                  "usd":199.0
-               },
-               "unit":"MONTHLY"
-            },
-            {
-               "amount":{
-                  "usd":0.99
-               },
-               "unit":"1GB of messages over 20GB"
-            }
-         ],
-        "bullets": [
-          "40 concurrent connections"
-        ]
-      }
-    }]
-  }]
-}
-`
-
-var AnotherService = `
-{
-    "name": "another-fake-service",
-    "id": "another7c-XXXX-XXXX-XXXX-feb140a59a66",
-    "description": "another description",
-    "tags": ["another-no-sql", "another-relational"],
-    "requires": ["another-route_forwarding"],
-    "bindable": true,
-    "instances_retrievable": true,
-    "bindings_retrievable": true,
-    "metadata": {
-      "provider": {
-        "name": "another name"
-      },
-      "listing": {
-        "imageUrl": "http://example.com/cat.gif",
-        "blurb": "another blurb here",
-        "longDescription": "A long time ago, in a another galaxy far far away..."
-      },
-      "displayName": "another Fake Service Broker"
-    },
-    "plan_updateable": true,
-    "plans": []
-  }
-`
-
-var AnotherPlan = `
-	{
-      "name": "another-fake-plan",
-      "id": "123008b5-XXXX-XXXX-XXXX-dace631cd648",
-      "description": "Shared fake Server, 5tb persistent disk, 40 max concurrent connections. 100 async.",
-      "free": false,
-      "metadata": {
-        "max_storage_tb": 5,
-        "costs":[
-            {
-               "amount":{
-                  "usd":199.0
-               },
-               "unit":"MONTHLY"
-            },
-            {
-               "amount":{
-                  "usd":0.99
-               },
-               "unit":"1GB of messages over 20GB"
-            }
-         ],
-        "bullets": [
-          "40 concurrent connections"
-        ]
-      }
-    }
-`
-
 type BrokerServer struct {
 	*httptest.Server
 
-	CatalogHandler               http.HandlerFunc // /v2/catalog
-	ServiceInstanceHandler       http.HandlerFunc // /v2/service_instances/{instance_id}
-	ServiceInstanceLastOpHandler http.HandlerFunc // /v2/service_instances/{instance_id}/last_operation
-	BindingHandler               http.HandlerFunc // /v2/service_instances/{instance_id}/service_bindings/{binding_id}
-	BindingLastOpHandler         http.HandlerFunc // /v2/service_instances/{instance_id}/service_bindings/{binding_id}/last_operation
+	CatalogHandler                 http.HandlerFunc // /v2/catalog
+	ServiceInstanceHandler         http.HandlerFunc // /v2/service_instances/{instance_id}
+	ServiceInstanceLastOpHandler   http.HandlerFunc // /v2/service_instances/{instance_id}/last_operation
+	BindingHandler                 http.HandlerFunc // /v2/service_instances/{instance_id}/service_bindings/{binding_id}
+	BindingLastOpHandler           http.HandlerFunc // /v2/service_instances/{instance_id}/service_bindings/{binding_id}/last_operation
+	BindingAdaptCredentialsHandler http.HandlerFunc // /v2/service_instances/{instance_id}/service_bindings/{binding_id}/adapt_credentials
 
 	Username, Password string
-	Catalog            interface{}
+	Catalog            SBCatalog
 	LastRequestBody    []byte
 	LastRequest        *http.Request
 
-	CatalogEndpointRequests               []*http.Request
-	ServiceInstanceEndpointRequests       []*http.Request
-	ServiceInstanceLastOpEndpointRequests []*http.Request
-	BindingEndpointRequests               []*http.Request
-	BindingLastOpEndpointRequests         []*http.Request
+	CatalogEndpointRequests                 []*http.Request
+	ServiceInstanceEndpointRequests         []*http.Request
+	ServiceInstanceLastOpEndpointRequests   []*http.Request
+	BindingEndpointRequests                 []*http.Request
+	BindingLastOpEndpointRequests           []*http.Request
+	BindingAdaptCredentialsEndpointRequests []*http.Request
 
 	router *mux.Router
+}
+
+func (b *BrokerServer) URL() string {
+	return b.Server.URL
 }
 
 func JSONToMap(j string) map[string]interface{} {
@@ -237,17 +66,15 @@ func JSONToMap(j string) map[string]interface{} {
 	return jsonMap
 }
 
-func DefaultCatalog() map[string]interface{} {
-	return JSONToMap(Catalog)
-}
-
 func NewBrokerServer() *BrokerServer {
+	return NewBrokerServerWithCatalog(NewRandomSBCatalog())
+}
+func NewBrokerServerWithCatalog(catalog SBCatalog) *BrokerServer {
 	brokerServer := &BrokerServer{}
 	brokerServer.initRouter()
 	brokerServer.Reset()
-
+	brokerServer.Catalog = catalog
 	brokerServer.Server = httptest.NewServer(brokerServer.router)
-
 	return brokerServer
 }
 
@@ -260,7 +87,8 @@ func (b *BrokerServer) Reset() {
 func (b *BrokerServer) ResetProperties() {
 	b.Username = "buser"
 	b.Password = "bpassword"
-	b.Catalog = DefaultCatalog()
+	c := NewRandomSBCatalog()
+	b.Catalog = c
 	b.LastRequestBody = []byte{}
 	b.LastRequest = nil
 }
@@ -271,6 +99,7 @@ func (b *BrokerServer) ResetHandlers() {
 	b.ServiceInstanceLastOpHandler = b.defaultServiceInstanceLastOpHandler
 	b.BindingHandler = b.defaultBindingHandler
 	b.BindingLastOpHandler = b.defaultBindingLastOpHandler
+	b.BindingAdaptCredentialsHandler = b.defaultBindingAdaptCredentialsHandler
 }
 
 func (b *BrokerServer) ResetCallHistory() {
@@ -308,6 +137,11 @@ func (b *BrokerServer) initRouter() {
 		b.BindingLastOpHandler(rw, req)
 	}).Methods(http.MethodGet)
 
+	router.HandleFunc("/v2/service_instances/{instance_id}/service_bindings/{binding_id}/adapt_credentials", func(rw http.ResponseWriter, req *http.Request) {
+		b.BindingAdaptCredentialsEndpointRequests = append(b.BindingAdaptCredentialsEndpointRequests, req)
+		b.BindingAdaptCredentialsHandler(rw, req)
+	}).Methods(http.MethodPost)
+
 	router.Use(b.authenticationMiddleware)
 	router.Use(b.saveRequestMiddleware)
 
@@ -340,8 +174,16 @@ func (b *BrokerServer) authenticationMiddleware(next http.Handler) http.Handler 
 
 func (b *BrokerServer) saveRequestMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		defer func() {
+			err := req.Body.Close()
+			if err != nil {
+				panic(err)
+			}
+		}()
 		b.LastRequest = req
 		bodyBytes, err := ioutil.ReadAll(req.Body)
+		req.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+
 		if err != nil {
 			SetResponse(w, http.StatusInternalServerError, Object{
 				"description": "Could not read body",
@@ -355,7 +197,7 @@ func (b *BrokerServer) saveRequestMiddleware(next http.Handler) http.Handler {
 }
 
 func (b *BrokerServer) defaultCatalogHandler(rw http.ResponseWriter, req *http.Request) {
-	SetResponse(rw, http.StatusOK, b.Catalog)
+	SetResponse(rw, http.StatusOK, JSONToMap(string(b.Catalog)))
 }
 
 func (b *BrokerServer) defaultServiceInstanceHandler(rw http.ResponseWriter, req *http.Request) {
@@ -388,6 +230,15 @@ func (b *BrokerServer) defaultBindingHandler(rw http.ResponseWriter, req *http.R
 func (b *BrokerServer) defaultBindingLastOpHandler(rw http.ResponseWriter, req *http.Request) {
 	SetResponse(rw, http.StatusOK, Object{
 		"state": "succeeded",
+	})
+}
+
+func (b *BrokerServer) defaultBindingAdaptCredentialsHandler(rw http.ResponseWriter, req *http.Request) {
+	SetResponse(rw, http.StatusOK, Object{
+		"credentials": Object{
+			"instance_id": mux.Vars(req)["instance_id"],
+			"binding_id":  mux.Vars(req)["binding_id"],
+		},
 	})
 }
 

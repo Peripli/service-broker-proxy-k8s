@@ -1,8 +1,13 @@
 package filter_test
 
 import (
+	"context"
 	"net/http"
 	"testing"
+
+	"github.com/Peripli/service-manager/pkg/env"
+
+	"github.com/Peripli/service-manager/pkg/sm"
 
 	"github.com/Peripli/service-manager/pkg/web"
 	"github.com/Peripli/service-manager/test/common"
@@ -25,12 +30,12 @@ var _ = Describe("Service Manager Filters", func() {
 	var order string
 
 	JustBeforeEach(func() {
-		ctx = common.NewTestContext(&common.ContextParams{
-			RegisterExtensions: func(api *web.API) {
-				api.RegisterFilters(testFilters...)
-			},
-		})
-		brokerID, _ := ctx.RegisterBroker()
+		ctx = common.NewTestContextBuilder().WithSMExtensions(func(ctx context.Context, smb *sm.ServiceManagerBuilder, env env.Environment) error {
+			smb.API.RegisterFilters(testFilters...)
+			return nil
+		}).Build()
+
+		brokerID, _, _ := ctx.RegisterBroker()
 		osbURL = "/v1/osb/" + brokerID
 		order = ""
 	})

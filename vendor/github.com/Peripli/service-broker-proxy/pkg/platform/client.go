@@ -16,20 +16,15 @@
 
 package platform
 
-import "context"
-
-// Client provides the logic for calling into the underlying platform and performing platform specific operations
+// Client is an interface for service related operations on a platform.
+// If a platform does not support some operations they should
+// return nil for the specific client.
 //go:generate counterfeiter . Client
 type Client interface {
-	// GetBrokers obtains the registered brokers in the platform
-	GetBrokers(ctx context.Context) ([]ServiceBroker, error)
-
-	// CreateBroker registers a new broker at the platform
-	CreateBroker(ctx context.Context, r *CreateServiceBrokerRequest) (*ServiceBroker, error)
-
-	// DeleteBroker unregisters a broker from the platform
-	DeleteBroker(ctx context.Context, r *DeleteServiceBrokerRequest) error
-
-	// UpdateBroker updates a broker registration at the platform
-	UpdateBroker(ctx context.Context, r *UpdateServiceBrokerRequest) (*ServiceBroker, error)
+	// Broker return BrokerClient which handles platform specific broker operations
+	Broker() BrokerClient
+	// Visibility return VisibilityClient which handles platform specific service visibility operations
+	Visibility() VisibilityClient
+	// CatalogFetcher return CatalogFetcher which handles platform specific fetching of service catalogs
+	CatalogFetcher() CatalogFetcher
 }

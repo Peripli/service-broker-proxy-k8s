@@ -19,6 +19,7 @@ package oauth
 import (
 	"context"
 
+	"github.com/Peripli/service-manager/pkg/security/authenticators"
 	"github.com/Peripli/service-manager/pkg/security/middlewares"
 	"github.com/Peripli/service-manager/pkg/web"
 )
@@ -41,6 +42,7 @@ func (ba *bearerAuthnFilter) FilterMatchers() []web.FilterMatcher {
 					web.PlatformsURL+"/**",
 					web.ServiceOfferingsURL+"/**",
 					web.ServicePlansURL+"/**",
+					web.VisibilitiesURL+"/**",
 				),
 			},
 		},
@@ -49,7 +51,7 @@ func (ba *bearerAuthnFilter) FilterMatchers() []web.FilterMatcher {
 
 // NewFilter returns a web.Filter for Bearer authentication
 func NewFilter(ctx context.Context, tokenIssuer, clientID string) (web.Filter, error) {
-	authenticator, err := newAuthenticator(ctx, &options{
+	authenticator, _, err := authenticators.NewOIDCAuthenticator(ctx, &authenticators.OIDCOptions{
 		IssuerURL: tokenIssuer,
 		ClientID:  clientID,
 	})

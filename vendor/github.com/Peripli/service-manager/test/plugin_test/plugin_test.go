@@ -1,11 +1,16 @@
 package plugin_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"testing"
+
+	"github.com/Peripli/service-manager/pkg/env"
+
+	"github.com/Peripli/service-manager/pkg/sm"
 
 	"github.com/Peripli/service-manager/test/common"
 	. "github.com/onsi/ginkgo"
@@ -36,13 +41,13 @@ var _ = Describe("Service Manager Plugins", func() {
 
 	Describe("Partial plugin", func() {
 		BeforeEach(func() {
-			ctx = common.NewTestContext(&common.ContextParams{
-				RegisterExtensions: func(api *web.API) {
-					api.RegisterPlugins(&PartialPlugin{})
-				},
-			})
+			ctx = common.NewTestContextBuilder().WithSMExtensions(func(ctx context.Context, smb *sm.ServiceManagerBuilder, e env.Environment) error {
+				smb.API.RegisterPlugins(&PartialPlugin{})
+				return nil
+			}).Build()
+
 			var brokerID string
-			brokerID, brokerServer = ctx.RegisterBroker()
+			brokerID, _, brokerServer = ctx.RegisterBroker()
 			osbURL = "/v1/osb/" + brokerID
 		})
 
@@ -65,13 +70,13 @@ var _ = Describe("Service Manager Plugins", func() {
 		BeforeEach(func() {
 			testPlugin = TestPlugin{}
 
-			ctx = common.NewTestContext(&common.ContextParams{
-				RegisterExtensions: func(api *web.API) {
-					api.RegisterPlugins(testPlugin)
-				},
-			})
+			ctx = common.NewTestContextBuilder().WithSMExtensions(func(ctx context.Context, smb *sm.ServiceManagerBuilder, e env.Environment) error {
+				smb.API.RegisterPlugins(testPlugin)
+				return nil
+			}).Build()
+
 			var brokerID string
-			brokerID, brokerServer = ctx.RegisterBroker()
+			brokerID, _, brokerServer = ctx.RegisterBroker()
 			osbURL = "/v1/osb/" + brokerID
 		})
 
@@ -120,7 +125,7 @@ var _ = Describe("Service Manager Plugins", func() {
 		})
 
 		It("Plugin modifies the request & response headers", func() {
-			testPlugin["fetchCatalog"] = web.MiddlewareFunc(func(req *web.Request, next web.Handler) (*web.Response, error) {
+			testPlugin["provision"] = web.MiddlewareFunc(func(req *web.Request, next web.Handler) (*web.Response, error) {
 				h := req.Header.Get("extra")
 				req.Header.Set("extra", h+"-request")
 
@@ -133,8 +138,8 @@ var _ = Describe("Service Manager Plugins", func() {
 				return res, nil
 			})
 
-			ctx.SMWithBasic.GET(osbURL+"/v2/catalog").WithHeader("extra", "value").
-				Expect().Status(http.StatusOK).Header("extra").Equal("value-response")
+			ctx.SMWithBasic.PUT(osbURL+"/v2/service_instances/123").WithHeader("extra", "value").WithJSON(object{}).
+				Expect().Status(http.StatusCreated).Header("extra").Equal("value-response")
 
 			Expect(brokerServer.LastRequest.Header.Get("extra")).To(Equal("value-request"))
 		})
@@ -161,7 +166,7 @@ var _ = Describe("Service Manager Plugins", func() {
 			ctx.SMWithBasic.GET(osbURL + "/v2/catalog").
 				Expect().Status(http.StatusOK)
 
-			Expect(brokerServer.Server.URL).To(ContainSubstring(brokerServer.LastRequest.Host))
+			Expect(brokerServer.URL()).To(ContainSubstring(brokerServer.LastRequest.Host))
 		})
 
 		osbOperations := []struct {
@@ -181,6 +186,7 @@ var _ = Describe("Service Manager Plugins", func() {
 			{"fetchBinding", "GET", "/v2/service_instances/1234/service_bindings/111", []string{""}, http.StatusOK},
 			{"pollInstance", "GET", "/v2/service_instances/1234/last_operation", []string{"", "service_id=serviceId", "plan_id=planId", "operation=provision", "service_id=serviceId&plan_id=planId&operation=provision"}, http.StatusOK},
 			{"pollBinding", "GET", "/v2/service_instances/1234/service_bindings/111/last_operation", []string{"", "service_id=serviceId", "plan_id=planId", "operation=provision", "service_id=serviceId&plan_id=planId&operation=provision"}, http.StatusOK},
+			{"adaptCredentials", "POST", "/v2/service_instances/1234/service_bindings/111/adapt_credentials", []string{""}, http.StatusOK},
 		}
 
 		for _, op := range osbOperations {
@@ -256,6 +262,10 @@ func (p TestPlugin) PollInstance(request *web.Request, next web.Handler) (*web.R
 
 func (p TestPlugin) PollBinding(request *web.Request, next web.Handler) (*web.Response, error) {
 	return p.call(p["pollBinding"], request, next)
+}
+
+func (p TestPlugin) AdaptCredentials(request *web.Request, next web.Handler) (*web.Response, error) {
+	return p.call(p["adaptCredentials"], request, next)
 }
 
 type PartialPlugin struct{}
