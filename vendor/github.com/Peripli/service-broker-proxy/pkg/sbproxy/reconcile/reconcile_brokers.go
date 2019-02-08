@@ -59,19 +59,26 @@ func (r *ReconciliationTask) processBrokers() {
 // reconcileBrokers attempts to reconcile the current brokers state in the platform (existingBrokers)
 // to match the desired broker state coming from the Service Manager (payloadBrokers).
 func (r *ReconciliationTask) reconcileBrokers(existingBrokers []platform.ServiceBroker, payloadBrokers []platform.ServiceBroker) {
-	existingMap := convertBrokersRegListToMap(existingBrokers)
-	for _, payloadBroker := range payloadBrokers {
-		existingBroker := existingMap[payloadBroker.GUID]
-		delete(existingMap, payloadBroker.GUID)
+	groupedExistingBrokers := groupBrokersByConditions(existingBrokers, mapByWholeURL, mapByURLSmIDSuffix(r.isProxyBroker))
+	existingBrokersByURLMap := groupedExistingBrokers[0]
+	existingBrokersByURLSmIDSuffixMap := groupedExistingBrokers[1]
 
-		if existingBroker == nil {
+	for _, payloadBroker := range payloadBrokers {
+		existingBroker := existingBrokersByURLSmIDSuffixMap[payloadBroker.GUID]
+		delete(existingBrokersByURLSmIDSuffixMap, payloadBroker.GUID)
+
+		platformBroker, knownToPlatform := existingBrokersByURLMap[payloadBroker.BrokerURL]
+		// Broker is registered in platform, but not already known to this broker proxy
+		if knownToPlatform {
+			r.updateBrokerRegistration(platformBroker.GUID, &payloadBroker)
+		} else if existingBroker == nil {
 			r.createBrokerRegistration(&payloadBroker)
 		} else {
 			r.fetchBrokerCatalog(existingBroker)
 		}
 	}
 
-	for _, existingBroker := range existingMap {
+	for _, existingBroker := range existingBrokersByURLSmIDSuffixMap {
 		r.deleteBrokerRegistration(existingBroker)
 	}
 }
@@ -86,10 +93,6 @@ func (r *ReconciliationTask) getBrokersFromPlatform() ([]platform.ServiceBroker,
 
 	brokersFromPlatform := make([]platform.ServiceBroker, 0, len(registeredBrokers))
 	for _, broker := range registeredBrokers {
-		if !r.isProxyBroker(broker) {
-			continue
-		}
-
 		logger.WithFields(logBroker(&broker)).Debug("ReconciliationTask task FOUND registered proxy broker... ")
 		brokersFromPlatform = append(brokersFromPlatform, broker)
 	}
@@ -149,6 +152,23 @@ func (r *ReconciliationTask) createBrokerRegistration(broker *platform.ServiceBr
 	}
 }
 
+func (r *ReconciliationTask) updateBrokerRegistration(brokerGUID string, broker *platform.ServiceBroker) {
+	logger := log.C(r.runContext)
+	logger.WithFields(logBroker(broker)).Info("ReconciliationTask task attempting to update broker registration in platform...")
+
+	updateRequest := &platform.UpdateServiceBrokerRequest{
+		GUID:      brokerGUID,
+		Name:      ProxyBrokerPrefix + broker.GUID,
+		BrokerURL: r.proxyPath + "/" + broker.GUID,
+	}
+
+	if b, err := r.platformClient.Broker().UpdateBroker(r.runContext, updateRequest); err != nil {
+		logger.WithFields(logBroker(broker)).WithError(err).Error("Error during broker update")
+	} else {
+		logger.WithFields(logBroker(b)).Infof("ReconciliationTask task SUCCESSFULLY updated broker registration at platform under name [%s] accessible at [%s]", updateRequest.Name, updateRequest.BrokerURL)
+	}
+}
+
 func (r *ReconciliationTask) deleteBrokerRegistration(broker *platform.ServiceBroker) {
 	logger := log.C(r.runContext)
 	logger.WithFields(logBroker(broker)).Info("ReconciliationTask task attempting to delete broker from platform...")
@@ -165,7 +185,7 @@ func (r *ReconciliationTask) deleteBrokerRegistration(broker *platform.ServiceBr
 	}
 }
 
-func (r *ReconciliationTask) isProxyBroker(broker platform.ServiceBroker) bool {
+func (r *ReconciliationTask) isProxyBroker(broker *platform.ServiceBroker) bool {
 	return strings.HasPrefix(broker.BrokerURL, r.proxyPath)
 }
 
@@ -177,12 +197,35 @@ func logBroker(broker *platform.ServiceBroker) logrus.Fields {
 	}
 }
 
-func convertBrokersRegListToMap(brokerList []platform.ServiceBroker) map[string]*platform.ServiceBroker {
-	brokerRegMap := make(map[string]*platform.ServiceBroker, len(brokerList))
+type filterBrokerPredicate func(broker *platform.ServiceBroker) bool
+
+func mapByURLSmIDSuffix(predicate filterBrokerPredicate) func(platform.ServiceBroker) (string, bool) {
+	return func(broker platform.ServiceBroker) (string, bool) {
+		if !predicate(&broker) {
+			return "", false
+		}
+		return broker.BrokerURL[strings.LastIndex(broker.BrokerURL, "/")+1:], true
+	}
+}
+
+func mapByWholeURL(broker platform.ServiceBroker) (string, bool) {
+	return broker.BrokerURL, true
+}
+
+func groupBrokersByConditions(brokerList []platform.ServiceBroker, groupBy ...func(platform.ServiceBroker) (string, bool)) []map[string]*platform.ServiceBroker {
+	brokerMaps := make([]map[string]*platform.ServiceBroker, len(groupBy))
+	for i := range groupBy {
+		brokerMaps[i] = make(map[string]*platform.ServiceBroker)
+	}
 
 	for i, broker := range brokerList {
-		smID := broker.BrokerURL[strings.LastIndex(broker.BrokerURL, "/")+1:]
-		brokerRegMap[smID] = &brokerList[i]
+		for groupIndex, groupFunc := range groupBy {
+			group, mapped := groupFunc(broker)
+			if mapped {
+				brokerMaps[groupIndex][group] = &brokerList[i]
+			}
+		}
 	}
-	return brokerRegMap
+
+	return brokerMaps
 }

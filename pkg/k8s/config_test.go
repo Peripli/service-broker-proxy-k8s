@@ -64,7 +64,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					config.Secret.Name = ""
 					err := config.Validate()
 					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(Equal("Properties of K8S secret configuration for broker registration missing"))
+					Expect(err.Error()).To(Equal("properties of K8S secret configuration for broker registration missing"))
 				})
 			})
 
@@ -73,7 +73,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					config.Secret.Namespace = ""
 					err := config.Validate()
 					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(Equal("Properties of K8S secret configuration for broker registration missing"))
+					Expect(err.Error()).To(Equal("properties of K8S secret configuration for broker registration missing"))
 				})
 			})
 

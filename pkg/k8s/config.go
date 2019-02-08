@@ -41,19 +41,19 @@ type Settings struct {
 func newSvcatSDK(libraryConfig *LibraryConfig) (*servicecatalog.SDK, error) {
 	config, err := restInClusterConfig()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to load cluster config: %s", err.Error())
+		return nil, fmt.Errorf("failed to load cluster config: %s", err.Error())
 	}
 
 	config.Timeout = libraryConfig.Timeout
 
 	svcatClient, err := svcatclient.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create new svcat client: %s", err.Error())
+		return nil, fmt.Errorf("failed to create new svcat client: %s", err.Error())
 	}
 
 	k8sClient, err := k8sclient.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create new k8sClient: %s", err.Error())
+		return nil, fmt.Errorf("failed to create new k8sClient: %s", err.Error())
 	}
 
 	return &servicecatalog.SDK{
@@ -101,7 +101,7 @@ func (c *ClientConfiguration) Validate() error {
 // Validate validates the registration details and returns appropriate errors in case it is invalid
 func (r *SecretRef) Validate() error {
 	if r.Name == "" || r.Namespace == "" {
-		return errors.New("Properties of K8S secret configuration for broker registration missing")
+		return errors.New("properties of K8S secret configuration for broker registration missing")
 	}
 	return nil
 }

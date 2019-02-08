@@ -40,7 +40,7 @@ func DefaultSettings() *Settings {
 		Username:        "",
 		Password:        "",
 		VisibilityCache: true,
-		CacheExpiration: time.Hour,
+		CacheExpiration: 2 * time.Hour,
 	}
 }
 
