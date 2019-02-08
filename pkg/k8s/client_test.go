@@ -51,7 +51,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				config := defaultClientConfiguration()
 				_, err := NewClient(config)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("Properties of K8S secret configuration for broker registration missing"))
+				Expect(err.Error()).To(Equal("properties of K8S secret configuration for broker registration missing"))
 			})
 		})
 
