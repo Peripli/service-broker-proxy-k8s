@@ -47,6 +47,7 @@ package unix
 #include <sys/user.h>
 #include <sys/utsname.h>
 #include <sys/wait.h>
+#include <linux/errqueue.h>
 #include <linux/filter.h>
 #include <linux/icmpv6.h>
 #include <linux/if_pppox.h>
@@ -750,8 +751,6 @@ const (
 type Sigset_t C.sigset_t
 
 type SignalfdSiginfo C.struct_signalfd_siginfo
-
-const RNDGETENTCNT = C.RNDGETENTCNT
 
 const PERF_IOC_FLAG_GROUP = C.PERF_IOC_FLAG_GROUP
 
@@ -1643,7 +1642,9 @@ const (
 	NCSI_CHANNEL_ATTR_VLAN_ID       = C.NCSI_CHANNEL_ATTR_VLAN_ID
 )
 
-// SO_TIMESTAMPING flags
+// Timestamping
+
+type ScmTimestamping C.struct_scm_timestamping
 
 const (
 	SOF_TIMESTAMPING_TX_HARDWARE  = C.SOF_TIMESTAMPING_TX_HARDWARE
@@ -1664,4 +1665,12 @@ const (
 
 	SOF_TIMESTAMPING_LAST = C.SOF_TIMESTAMPING_LAST
 	SOF_TIMESTAMPING_MASK = C.SOF_TIMESTAMPING_MASK
+
+	SCM_TSTAMP_SND   = C.SCM_TSTAMP_SND
+	SCM_TSTAMP_SCHED = C.SCM_TSTAMP_SCHED
+	SCM_TSTAMP_ACK   = C.SCM_TSTAMP_ACK
 )
+
+// Socket error queue
+
+type SockExtendedErr C.struct_sock_extended_err

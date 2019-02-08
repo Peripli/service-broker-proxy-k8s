@@ -24,7 +24,7 @@ import (
 
 // Brokers type used for responses from the Service Manager client
 type Brokers struct {
-	Brokers []Broker `json:"brokers"`
+	Brokers []Broker `json:"service_brokers"`
 }
 
 // Broker type used for responses from the Service Manager client

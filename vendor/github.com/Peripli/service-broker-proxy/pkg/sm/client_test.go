@@ -141,7 +141,7 @@ var _ = Describe("Client", func() {
 	}
 
 	const okBrokerResponse = `{
-		"brokers": [
+		"service_brokers": [
 		{
 			"id": "brokerID",
 			"name": "brokerName",
