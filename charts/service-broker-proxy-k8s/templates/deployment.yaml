@@ -28,6 +28,10 @@ spec:
           configMap:
             name: {{ template "service-broker-proxy.fullname" . }}-config
       serviceAccountName: {{ template "service-broker-proxy.fullname" . }}
+      {{- if .Values.image.pullsecret }}
+      imagePullSecrets:
+      - name: {{.Values.image.pullsecret}}
+      {{- end }}
       containers:
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
