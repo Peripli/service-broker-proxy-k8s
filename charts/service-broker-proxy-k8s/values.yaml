@@ -13,6 +13,7 @@ image:
 service:
   type: ClusterIP
   port: 80
+  app_url:
 
 file:
   name: application
