@@ -17,12 +17,12 @@ limitations under the License.
 package validation
 
 import (
-	"github.com/ghodss/yaml"
 	sc "github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog"
 	scfeatures "github.com/kubernetes-incubator/service-catalog/pkg/features"
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"sigs.k8s.io/yaml"
 )
 
 // validateServiceBindingName is the validation function for ServiceBinding names.
@@ -119,6 +119,9 @@ func validateServiceBindingStatus(status *sc.ServiceBindingStatus, fldPath *fiel
 			allErrs = append(allErrs, field.Forbidden(fldPath.Child("asyncOpInProgress"), "asyncOpInProgress cannot be true when there is no currentOperation"))
 		}
 	} else {
+		if status.LastOperation != nil && len(*status.LastOperation) > lastOperationMaxLength {
+			allErrs = append(allErrs, field.TooLong(fldPath.Child("lastOperation"), status.LastOperation, lastOperationMaxLength))
+		}
 		if status.OperationStartTime == nil && !status.OrphanMitigationInProgress {
 			allErrs = append(allErrs, field.Required(fldPath.Child("operationStartTime"), "operationStartTime is required when currentOperation is present and no orphan mitigation in progress"))
 		}

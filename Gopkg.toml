@@ -27,7 +27,7 @@
 
 [[constraint]]
   name = "github.com/kubernetes-incubator/service-catalog"
-  version = "=0.1.36"
+  version = "=0.1.40"
 
 [[constraint]]
   name = "github.com/Peripli/service-broker-proxy"

@@ -139,15 +139,23 @@ func (sdk *SDK) RetrieveClassByName(name string, opts ScopeOptions) (Class, erro
 	}
 
 	if len(searchResults) == 0 {
+		if opts.Scope.Matches(ClusterScope) {
+			return nil, fmt.Errorf("class '%s' not found in cluster scope", name)
+		} else if opts.Scope.Matches(NamespaceScope) {
+			if opts.Namespace == "" {
+				return nil, fmt.Errorf("class '%s' not found in any namespace", name)
+			}
+			return nil, fmt.Errorf("class '%s' not found in namespace %s", name, opts.Namespace)
+		}
 		return nil, fmt.Errorf("class '%s' not found", name)
 	}
 
 	return searchResults[0], nil
 }
 
-// RetrieveClassByID gets a class by its UUID.
-func (sdk *SDK) RetrieveClassByID(uuid string) (*v1beta1.ClusterServiceClass, error) {
-	class, err := sdk.ServiceCatalog().ClusterServiceClasses().Get(uuid, metav1.GetOptions{})
+// RetrieveClassByID gets a class by its Kubernetes name.
+func (sdk *SDK) RetrieveClassByID(kubeName string) (*v1beta1.ClusterServiceClass, error) {
+	class, err := sdk.ServiceCatalog().ClusterServiceClasses().Get(kubeName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to get class (%s)", err)
 	}
