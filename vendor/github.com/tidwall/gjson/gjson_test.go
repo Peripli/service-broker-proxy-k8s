@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/tidwall/pretty"
 )
 
 // TestRandomData is a fuzzing test that throws random data at the Parse
@@ -1428,6 +1430,77 @@ func TestArrayValues(t *testing.T) {
 	}, "\n")
 	if output != expect {
 		t.Fatalf("expected '%v', got '%v'", expect, output)
+	}
+
+}
+
+func BenchmarkValid(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Valid(complicatedJSON)
+	}
+}
+
+func BenchmarkValidBytes(b *testing.B) {
+	complicatedJSON := []byte(complicatedJSON)
+	for i := 0; i < b.N; i++ {
+		ValidBytes(complicatedJSON)
+	}
+}
+
+func BenchmarkGoStdlibValidBytes(b *testing.B) {
+	complicatedJSON := []byte(complicatedJSON)
+	for i := 0; i < b.N; i++ {
+		json.Valid(complicatedJSON)
+	}
+}
+
+func TestModifier(t *testing.T) {
+	json := `{"other":{"hello":"world"},"arr":[1,2,3,4,5,6]}`
+	opts := *pretty.DefaultOptions
+	opts.SortKeys = true
+	exp := string(pretty.PrettyOptions([]byte(json), &opts))
+	res := Get(json, `@pretty:{"sortKeys":true}`).String()
+	if res != exp {
+		t.Fatalf("expected '%v', got '%v'", exp, res)
+	}
+	res = Get(res, "@pretty|@reverse|@ugly").String()
+	if res != json {
+		t.Fatalf("expected '%v', got '%v'", json, res)
+	}
+	res = Get(res, "@pretty|@reverse|arr|@reverse|2").String()
+	if res != "4" {
+		t.Fatalf("expected '%v', got '%v'", "4", res)
+	}
+	AddModifier("case", func(json, arg string) string {
+		if arg == "upper" {
+			return strings.ToUpper(json)
+		}
+		if arg == "lower" {
+			return strings.ToLower(json)
+		}
+		return json
+	})
+	res = Get(json, "other|@case:upper").String()
+	if res != `{"HELLO":"WORLD"}` {
+		t.Fatalf("expected '%v', got '%v'", `{"HELLO":"WORLD"}`, res)
+	}
+}
+
+func TestChaining(t *testing.T) {
+	json := `{
+		"friends": [
+		  {"first": "Dale", "last": "Murphy", "age": 44},
+		  {"first": "Roger", "last": "Craig", "age": 68},
+		  {"first": "Jane", "last": "Murphy", "age": 47}
+		]
+	  }`
+	res := Get(json, "friends|0|first").String()
+	if res != "Dale" {
+		t.Fatalf("expected '%v', got '%v'", "Dale", res)
+	}
+	res = Get(json, "friends|@reverse|0|age").String()
+	if res != "47" {
+		t.Fatalf("expected '%v', got '%v'", "47", res)
 	}
 
 }

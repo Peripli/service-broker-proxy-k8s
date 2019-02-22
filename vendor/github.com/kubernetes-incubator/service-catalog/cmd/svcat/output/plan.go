@@ -130,7 +130,7 @@ func WriteParentPlan(w io.Writer, plan *v1beta1.ClusterServicePlan) {
 	t := NewDetailsTable(w)
 	t.AppendBulk([][]string{
 		{"Name:", plan.Spec.ExternalName},
-		{"UUID:", string(plan.Name)},
+		{"Kubernetes Name:", string(plan.Name)},
 		{"Status:", getPlanStatusShort(plan.Status)},
 	})
 	t.Render()
@@ -143,13 +143,23 @@ func WritePlanDetails(w io.Writer, plan servicecatalog.Plan, class *v1beta1.Clus
 	t.AppendBulk([][]string{
 		{"Name:", plan.GetExternalName()},
 		{"Description:", plan.GetDescription()},
-		{"UUID:", string(plan.GetName())},
+		{"Kubernetes Name:", string(plan.GetName())},
 		{"Status:", plan.GetShortStatus()},
 		{"Free:", strconv.FormatBool(plan.GetFree())},
 		{"Class:", class.Spec.ExternalName},
 	})
 
 	t.Render()
+}
+
+// WriteDefaultProvisionParameters prints the default provision parameters for a single plan.
+func WriteDefaultProvisionParameters(w io.Writer, plan servicecatalog.Plan) {
+	defaultProvisionParameters := plan.GetDefaultProvisionParameters()
+
+	if defaultProvisionParameters != nil {
+		fmt.Fprintln(w, "\nDefault Provision Parameters:")
+		writeYAML(w, defaultProvisionParameters, 2)
+	}
 }
 
 // WritePlanSchemas prints the schemas for a single plan.
