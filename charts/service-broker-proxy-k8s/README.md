@@ -15,6 +15,7 @@ This helm chart bootstraps the Service Broker Proxy for Kubernetes.
 
 ### Installation
 
+From the root folder of this repository, execute:
 ```bash
 helm install charts/service-broker-proxy-k8s --name service-broker-proxy --namespace service-broker-proxy --set config.sm.url=<SM_URL> --set sm.user=<USER> --set sm.password=<PASSWORD>
 ```
