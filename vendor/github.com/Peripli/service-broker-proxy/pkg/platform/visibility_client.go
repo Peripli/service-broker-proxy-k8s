@@ -19,25 +19,23 @@ package platform
 import (
 	"context"
 	"encoding/json"
-
-	"github.com/Peripli/service-manager/pkg/types"
 )
 
 // VisibilityClient interface for platform clients to implement if they support
 // platform specific service and plan visibilities
 //go:generate counterfeiter . VisibilityClient
 type VisibilityClient interface {
-	// GetVisibilitiesByPlans get currently available visibilities in the platform for a specific plans
-	GetVisibilitiesByPlans(context.Context, []*types.ServicePlan) ([]*ServiceVisibilityEntity, error)
+	// GetVisibilitiesByBrokers get currently available visibilities in the platform for specific broker names
+	GetVisibilitiesByBrokers(context.Context, []string) ([]*ServiceVisibilityEntity, error)
 
 	// VisibilityScopeLabelKey returns a specific label key which should be used when converting SM visibilities to platform.Visibilities
 	VisibilityScopeLabelKey() string
 
 	// EnableAccessForPlan enables the access to the plan with the specified GUID for
 	// the entities in the data
-	EnableAccessForPlan(ctx context.Context, data json.RawMessage, servicePlanGUID string) error
+	EnableAccessForPlan(ctx context.Context, data json.RawMessage, catalogPlanID, platformBrokerName string) error
 
 	// DisableAccessForPlan disables the access to the plan with the specified GUID for
 	// the entities in the data
-	DisableAccessForPlan(ctx context.Context, data json.RawMessage, servicePlanGUID string) error
+	DisableAccessForPlan(ctx context.Context, data json.RawMessage, catalogPlanID, platformBrokerName string) error
 }

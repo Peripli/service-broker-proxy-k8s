@@ -32,6 +32,8 @@ import (
 const running int32 = 1
 const notRunning int32 = 0
 
+const smBrokersStats = "sm_brokers"
+
 // ReconciliationTask type represents a registration task that takes care of propagating broker and visibility
 // creations and deletions to the platform. It reconciles the state of the proxy brokers and visibilities
 // in the platform to match the desired state provided by the Service Manager.
@@ -42,10 +44,13 @@ type ReconciliationTask struct {
 	platformClient platform.Client
 	smClient       sm.Client
 	proxyPath      string
-	globalContext  context.Context
 	cache          *cache.Cache
-	runContext     context.Context
 	state          *int32
+
+	globalContext context.Context
+	runContext    context.Context
+
+	stats map[string]interface{}
 }
 
 // NewTask builds a new ReconciliationTask
@@ -79,6 +84,8 @@ func (r *ReconciliationTask) Run() {
 	}
 	defer r.end()
 
+	r.stats = make(map[string]interface{})
+
 	newRunContext, taskID, err := r.generateRunContext()
 	if err != nil {
 		log.C(r.globalContext).WithError(err).Error("reconsilation task will not be sheduled")
@@ -109,4 +116,12 @@ func (r *ReconciliationTask) generateRunContext() (context.Context, string, erro
 	}
 	entry := log.C(r.globalContext).WithField(log.FieldCorrelationID, correlationID.String())
 	return log.ContextWithLogger(r.globalContext, entry), correlationID.String(), nil
+}
+
+func (r *ReconciliationTask) stat(key string) interface{} {
+	result, found := r.stats[key]
+	if !found {
+		return nil
+	}
+	return result
 }

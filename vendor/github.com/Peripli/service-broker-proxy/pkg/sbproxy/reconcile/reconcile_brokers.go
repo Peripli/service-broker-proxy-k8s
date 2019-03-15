@@ -38,19 +38,19 @@ func (r *ReconciliationTask) processBrokers() {
 		return
 	}
 
-	// get all the registered proxy brokers from the platform
+	// get all the registered brokers from the platform
 	brokersFromPlatform, err := r.getBrokersFromPlatform()
 	if err != nil {
 		logger.WithError(err).Error("An error occurred while obtaining already registered brokers")
 		return
 	}
 
-	// get all the brokers that are in SM and for which a proxy broker should be present in the platform
 	brokersFromSM, err := r.getBrokersFromSM()
 	if err != nil {
 		logger.WithError(err).Error("An error occurred while obtaining brokers from Service Manager")
 		return
 	}
+	r.stats[smBrokersStats] = brokersFromSM
 
 	// control logic - make sure current state matches desired state
 	r.reconcileBrokers(brokersFromPlatform, brokersFromSM)
@@ -85,7 +85,7 @@ func (r *ReconciliationTask) reconcileBrokers(existingBrokers []platform.Service
 
 func (r *ReconciliationTask) getBrokersFromPlatform() ([]platform.ServiceBroker, error) {
 	logger := log.C(r.runContext)
-	logger.Debug("ReconciliationTask task getting proxy brokers from platform...")
+	logger.Debug("ReconciliationTask task getting brokers from platform...")
 	registeredBrokers, err := r.platformClient.Broker().GetBrokers(r.runContext)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting brokers from platform")
@@ -93,10 +93,10 @@ func (r *ReconciliationTask) getBrokersFromPlatform() ([]platform.ServiceBroker,
 
 	brokersFromPlatform := make([]platform.ServiceBroker, 0, len(registeredBrokers))
 	for _, broker := range registeredBrokers {
-		logger.WithFields(logBroker(&broker)).Debug("ReconciliationTask task FOUND registered proxy broker... ")
+		logger.WithFields(logBroker(&broker)).Debug("ReconciliationTask task FOUND registered broker... ")
 		brokersFromPlatform = append(brokersFromPlatform, broker)
 	}
-	logger.Debugf("ReconciliationTask task SUCCESSFULLY retrieved %d proxy brokers from platform", len(brokersFromPlatform))
+	logger.Debugf("ReconciliationTask task SUCCESSFULLY retrieved %d brokers from platform", len(brokersFromPlatform))
 	return brokersFromPlatform, nil
 }
 

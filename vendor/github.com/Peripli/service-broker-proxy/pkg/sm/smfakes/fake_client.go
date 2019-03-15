@@ -36,6 +36,34 @@ type FakeClient struct {
 		result1 []*types.ServicePlan
 		result2 error
 	}
+	GetPlansByServiceOfferingsStub        func(context.Context, []*types.ServiceOffering) ([]*types.ServicePlan, error)
+	getPlansByServiceOfferingsMutex       sync.RWMutex
+	getPlansByServiceOfferingsArgsForCall []struct {
+		arg1 context.Context
+		arg2 []*types.ServiceOffering
+	}
+	getPlansByServiceOfferingsReturns struct {
+		result1 []*types.ServicePlan
+		result2 error
+	}
+	getPlansByServiceOfferingsReturnsOnCall map[int]struct {
+		result1 []*types.ServicePlan
+		result2 error
+	}
+	GetServiceOfferingsByBrokerIDsStub        func(context.Context, []string) ([]*types.ServiceOffering, error)
+	getServiceOfferingsByBrokerIDsMutex       sync.RWMutex
+	getServiceOfferingsByBrokerIDsArgsForCall []struct {
+		arg1 context.Context
+		arg2 []string
+	}
+	getServiceOfferingsByBrokerIDsReturns struct {
+		result1 []*types.ServiceOffering
+		result2 error
+	}
+	getServiceOfferingsByBrokerIDsReturnsOnCall map[int]struct {
+		result1 []*types.ServiceOffering
+		result2 error
+	}
 	GetVisibilitiesStub        func(context.Context) ([]*types.Visibility, error)
 	getVisibilitiesMutex       sync.RWMutex
 	getVisibilitiesArgsForCall []struct {
@@ -179,6 +207,144 @@ func (fake *FakeClient) GetPlansReturnsOnCall(i int, result1 []*types.ServicePla
 	}{result1, result2}
 }
 
+func (fake *FakeClient) GetPlansByServiceOfferings(arg1 context.Context, arg2 []*types.ServiceOffering) ([]*types.ServicePlan, error) {
+	var arg2Copy []*types.ServiceOffering
+	if arg2 != nil {
+		arg2Copy = make([]*types.ServiceOffering, len(arg2))
+		copy(arg2Copy, arg2)
+	}
+	fake.getPlansByServiceOfferingsMutex.Lock()
+	ret, specificReturn := fake.getPlansByServiceOfferingsReturnsOnCall[len(fake.getPlansByServiceOfferingsArgsForCall)]
+	fake.getPlansByServiceOfferingsArgsForCall = append(fake.getPlansByServiceOfferingsArgsForCall, struct {
+		arg1 context.Context
+		arg2 []*types.ServiceOffering
+	}{arg1, arg2Copy})
+	fake.recordInvocation("GetPlansByServiceOfferings", []interface{}{arg1, arg2Copy})
+	fake.getPlansByServiceOfferingsMutex.Unlock()
+	if fake.GetPlansByServiceOfferingsStub != nil {
+		return fake.GetPlansByServiceOfferingsStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.getPlansByServiceOfferingsReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeClient) GetPlansByServiceOfferingsCallCount() int {
+	fake.getPlansByServiceOfferingsMutex.RLock()
+	defer fake.getPlansByServiceOfferingsMutex.RUnlock()
+	return len(fake.getPlansByServiceOfferingsArgsForCall)
+}
+
+func (fake *FakeClient) GetPlansByServiceOfferingsCalls(stub func(context.Context, []*types.ServiceOffering) ([]*types.ServicePlan, error)) {
+	fake.getPlansByServiceOfferingsMutex.Lock()
+	defer fake.getPlansByServiceOfferingsMutex.Unlock()
+	fake.GetPlansByServiceOfferingsStub = stub
+}
+
+func (fake *FakeClient) GetPlansByServiceOfferingsArgsForCall(i int) (context.Context, []*types.ServiceOffering) {
+	fake.getPlansByServiceOfferingsMutex.RLock()
+	defer fake.getPlansByServiceOfferingsMutex.RUnlock()
+	argsForCall := fake.getPlansByServiceOfferingsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeClient) GetPlansByServiceOfferingsReturns(result1 []*types.ServicePlan, result2 error) {
+	fake.getPlansByServiceOfferingsMutex.Lock()
+	defer fake.getPlansByServiceOfferingsMutex.Unlock()
+	fake.GetPlansByServiceOfferingsStub = nil
+	fake.getPlansByServiceOfferingsReturns = struct {
+		result1 []*types.ServicePlan
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeClient) GetPlansByServiceOfferingsReturnsOnCall(i int, result1 []*types.ServicePlan, result2 error) {
+	fake.getPlansByServiceOfferingsMutex.Lock()
+	defer fake.getPlansByServiceOfferingsMutex.Unlock()
+	fake.GetPlansByServiceOfferingsStub = nil
+	if fake.getPlansByServiceOfferingsReturnsOnCall == nil {
+		fake.getPlansByServiceOfferingsReturnsOnCall = make(map[int]struct {
+			result1 []*types.ServicePlan
+			result2 error
+		})
+	}
+	fake.getPlansByServiceOfferingsReturnsOnCall[i] = struct {
+		result1 []*types.ServicePlan
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeClient) GetServiceOfferingsByBrokerIDs(arg1 context.Context, arg2 []string) ([]*types.ServiceOffering, error) {
+	var arg2Copy []string
+	if arg2 != nil {
+		arg2Copy = make([]string, len(arg2))
+		copy(arg2Copy, arg2)
+	}
+	fake.getServiceOfferingsByBrokerIDsMutex.Lock()
+	ret, specificReturn := fake.getServiceOfferingsByBrokerIDsReturnsOnCall[len(fake.getServiceOfferingsByBrokerIDsArgsForCall)]
+	fake.getServiceOfferingsByBrokerIDsArgsForCall = append(fake.getServiceOfferingsByBrokerIDsArgsForCall, struct {
+		arg1 context.Context
+		arg2 []string
+	}{arg1, arg2Copy})
+	fake.recordInvocation("GetServiceOfferingsByBrokerIDs", []interface{}{arg1, arg2Copy})
+	fake.getServiceOfferingsByBrokerIDsMutex.Unlock()
+	if fake.GetServiceOfferingsByBrokerIDsStub != nil {
+		return fake.GetServiceOfferingsByBrokerIDsStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.getServiceOfferingsByBrokerIDsReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeClient) GetServiceOfferingsByBrokerIDsCallCount() int {
+	fake.getServiceOfferingsByBrokerIDsMutex.RLock()
+	defer fake.getServiceOfferingsByBrokerIDsMutex.RUnlock()
+	return len(fake.getServiceOfferingsByBrokerIDsArgsForCall)
+}
+
+func (fake *FakeClient) GetServiceOfferingsByBrokerIDsCalls(stub func(context.Context, []string) ([]*types.ServiceOffering, error)) {
+	fake.getServiceOfferingsByBrokerIDsMutex.Lock()
+	defer fake.getServiceOfferingsByBrokerIDsMutex.Unlock()
+	fake.GetServiceOfferingsByBrokerIDsStub = stub
+}
+
+func (fake *FakeClient) GetServiceOfferingsByBrokerIDsArgsForCall(i int) (context.Context, []string) {
+	fake.getServiceOfferingsByBrokerIDsMutex.RLock()
+	defer fake.getServiceOfferingsByBrokerIDsMutex.RUnlock()
+	argsForCall := fake.getServiceOfferingsByBrokerIDsArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeClient) GetServiceOfferingsByBrokerIDsReturns(result1 []*types.ServiceOffering, result2 error) {
+	fake.getServiceOfferingsByBrokerIDsMutex.Lock()
+	defer fake.getServiceOfferingsByBrokerIDsMutex.Unlock()
+	fake.GetServiceOfferingsByBrokerIDsStub = nil
+	fake.getServiceOfferingsByBrokerIDsReturns = struct {
+		result1 []*types.ServiceOffering
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeClient) GetServiceOfferingsByBrokerIDsReturnsOnCall(i int, result1 []*types.ServiceOffering, result2 error) {
+	fake.getServiceOfferingsByBrokerIDsMutex.Lock()
+	defer fake.getServiceOfferingsByBrokerIDsMutex.Unlock()
+	fake.GetServiceOfferingsByBrokerIDsStub = nil
+	if fake.getServiceOfferingsByBrokerIDsReturnsOnCall == nil {
+		fake.getServiceOfferingsByBrokerIDsReturnsOnCall = make(map[int]struct {
+			result1 []*types.ServiceOffering
+			result2 error
+		})
+	}
+	fake.getServiceOfferingsByBrokerIDsReturnsOnCall[i] = struct {
+		result1 []*types.ServiceOffering
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeClient) GetVisibilities(arg1 context.Context) ([]*types.Visibility, error) {
 	fake.getVisibilitiesMutex.Lock()
 	ret, specificReturn := fake.getVisibilitiesReturnsOnCall[len(fake.getVisibilitiesArgsForCall)]
@@ -249,6 +415,10 @@ func (fake *FakeClient) Invocations() map[string][][]interface{} {
 	defer fake.getBrokersMutex.RUnlock()
 	fake.getPlansMutex.RLock()
 	defer fake.getPlansMutex.RUnlock()
+	fake.getPlansByServiceOfferingsMutex.RLock()
+	defer fake.getPlansByServiceOfferingsMutex.RUnlock()
+	fake.getServiceOfferingsByBrokerIDsMutex.RLock()
+	defer fake.getServiceOfferingsByBrokerIDsMutex.RUnlock()
 	fake.getVisibilitiesMutex.RLock()
 	defer fake.getVisibilitiesMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
