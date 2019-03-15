@@ -19,6 +19,7 @@ package sm
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/Peripli/service-manager/pkg/types"
 
@@ -34,9 +35,10 @@ import (
 
 // APIInternalBrokers is the SM API for obtaining the brokers for this proxy
 const (
-	APIInternalBrokers = "%s" + web.BrokersURL
-	APIVisibilities    = "%s" + web.VisibilitiesURL
-	APIPlans           = "%s" + web.ServicePlansURL
+	APIInternalBrokers  = "%s" + web.BrokersURL
+	APIVisibilities     = "%s" + web.VisibilitiesURL
+	APIPlans            = "%s" + web.ServicePlansURL
+	APIServiceOfferings = "%s" + web.ServiceOfferingsURL
 )
 
 // Client provides the logic for calling into the Service Manager
@@ -45,6 +47,8 @@ type Client interface {
 	GetBrokers(ctx context.Context) ([]Broker, error)
 	GetVisibilities(ctx context.Context) ([]*types.Visibility, error)
 	GetPlans(ctx context.Context) ([]*types.ServicePlan, error)
+	GetServiceOfferingsByBrokerIDs(ctx context.Context, brokerIDs []string) ([]*types.ServiceOffering, error)
+	GetPlansByServiceOfferings(ctx context.Context, sos []*types.ServiceOffering) ([]*types.ServicePlan, error)
 }
 
 // ServiceManagerClient allows consuming APIs from a Service Manager
@@ -87,7 +91,7 @@ func (c *ServiceManagerClient) GetBrokers(ctx context.Context) ([]Broker, error)
 	log.C(ctx).Debugf("Getting brokers for proxy from Service Manager at %s", c.host)
 
 	list := &Brokers{}
-	err := c.call(ctx, fmt.Sprintf(APIInternalBrokers, c.host), list)
+	err := c.call(ctx, fmt.Sprintf(APIInternalBrokers, c.host), nil, list)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting brokers from Service Manager")
 	}
@@ -100,7 +104,7 @@ func (c *ServiceManagerClient) GetVisibilities(ctx context.Context) ([]*types.Vi
 	log.C(ctx).Debugf("Getting visibilities for proxy from Service Manager at %s", c.host)
 
 	list := &types.Visibilities{}
-	err := c.call(ctx, fmt.Sprintf(APIVisibilities, c.host), list)
+	err := c.call(ctx, fmt.Sprintf(APIVisibilities, c.host), nil, list)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting visibilities from Service Manager")
 	}
@@ -115,7 +119,7 @@ func (c *ServiceManagerClient) GetPlans(ctx context.Context) ([]*types.ServicePl
 	list := &struct {
 		Plans []*types.ServicePlan `json:"service_plans"`
 	}{}
-	err := c.call(ctx, fmt.Sprintf(APIPlans, c.host), list)
+	err := c.call(ctx, fmt.Sprintf(APIPlans, c.host), nil, list)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting service plans from Service Manager")
 	}
@@ -123,8 +127,52 @@ func (c *ServiceManagerClient) GetPlans(ctx context.Context) ([]*types.ServicePl
 	return list.Plans, nil
 }
 
-func (c *ServiceManagerClient) call(ctx context.Context, url string, list interface{}) error {
-	response, err := util.SendRequest(ctx, c.httpClient.Do, http.MethodGet, url, nil, nil)
+// GetServiceOfferingsByBrokerIDs returns plans from Service Manager
+func (c *ServiceManagerClient) GetServiceOfferingsByBrokerIDs(ctx context.Context, brokerIDs []string) ([]*types.ServiceOffering, error) {
+	log.C(ctx).Debugf("Getting service offerings from Service Manager at %s", c.host)
+
+	fieldQuery := fmt.Sprintf("broker_id in [%s]", strings.Join(brokerIDs, "||"))
+	params := map[string]string{
+		"fieldQuery": fieldQuery,
+	}
+
+	var result struct {
+		ServiceOfferings []*types.ServiceOffering `json:"service_offerings"`
+	}
+	err := c.call(ctx, fmt.Sprintf(APIServiceOfferings, c.host), params, &result)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting service offerings from Service Manager")
+	}
+
+	return result.ServiceOfferings, nil
+}
+
+// GetPlansByServiceOfferings returns plans from Service Manager
+func (c *ServiceManagerClient) GetPlansByServiceOfferings(ctx context.Context, sos []*types.ServiceOffering) ([]*types.ServicePlan, error) {
+	log.C(ctx).Debugf("Getting service plans from Service Manager at %s", c.host)
+
+	soIDs := ""
+	for _, so := range sos {
+		soIDs += "||" + so.ID
+	}
+	soIDs = soIDs[2:]
+
+	fieldQuery := fmt.Sprintf("service_offering_id in [%s]", soIDs)
+	params := map[string]string{
+		"fieldQuery": fieldQuery,
+	}
+
+	var result *types.ServicePlans
+	err := c.call(ctx, fmt.Sprintf(APIPlans, c.host), params, &result)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting service plans from Service Manager")
+	}
+
+	return result.ServicePlans, nil
+}
+
+func (c *ServiceManagerClient) call(ctx context.Context, url string, params map[string]string, list interface{}) error {
+	response, err := util.SendRequest(ctx, c.httpClient.Do, http.MethodGet, url, params, nil)
 	if err != nil {
 		return err
 	}
