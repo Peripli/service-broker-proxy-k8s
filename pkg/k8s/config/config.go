@@ -1,13 +1,14 @@
-package k8s
+package config
 
 import (
 	"errors"
 	"fmt"
+	"k8s.io/client-go/rest"
 	"time"
 
 	"github.com/Peripli/service-manager/pkg/env"
-	svcatclient "github.com/kubernetes-incubator/service-catalog/pkg/client/clientset_generated/clientset"
-	servicecatalog "github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
+	svcatclient "github.com/kubernetes-sigs/service-catalog/pkg/client/clientset_generated/clientset"
+	servicecatalog "github.com/kubernetes-sigs/service-catalog/pkg/svcat/service-catalog"
 
 	k8sclient "k8s.io/client-go/kubernetes"
 
@@ -16,7 +17,8 @@ import (
 
 // LibraryConfig configurations for the k8s library
 type LibraryConfig struct {
-	Timeout time.Duration `mapstructure:"timeout"`
+	Timeout          time.Duration                `mapstructure:"timeout"`
+	NewClusterConfig func() (*rest.Config, error) `mapstructure:"-"`
 }
 
 // SecretRef reference to secret used for broker registration
@@ -37,9 +39,9 @@ type Settings struct {
 	K8S *ClientConfiguration `mapstructure:"k8s"`
 }
 
-// newSvcatSDK creates a service-catalog client from configuration
-func newSvcatSDK(libraryConfig *LibraryConfig) (*servicecatalog.SDK, error) {
-	config, err := restInClusterConfig()
+// NewSvcatSDK creates a service-catalog client from configuration
+func NewSvcatSDK(libraryConfig *LibraryConfig) (*servicecatalog.SDK, error) {
+	config, err := libraryConfig.NewClusterConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load cluster config: %s", err.Error())
 	}
@@ -62,20 +64,21 @@ func newSvcatSDK(libraryConfig *LibraryConfig) (*servicecatalog.SDK, error) {
 	}, nil
 }
 
-// defaultClientConfiguration creates a default config for the K8S client
-func defaultClientConfiguration() *ClientConfiguration {
+// DefaultClientConfiguration creates a default config for the K8S client
+func DefaultClientConfiguration() *ClientConfiguration {
 	return &ClientConfiguration{
 		Client: &LibraryConfig{
-			Timeout: time.Second * 10,
+			Timeout:          time.Second * 10,
+			NewClusterConfig: rest.InClusterConfig,
 		},
 		Secret:              &SecretRef{},
-		K8sClientCreateFunc: newSvcatSDK,
+		K8sClientCreateFunc: NewSvcatSDK,
 	}
 }
 
 // CreatePFlagsForK8SClient adds pflags relevant to the K8S client config
 func CreatePFlagsForK8SClient(set *pflag.FlagSet) {
-	env.CreatePFlags(set, &Settings{K8S: defaultClientConfiguration()})
+	env.CreatePFlags(set, &Settings{K8S: DefaultClientConfiguration()})
 }
 
 // Validate validates the configuration and returns appropriate errors in case it is invalid
@@ -111,12 +114,17 @@ func (r *LibraryConfig) Validate() error {
 	if r.Timeout == 0 {
 		return errors.New("K8S client configuration timeout missing")
 	}
+	if r.NewClusterConfig == nil {
+		return errors.New("K8S client cluster configuration missing")
+	}
 	return nil
 }
 
 // NewConfig creates ClientConfiguration from the provided environment
 func NewConfig(env env.Environment) (*ClientConfiguration, error) {
-	k8sSettings := &Settings{K8S: defaultClientConfiguration()}
+	k8sSettings := &Settings{
+		K8S: DefaultClientConfiguration(),
+	}
 
 	if err := env.Unmarshal(k8sSettings); err != nil {
 		return nil, err

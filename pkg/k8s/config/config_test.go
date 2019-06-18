@@ -1,9 +1,16 @@
-package k8s
+package config
 
 import (
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
+
+func TestClient(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Kubernetes Proxy Config Tests Suite")
+}
 
 var _ = Describe("Kubernetes Broker Proxy", func() {
 	Describe("Config", func() {
@@ -11,7 +18,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			var config *ClientConfiguration
 
 			BeforeEach(func() {
-				config = defaultClientConfiguration()
+				config = DefaultClientConfiguration()
 				config.Secret.Name = "abc"
 				config.Secret.Namespace = "abc"
 			})
@@ -47,6 +54,15 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					err := config.Validate()
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("K8S client configuration timeout missing"))
+				})
+			})
+
+			Context("when LibraryConfig.NewClusterConfig is missing", func() {
+				It("should fail", func() {
+					config.Client.NewClusterConfig = nil
+					err := config.Validate()
+					Expect(err).To(HaveOccurred())
+					Expect(err.Error()).To(Equal("K8S client cluster configuration missing"))
 				})
 			})
 

@@ -1,54 +1,68 @@
-package k8s
+package client
 
 import (
 	"context"
 	"errors"
+	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/api/apifakes"
+	"testing"
 
+	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/config"
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 
 	"os"
 
+	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
+	servicecatalog "github.com/kubernetes-sigs/service-catalog/pkg/svcat/service-catalog"
+
 	. "github.com/onsi/ginkgo"
-
-	"github.com/kubernetes-incubator/service-catalog/pkg/apis/servicecatalog/v1beta1"
-	servicecatalog "github.com/kubernetes-incubator/service-catalog/pkg/svcat/service-catalog"
-
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 )
 
+func TestClient(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Kubernetes Proxy Tests Suite")
+}
+
 var _ = Describe("Kubernetes Broker Proxy", func() {
-	var clientConfig *ClientConfiguration
+	var expectedError = errors.New("expected")
+	var clientConfig *config.ClientConfiguration
 	var ctx context.Context
+	var k8sApi *apifakes.FakeKubernetesAPI
 
 	newDefaultPlatformClient := func() *PlatformClient {
 		client, err := NewClient(clientConfig)
 		Expect(err).ToNot(HaveOccurred())
+		client.platformAPI = k8sApi
 		return client
 	}
 
 	BeforeSuite(func() {
-		os.Setenv("KUBERNETES_SERVICE_HOST", "test")
-		os.Setenv("KUBERNETES_SERVICE_PORT", "1234")
-		restInClusterConfig = func() (*rest.Config, error) {
+		Expect(os.Setenv("KUBERNETES_SERVICE_HOST", "test")).ToNot(HaveOccurred())
+		Expect(os.Setenv("KUBERNETES_SERVICE_PORT", "1234")).ToNot(HaveOccurred())
+		clientConfig = config.DefaultClientConfiguration()
+		clientConfig.Client.NewClusterConfig = func() (*rest.Config, error) {
 			return &rest.Config{
 				Host:            "https://fakeme",
 				BearerToken:     string("faketoken"),
 				TLSClientConfig: rest.TLSClientConfig{},
 			}, nil
 		}
-		clientConfig = defaultClientConfiguration()
 		clientConfig.Secret.Name = "secretName"
 		clientConfig.Secret.Namespace = "secretNamespace"
-		clientConfig.K8sClientCreateFunc = newSvcatSDK
+		clientConfig.K8sClientCreateFunc = config.NewSvcatSDK
 		ctx = context.TODO()
+	})
+
+	BeforeEach(func() {
+		k8sApi = &apifakes.FakeKubernetesAPI{}
 	})
 
 	Describe("New Client", func() {
 		Context("With invalid config", func() {
 			It("should return error", func() {
-				config := defaultClientConfiguration()
+				config := config.DefaultClientConfiguration()
 				_, err := NewClient(config)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("properties of K8S secret configuration for broker registration missing"))
@@ -57,13 +71,12 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 		Context("With invalid config", func() {
 			It("should return error", func() {
-				config := *clientConfig // copy
-				config.K8sClientCreateFunc = func(libraryConfig *LibraryConfig) (*servicecatalog.SDK, error) {
-					return nil, errors.New("expected")
+				clientConfig := *clientConfig // copy
+				clientConfig.K8sClientCreateFunc = func(libraryConfig *config.LibraryConfig) (*servicecatalog.SDK, error) {
+					return nil, expectedError
 				}
-				_, err := NewClient(&config)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("expected"))
+				_, err := NewClient(&clientConfig)
+				Expect(err).To(Equal(expectedError))
 			})
 		})
 
@@ -79,9 +92,9 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				Expect(client.CatalogFetcher()).ToNot(BeNil())
 			})
 
-			It("should not handle visibility operations", func() {
+			It("should handle visibility operations", func() {
 				client := newDefaultPlatformClient()
-				Expect(client.Visibility()).To(BeNil())
+				Expect(client.Visibility()).ToNot(BeNil())
 			})
 		})
 	})
@@ -92,7 +105,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			It("returns broker", func() {
 				platformClient := newDefaultPlatformClient()
 
-				createClusterServiceBroker = func(cli *servicecatalog.SDK, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
+				k8sApi.CreateClusterServiceBrokerStub = func(broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
 					return &v1beta1.ClusterServiceBroker{
 						ObjectMeta: v1.ObjectMeta{
 							UID:  "1234",
@@ -112,10 +125,10 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				}
 				createdBroker, err := platformClient.CreateBroker(ctx, requestBroker)
 
+				Expect(err).To(BeNil())
 				Expect(createdBroker.GUID).To(Equal("1234"))
 				Expect(createdBroker.Name).To(Equal("fake-broker"))
 				Expect(createdBroker.BrokerURL).To(Equal("http://fake.broker.url"))
-				Expect(err).To(BeNil())
 			})
 		})
 
@@ -123,15 +136,15 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			It("returns error", func() {
 				platformClient := newDefaultPlatformClient()
 
-				createClusterServiceBroker = func(cli *servicecatalog.SDK, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
-					return nil, errors.New("Error from service-catalog")
+				k8sApi.CreateClusterServiceBrokerStub = func(broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
+					return nil, errors.New("error from service-catalog")
 				}
 
 				requestBroker := &platform.CreateServiceBrokerRequest{}
 				createdBroker, err := platformClient.CreateBroker(ctx, requestBroker)
 
 				Expect(createdBroker).To(BeNil())
-				Expect(err).To(Equal(errors.New("Error from service-catalog")))
+				Expect(err).To(Equal(errors.New("error from service-catalog")))
 			})
 		})
 	})
@@ -141,7 +154,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			It("returns no error", func() {
 				platformClient := newDefaultPlatformClient()
 
-				deleteClusterServiceBroker = func(cli *servicecatalog.SDK, name string, options *v1.DeleteOptions) error {
+				k8sApi.DeleteClusterServiceBrokerStub = func(name string, options *v1.DeleteOptions) error {
 					return nil
 				}
 
@@ -160,15 +173,15 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			It("returns the error", func() {
 				platformClient := newDefaultPlatformClient()
 
-				deleteClusterServiceBroker = func(cli *servicecatalog.SDK, name string, options *v1.DeleteOptions) error {
-					return errors.New("Error deleting clusterservicebroker")
+				k8sApi.DeleteClusterServiceBrokerStub = func(name string, options *v1.DeleteOptions) error {
+					return errors.New("error deleting clusterservicebroker")
 				}
 
 				requestBroker := &platform.DeleteServiceBrokerRequest{}
 
 				err := platformClient.DeleteBroker(ctx, requestBroker)
 
-				Expect(err).To(Equal(errors.New("Error deleting clusterservicebroker")))
+				Expect(err).To(Equal(errors.New("error deleting clusterservicebroker")))
 			})
 		})
 	})
@@ -178,7 +191,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			It("returns brokers", func() {
 				platformClient := newDefaultPlatformClient()
 
-				retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) (*v1beta1.ClusterServiceBrokerList, error) {
+				k8sApi.RetrieveClusterServiceBrokersStub = func() (*v1beta1.ClusterServiceBrokerList, error) {
 					brokers := make([]v1beta1.ClusterServiceBroker, 0)
 					brokers = append(brokers, v1beta1.ClusterServiceBroker{
 						ObjectMeta: v1.ObjectMeta{
@@ -211,7 +224,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			It("returns empty array", func() {
 				platformClient := newDefaultPlatformClient()
 
-				retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) (*v1beta1.ClusterServiceBrokerList, error) {
+				k8sApi.RetrieveClusterServiceBrokersStub = func() (*v1beta1.ClusterServiceBrokerList, error) {
 					brokers := make([]v1beta1.ClusterServiceBroker, 0)
 					return &v1beta1.ClusterServiceBrokerList{
 						Items: brokers,
@@ -230,15 +243,60 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			It("returns the error", func() {
 				platformClient := newDefaultPlatformClient()
 
-				retrieveClusterServiceBrokers = func(cli *servicecatalog.SDK) (*v1beta1.ClusterServiceBrokerList, error) {
-					return nil, errors.New("Error getting clusterservicebrokers")
+				k8sApi.RetrieveClusterServiceBrokersStub = func() (*v1beta1.ClusterServiceBrokerList, error) {
+					return nil, errors.New("error getting clusterservicebrokers")
 				}
 
 				brokers, err := platformClient.GetBrokers(ctx)
 
 				Expect(brokers).To(BeNil())
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Error getting clusterservicebrokers"))
+				Expect(err.Error()).To(ContainSubstring("error getting clusterservicebrokers"))
+			})
+		})
+	})
+
+	Describe("Get service broker by name", func() {
+		Context("with no error", func() {
+			It("returns the service broker", func() {
+				platformClient := newDefaultPlatformClient()
+				brokerName := "brokerName"
+
+				k8sApi.RetrieveClusterServiceBrokerByNameStub = func(name string) (*v1beta1.ClusterServiceBroker, error) {
+					return &v1beta1.ClusterServiceBroker{
+						ObjectMeta: v1.ObjectMeta{
+							UID:  "1234",
+							Name: brokerName,
+						},
+						Spec: v1beta1.ClusterServiceBrokerSpec{
+							CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
+								URL: "http://fake.broker.url",
+							},
+						},
+					}, nil
+				}
+
+				broker, err := platformClient.GetBrokerByName(ctx, brokerName)
+
+				Expect(err).To(BeNil())
+				Expect(broker).ToNot(BeNil())
+				Expect(broker.Name).To(Equal(brokerName))
+			})
+		})
+
+		Context("with an error", func() {
+			It("returns the error", func() {
+				platformClient := newDefaultPlatformClient()
+
+				k8sApi.RetrieveClusterServiceBrokerByNameStub = func(name string) (*v1beta1.ClusterServiceBroker, error) {
+					return nil, errors.New("error getting clusterservicebroker")
+				}
+
+				broker, err := platformClient.GetBrokerByName(ctx, "brokerName")
+
+				Expect(broker).To(BeNil())
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("error getting clusterservicebroker"))
 			})
 		})
 	})
@@ -248,7 +306,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			It("returns updated broker", func() {
 				platformClient := newDefaultPlatformClient()
 
-				updateClusterServiceBroker = func(cli *servicecatalog.SDK, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
+				k8sApi.UpdateClusterServiceBrokerStub = func(broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
 					// Return a new fake clusterservicebroker with the three attributes relevant for the OSBAPI guid, name and broker url.
 					// UID cannot be modified, name and url can be modified
 					return &v1beta1.ClusterServiceBroker{
@@ -283,8 +341,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			It("returns the error", func() {
 				platformClient := newDefaultPlatformClient()
 
-				updateClusterServiceBroker = func(cli *servicecatalog.SDK, broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
-					return nil, errors.New("Error updating clusterservicebroker")
+				k8sApi.UpdateClusterServiceBrokerStub = func(broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
+					return nil, errors.New("error updating clusterservicebroker")
 				}
 
 				requestBroker := &platform.UpdateServiceBrokerRequest{}
@@ -292,7 +350,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				broker, err := platformClient.UpdateBroker(ctx, requestBroker)
 
 				Expect(broker).To(BeNil())
-				Expect(err).To(Equal(errors.New("Error updating clusterservicebroker")))
+				Expect(err).To(Equal(errors.New("error updating clusterservicebroker")))
 			})
 		})
 	})
@@ -308,7 +366,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					BrokerURL: "http://fake.broker.url",
 				}
 
-				syncClusterServiceBroker = func(cli *servicecatalog.SDK, name string, retries int) error {
+				k8sApi.SyncClusterServiceBrokerStub = func(name string, retries int) error {
 					return nil
 				}
 
@@ -323,14 +381,49 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				platformClient := newDefaultPlatformClient()
 
 				requestBroker := &platform.ServiceBroker{}
-				syncClusterServiceBroker = func(cli *servicecatalog.SDK, name string, retries int) error {
-					return errors.New("Error syncing service broker")
+				k8sApi.SyncClusterServiceBrokerStub = func(name string, retries int) error {
+					return errors.New("error syncing service broker")
 				}
 
 				err := platformClient.Fetch(ctx, requestBroker)
 
-				Expect(err).To(Equal(errors.New("Error syncing service broker")))
+				Expect(err).To(Equal(errors.New("error syncing service broker")))
 			})
+		})
+	})
+
+	Describe("GetVisibilitiesByBrokers", func() {
+		It("returns no visibilities", func() {
+			platformClient := newDefaultPlatformClient()
+			visibilities, err := platformClient.GetVisibilitiesByBrokers(ctx, []string{})
+			Expect(err).To(BeNil())
+			Expect(visibilities).To(BeNil())
+		})
+	})
+
+	Describe("VisibilityScopeLabelKey", func() {
+		It("returns empty string", func() {
+			Expect(newDefaultPlatformClient().VisibilityScopeLabelKey()).To(BeEmpty())
+		})
+	})
+
+	Describe("EnableAccessForPlan", func() {
+		It("should call Fetch", func() {
+			platformClient := newDefaultPlatformClient()
+			k8sApi.SyncClusterServiceBrokerStub = func(name string, retries int) error {
+				return expectedError
+			}
+			Expect(platformClient.EnableAccessForPlan(ctx, &platform.ModifyPlanAccessRequest{})).To(Equal(expectedError))
+		})
+	})
+
+	Describe("DisableAccessForPlan", func() {
+		It("should call Fetch", func() {
+			platformClient := newDefaultPlatformClient()
+			k8sApi.SyncClusterServiceBrokerStub = func(name string, retries int) error {
+				return expectedError
+			}
+			Expect(platformClient.DisableAccessForPlan(ctx, &platform.ModifyPlanAccessRequest{})).To(Equal(expectedError))
 		})
 	})
 })

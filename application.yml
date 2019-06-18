@@ -17,11 +17,11 @@ log:
 sm:
   user: admin
   password: admin
-  url: http://service-manager.local.pcfdev.io
+  url: https://service-manager.dev.cfdev.sh
   osb_api_path: /v1/osb
   request_timeout: 6000ms
   skip_ssl_validation: true
-  resync_period: 1m
+  resync_period: 1h
 app:
   username: admin
   password: admin
