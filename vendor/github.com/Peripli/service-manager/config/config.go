@@ -17,20 +17,23 @@
 package config
 
 import (
+	"fmt"
 	"github.com/Peripli/service-manager/api"
 	"github.com/Peripli/service-manager/pkg/env"
 	"github.com/Peripli/service-manager/pkg/log"
 	"github.com/Peripli/service-manager/pkg/server"
+	"github.com/Peripli/service-manager/pkg/ws"
 	"github.com/Peripli/service-manager/storage"
 	"github.com/spf13/pflag"
 )
 
 // Settings is used to setup the Service Manager
 type Settings struct {
-	Server  *server.Settings
-	Storage *storage.Settings
-	Log     *log.Settings
-	API     *api.Settings
+	Server    *server.Settings
+	Storage   *storage.Settings
+	Log       *log.Settings
+	API       *api.Settings
+	WebSocket *ws.Settings
 }
 
 // AddPFlags adds the SM config flags to the provided flag set
@@ -41,20 +44,30 @@ func AddPFlags(set *pflag.FlagSet) {
 
 // DefaultSettings returns the default values for configuring the Service Manager
 func DefaultSettings() *Settings {
-	config := &Settings{
-		Server:  server.DefaultSettings(),
-		Storage: storage.DefaultSettings(),
-		Log:     log.DefaultSettings(),
-		API:     api.DefaultSettings(),
+	return &Settings{
+		Server:    server.DefaultSettings(),
+		Storage:   storage.DefaultSettings(),
+		Log:       log.DefaultSettings(),
+		API:       api.DefaultSettings(),
+		WebSocket: ws.DefaultSettings(),
 	}
-	return config
+}
+
+// New creates a configuration from the default env
+func New() (*Settings, error) {
+	env, err := env.Default(AddPFlags)
+	if err != nil {
+		return nil, fmt.Errorf("error loading default env: %s", err)
+	}
+
+	return NewForEnv(env)
 }
 
 // New creates a configuration from the provided env
-func New(env env.Environment) (*Settings, error) {
+func NewForEnv(env env.Environment) (*Settings, error) {
 	config := DefaultSettings()
 	if err := env.Unmarshal(config); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error loading configuration: %s", err)
 	}
 
 	return config, nil
@@ -64,7 +77,7 @@ func New(env env.Environment) (*Settings, error) {
 func (c *Settings) Validate() error {
 	validatable := []interface {
 		Validate() error
-	}{c.Server, c.Storage, c.Log, c.API}
+	}{c.Server, c.Storage, c.Log, c.API, c.WebSocket}
 
 	for _, item := range validatable {
 		if err := item.Validate(); err != nil {

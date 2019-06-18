@@ -52,8 +52,8 @@ const (
 
 // Settings type to be loaded from the environment
 type Settings struct {
-	Level  string
-	Format string
+	Level  string    `description:"minimum level for log messages"`
+	Format string    `description:"format of log messages. Allowed values - text, json"`
 	Output io.Writer `mapstructure:"-"`
 }
 
@@ -68,8 +68,8 @@ func DefaultSettings() *Settings {
 
 // Validate validates the logging settings
 func (s *Settings) Validate() error {
-	if len(s.Level) == 0 {
-		return fmt.Errorf("validate Settings: LogLevel missing")
+	if _, err := logrus.ParseLevel(s.Level); err != nil {
+		return fmt.Errorf("validate Settings: %s", err)
 	}
 	if len(s.Format) == 0 {
 		return fmt.Errorf("validate Settings: LogFormat missing")
@@ -147,17 +147,11 @@ func copyEntry(entry *logrus.Entry) *logrus.Entry {
 	for k, v := range entry.Data {
 		entryData[k] = v
 	}
-	return &logrus.Entry{
-		Logger: &logrus.Logger{
-			Level:     entry.Logger.Level,
-			Formatter: entry.Logger.Formatter,
-			Hooks:     entry.Logger.Hooks,
-			Out:       entry.Logger.Out,
-		},
-		Level:   entry.Level,
-		Data:    entryData,
-		Time:    entry.Time,
-		Message: entry.Message,
-		Buffer:  entry.Buffer,
-	}
+	newEntry := logrus.NewEntry(entry.Logger)
+	newEntry.Level = entry.Level
+	newEntry.Data = entryData
+	newEntry.Time = entry.Time
+	newEntry.Message = entry.Message
+	newEntry.Buffer = entry.Buffer
+	return newEntry
 }

@@ -18,6 +18,8 @@ package sbproxy
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/reconcile"
 	"github.com/Peripli/service-broker-proxy/pkg/sm"
 	"github.com/Peripli/service-manager/pkg/env/envfakes"
@@ -25,7 +27,6 @@ import (
 	"github.com/Peripli/service-manager/pkg/server"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"time"
 )
 
 var _ = Describe("Config", func() {
@@ -82,7 +83,6 @@ var _ = Describe("Config", func() {
 						URL:               "https://sm.com",
 						OSBAPIPath:        "/osb",
 						RequestTimeout:    5 * time.Second,
-						ResyncPeriod:      5 * time.Minute,
 						SkipSSLValidation: true,
 					},
 					Reconcile: &reconcile.Settings{
@@ -156,7 +156,6 @@ var _ = Describe("Config", func() {
 					URL:               "https://sm.com",
 					OSBAPIPath:        "/osb",
 					RequestTimeout:    5 * time.Second,
-					ResyncPeriod:      5 * time.Minute,
 					SkipSSLValidation: true,
 				},
 				Reconcile: &reconcile.Settings{

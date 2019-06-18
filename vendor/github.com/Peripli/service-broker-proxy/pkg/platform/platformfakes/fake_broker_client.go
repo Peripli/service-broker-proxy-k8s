@@ -2,10 +2,10 @@
 package platformfakes
 
 import (
-	context "context"
-	sync "sync"
+	"context"
+	"sync"
 
-	platform "github.com/Peripli/service-broker-proxy/pkg/platform"
+	"github.com/Peripli/service-broker-proxy/pkg/platform"
 )
 
 type FakeBrokerClient struct {
@@ -34,6 +34,20 @@ type FakeBrokerClient struct {
 	}
 	deleteBrokerReturnsOnCall map[int]struct {
 		result1 error
+	}
+	GetBrokerByNameStub        func(context.Context, string) (*platform.ServiceBroker, error)
+	getBrokerByNameMutex       sync.RWMutex
+	getBrokerByNameArgsForCall []struct {
+		arg1 context.Context
+		arg2 string
+	}
+	getBrokerByNameReturns struct {
+		result1 *platform.ServiceBroker
+		result2 error
+	}
+	getBrokerByNameReturnsOnCall map[int]struct {
+		result1 *platform.ServiceBroker
+		result2 error
 	}
 	GetBrokersStub        func(context.Context) ([]platform.ServiceBroker, error)
 	getBrokersMutex       sync.RWMutex
@@ -191,6 +205,70 @@ func (fake *FakeBrokerClient) DeleteBrokerReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *FakeBrokerClient) GetBrokerByName(arg1 context.Context, arg2 string) (*platform.ServiceBroker, error) {
+	fake.getBrokerByNameMutex.Lock()
+	ret, specificReturn := fake.getBrokerByNameReturnsOnCall[len(fake.getBrokerByNameArgsForCall)]
+	fake.getBrokerByNameArgsForCall = append(fake.getBrokerByNameArgsForCall, struct {
+		arg1 context.Context
+		arg2 string
+	}{arg1, arg2})
+	fake.recordInvocation("GetBrokerByName", []interface{}{arg1, arg2})
+	fake.getBrokerByNameMutex.Unlock()
+	if fake.GetBrokerByNameStub != nil {
+		return fake.GetBrokerByNameStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.getBrokerByNameReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeBrokerClient) GetBrokerByNameCallCount() int {
+	fake.getBrokerByNameMutex.RLock()
+	defer fake.getBrokerByNameMutex.RUnlock()
+	return len(fake.getBrokerByNameArgsForCall)
+}
+
+func (fake *FakeBrokerClient) GetBrokerByNameCalls(stub func(context.Context, string) (*platform.ServiceBroker, error)) {
+	fake.getBrokerByNameMutex.Lock()
+	defer fake.getBrokerByNameMutex.Unlock()
+	fake.GetBrokerByNameStub = stub
+}
+
+func (fake *FakeBrokerClient) GetBrokerByNameArgsForCall(i int) (context.Context, string) {
+	fake.getBrokerByNameMutex.RLock()
+	defer fake.getBrokerByNameMutex.RUnlock()
+	argsForCall := fake.getBrokerByNameArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeBrokerClient) GetBrokerByNameReturns(result1 *platform.ServiceBroker, result2 error) {
+	fake.getBrokerByNameMutex.Lock()
+	defer fake.getBrokerByNameMutex.Unlock()
+	fake.GetBrokerByNameStub = nil
+	fake.getBrokerByNameReturns = struct {
+		result1 *platform.ServiceBroker
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeBrokerClient) GetBrokerByNameReturnsOnCall(i int, result1 *platform.ServiceBroker, result2 error) {
+	fake.getBrokerByNameMutex.Lock()
+	defer fake.getBrokerByNameMutex.Unlock()
+	fake.GetBrokerByNameStub = nil
+	if fake.getBrokerByNameReturnsOnCall == nil {
+		fake.getBrokerByNameReturnsOnCall = make(map[int]struct {
+			result1 *platform.ServiceBroker
+			result2 error
+		})
+	}
+	fake.getBrokerByNameReturnsOnCall[i] = struct {
+		result1 *platform.ServiceBroker
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeBrokerClient) GetBrokers(arg1 context.Context) ([]platform.ServiceBroker, error) {
 	fake.getBrokersMutex.Lock()
 	ret, specificReturn := fake.getBrokersReturnsOnCall[len(fake.getBrokersArgsForCall)]
@@ -325,6 +403,8 @@ func (fake *FakeBrokerClient) Invocations() map[string][][]interface{} {
 	defer fake.createBrokerMutex.RUnlock()
 	fake.deleteBrokerMutex.RLock()
 	defer fake.deleteBrokerMutex.RUnlock()
+	fake.getBrokerByNameMutex.RLock()
+	defer fake.getBrokerByNameMutex.RUnlock()
 	fake.getBrokersMutex.RLock()
 	defer fake.getBrokersMutex.RUnlock()
 	fake.updateBrokerMutex.RLock()

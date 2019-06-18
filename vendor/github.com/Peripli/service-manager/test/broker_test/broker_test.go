@@ -16,10 +16,14 @@
 package broker_test
 
 import (
+	"context"
 	"fmt"
+	"github.com/Peripli/service-manager/pkg/web"
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/Peripli/service-manager/storage"
 
 	"github.com/Peripli/service-manager/pkg/types"
 
@@ -39,12 +43,11 @@ import (
 
 func TestBrokers(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Broker API Tests Suite")
+	RunSpecs(t, "ServiceBroker API Tests Suite")
 }
 
 var _ = test.DescribeTestsFor(test.TestCase{
-	API:            "/v1/service_brokers",
-	SupportsLabels: true,
+	API: web.ServiceBrokersURL,
 	SupportedOps: []test.Op{
 		test.Get, test.List, test.Delete, test.DeleteList,
 	},
@@ -53,7 +56,6 @@ var _ = test.DescribeTestsFor(test.TestCase{
 	AdditionalTests: func(ctx *common.TestContext) {
 		Context("additional non-generic tests", func() {
 			var (
-				ctx                    *common.TestContext
 				brokerServer           *common.BrokerServer
 				brokerWithLabelsServer *common.BrokerServer
 
@@ -62,6 +64,8 @@ var _ = test.DescribeTestsFor(test.TestCase{
 
 				labels                      common.Object
 				postBrokerRequestWithLabels labeledBroker
+
+				repository storage.Repository
 			)
 
 			assertInvocationCount := func(requests []*http.Request, invocationCount int) {
@@ -76,14 +80,11 @@ var _ = test.DescribeTestsFor(test.TestCase{
 				if brokerWithLabelsServer != nil {
 					brokerWithLabelsServer.Close()
 				}
-
-				ctx.Cleanup()
 			})
 
 			BeforeEach(func() {
 				brokerServer = common.NewBrokerServer()
 				brokerWithLabelsServer = common.NewBrokerServer()
-				ctx = common.DefaultTestContext()
 				brokerServer.Reset()
 				brokerWithLabelsServer.Reset()
 				brokerName := "brokerName"
@@ -126,6 +127,8 @@ var _ = test.DescribeTestsFor(test.TestCase{
 					"labels": labels,
 				}
 				common.RemoveAllBrokers(ctx.SMWithOAuth)
+
+				repository = ctx.SMRepository
 			})
 
 			Describe("POST", func() {
@@ -185,9 +188,20 @@ var _ = test.DescribeTestsFor(test.TestCase{
 								Status(http.StatusCreated).
 								JSON().Object().
 								ContainsMap(expectedBrokerResponse).
-								Keys().NotContains("services", "credentials")
+								Keys().NotContains("services").Contains("credentials")
 
 							assertInvocationCount(brokerServer.CatalogEndpointRequests, 1)
+						})
+
+						Specify("the whole catalog is returned from the repository in the brokers catalog field", func() {
+							id := ctx.SMWithOAuth.POST("/v1/service_brokers").WithJSON(postBrokerRequestWithNoLabels).
+								Expect().
+								Status(http.StatusCreated).JSON().Object().Value("id").String().Raw()
+
+							brokerFromDB, err := repository.Get(context.TODO(), types.ServiceBrokerType, id)
+							Expect(err).ToNot(HaveOccurred())
+
+							Expect(string(brokerFromDB.(*types.ServiceBroker).Catalog)).To(MatchJSON(string(brokerServer.Catalog)))
 						})
 					}
 
@@ -213,10 +227,10 @@ var _ = test.DescribeTestsFor(test.TestCase{
 						postBrokerRequestWithNoLabels["broker_url"] = "http://localhost:12345"
 					})
 
-					It("returns 400", func() {
+					It("returns 502", func() {
 						ctx.SMWithOAuth.POST("/v1/service_brokers").WithJSON(postBrokerRequestWithNoLabels).
 							Expect().
-							Status(http.StatusBadRequest).JSON().Object().Keys().Contains("error", "description")
+							Status(http.StatusBadGateway).JSON().Object().Keys().Contains("error", "description")
 					})
 				})
 
@@ -249,7 +263,6 @@ var _ = test.DescribeTestsFor(test.TestCase{
 							responseVerifier(ctx.SMWithOAuth.POST("/v1/service_brokers").WithJSON(postBrokerRequestWithNoLabels).Expect())
 
 							assertInvocationCount(brokerServer.CatalogEndpointRequests, 1)
-
 						})
 					}
 
@@ -268,7 +281,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 
 						Context("that has an empty description", func() {
 							verifyPOSTWhenCatalogFieldIsMissing(func(r *httpexpect.Response) {
-								r.Status(http.StatusCreated).JSON().Object().Keys().NotContains("services", "credentials")
+								r.Status(http.StatusCreated).JSON().Object().Keys().NotContains("services").Contains("credentials")
 							}, "services.0.description")
 						})
 
@@ -306,7 +319,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 
 						Context("that has an empty description", func() {
 							verifyPOSTWhenCatalogFieldIsMissing(func(r *httpexpect.Response) {
-								r.Status(http.StatusCreated).JSON().Object().Keys().NotContains("services", "credentials")
+								r.Status(http.StatusCreated).JSON().Object().Keys().NotContains("services").Contains("credentials")
 							}, "services.0.plans.0.description")
 						})
 
@@ -342,7 +355,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 					})
 				})
 
-				Context("when request is successful", func() {
+				Context("when fetching the catalog is successful", func() {
 					assertPOSTReturns201 := func() {
 						It("returns 201", func() {
 							ctx.SMWithOAuth.POST("/v1/service_brokers").WithJSON(postBrokerRequestWithNoLabels).
@@ -350,7 +363,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 								Status(http.StatusCreated).
 								JSON().Object().
 								ContainsMap(expectedBrokerResponse).
-								Keys().NotContains("services", "credentials")
+								Keys().NotContains("services").Contains("credentials")
 
 							assertInvocationCount(brokerServer.CatalogEndpointRequests, 1)
 						})
@@ -435,6 +448,17 @@ var _ = test.DescribeTestsFor(test.TestCase{
 
 			Describe("PATCH", func() {
 				var brokerID string
+
+				assertRepositoryReturnsExpectedCatalogAfterPatching := func(brokerID, expectedCatalog string) {
+					ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + brokerID).
+						WithJSON(common.Object{}).
+						Expect()
+
+					brokerFromDB, err := repository.Get(context.TODO(), types.ServiceBrokerType, brokerID)
+					Expect(err).ToNot(HaveOccurred())
+
+					Expect(string(brokerFromDB.(*types.ServiceBroker).Catalog)).To(MatchJSON(expectedCatalog))
+				}
 
 				BeforeEach(func() {
 					reply := ctx.SMWithOAuth.POST("/v1/service_brokers").WithJSON(postBrokerRequestWithNoLabels).
@@ -784,10 +808,10 @@ var _ = test.DescribeTestsFor(test.TestCase{
 						postBrokerRequestWithNoLabels["broker_url"] = "http://localhost:12345"
 					})
 
-					It("returns 400", func() {
+					It("returns 502", func() {
 						ctx.SMWithOAuth.PATCH("/v1/service_brokers/"+brokerID).WithJSON(postBrokerRequestWithNoLabels).
 							Expect().
-							Status(http.StatusBadRequest).JSON().Object().Keys().Contains("error", "description")
+							Status(http.StatusBadGateway).JSON().Object().Keys().Contains("error", "description")
 					})
 				})
 
@@ -840,6 +864,13 @@ var _ = test.DescribeTestsFor(test.TestCase{
 								WithJSON(common.Object{}).
 								Expect().
 								Status(http.StatusOK)
+
+							By("updating broker again with 2 services with identical plans, should succeed")
+							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + brokerID).
+								WithJSON(common.Object{}).
+								Expect().
+								Status(http.StatusOK)
+
 							servicesJsonResp := ctx.SMWithOAuth.GET("/v1/service_offerings").
 								Expect().
 								Status(http.StatusOK).
@@ -869,9 +900,14 @@ var _ = test.DescribeTestsFor(test.TestCase{
 							plansJsonResp.Path("$.service_plans[*].catalog_id").Array().Contains(existingPlanID)
 							plansJsonResp.Path("$.service_plans[*].service_offering_id").Array().Contains(soID)
 
-							assertInvocationCount(brokerServer.CatalogEndpointRequests, 1)
+							assertInvocationCount(brokerServer.CatalogEndpointRequests, 2)
+						})
+
+						It("is returned from the repository as part of the brokers catalog field", func() {
+							assertRepositoryReturnsExpectedCatalogAfterPatching(brokerID, string(brokerServer.Catalog))
 						})
 					})
+
 					Context("when a new service offering with new plans is added", func() {
 						var anotherServiceID string
 						var anotherPlanID string
@@ -933,37 +969,60 @@ var _ = test.DescribeTestsFor(test.TestCase{
 
 							assertInvocationCount(brokerServer.CatalogEndpointRequests, 1)
 						})
+
+						It("is returned from the repository as part of the brokers catalog field", func() {
+							assertRepositoryReturnsExpectedCatalogAfterPatching(brokerID, string(brokerServer.Catalog))
+						})
 					})
 
-					verifyPATCHWhenCatalogFieldIsMissing := func(responseVerifier func(r *httpexpect.Response), fieldPath string) {
+					verifyPATCHWhenCatalogFieldIsMissing := func(responseVerifier func(r *httpexpect.Response), shouldUpdateCatalog bool, fieldPath string) {
+						var expectedCatalog string
+
 						BeforeEach(func() {
 							catalog, err := sjson.Delete(string(brokerServer.Catalog), fieldPath)
 							Expect(err).ToNot(HaveOccurred())
-
+							if !shouldUpdateCatalog {
+								expectedCatalog = string(brokerServer.Catalog)
+							} else {
+								expectedCatalog = string(catalog)
+							}
 							brokerServer.Catalog = common.SBCatalog(catalog)
 						})
 
 						It("returns correct response", func() {
-							responseVerifier(ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + brokerID).WithJSON(postBrokerRequestWithNoLabels).Expect())
+							responseVerifier(ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + brokerID).WithJSON(common.Object{}).Expect())
 
 							assertInvocationCount(brokerServer.CatalogEndpointRequests, 1)
+						})
+
+						Specify("the catalog is correctly returned by the repository", func() {
+							assertRepositoryReturnsExpectedCatalogAfterPatching(brokerID, expectedCatalog)
 
 						})
 					}
 
-					verifyPATCHWhenCatalogFieldHasValue := func(responseVerifier func(r *httpexpect.Response), fieldPath string, fieldValue interface{}) {
+					verifyPATCHWhenCatalogFieldHasValue := func(responseVerifier func(r *httpexpect.Response), shouldUpdateCatalog bool, fieldPath string, fieldValue interface{}) {
+						var expectedCatalog string
+
 						BeforeEach(func() {
 							catalog, err := sjson.Set(string(brokerServer.Catalog), fieldPath, fieldValue)
 							Expect(err).ToNot(HaveOccurred())
-
+							if !shouldUpdateCatalog {
+								expectedCatalog = string(brokerServer.Catalog)
+							} else {
+								expectedCatalog = string(catalog)
+							}
 							brokerServer.Catalog = common.SBCatalog(catalog)
 						})
 
 						It("returns correct response", func() {
-							responseVerifier(ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + brokerID).WithJSON(postBrokerRequestWithNoLabels).Expect())
+							responseVerifier(ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + brokerID).WithJSON(common.Object{}).Expect())
 
 							assertInvocationCount(brokerServer.CatalogEndpointRequests, 1)
+						})
 
+						Specify("the catalog is correctly returned by the repository", func() {
+							assertRepositoryReturnsExpectedCatalogAfterPatching(brokerID, expectedCatalog)
 						})
 					}
 
@@ -1002,7 +1061,13 @@ var _ = test.DescribeTestsFor(test.TestCase{
 
 							assertInvocationCount(brokerServer.CatalogEndpointRequests, 1)
 						})
+
+						It("is returned from the repository as part of the brokers catalog field", func() {
+							assertRepositoryReturnsExpectedCatalogAfterPatching(brokerID, string(brokerServer.Catalog))
+
+						})
 					})
+
 					Context("when an existing service offering is removed", func() {
 						var serviceOfferingID string
 
@@ -1067,11 +1132,18 @@ var _ = test.DescribeTestsFor(test.TestCase{
 
 							assertInvocationCount(brokerServer.CatalogEndpointRequests, 1)
 						})
+
+						It("is not returned from the repository as part of the brokers catalog field", func() {
+							assertRepositoryReturnsExpectedCatalogAfterPatching(brokerID, string(brokerServer.Catalog))
+						})
 					})
 
 					Context("when an existing service offering is modified", func() {
 						Context("when catalog service id is modified but the catalog name is not", func() {
+							var expectedCatalog string
+
 							BeforeEach(func() {
+								expectedCatalog = string(brokerServer.Catalog)
 								catalog, err := sjson.Set(string(brokerServer.Catalog), "services.0.id", "new-id")
 								Expect(err).ToNot(HaveOccurred())
 
@@ -1084,6 +1156,10 @@ var _ = test.DescribeTestsFor(test.TestCase{
 									Status(http.StatusConflict).JSON().Object().Keys().Contains("error", "description")
 
 								assertInvocationCount(brokerServer.CatalogEndpointRequests, 1)
+							})
+
+							Specify("the catalog before the modification is returned by the repository", func() {
+								assertRepositoryReturnsExpectedCatalogAfterPatching(brokerID, expectedCatalog)
 
 							})
 						})
@@ -1091,37 +1167,37 @@ var _ = test.DescribeTestsFor(test.TestCase{
 						Context("when catalog service id is removed", func() {
 							verifyPATCHWhenCatalogFieldIsMissing(func(r *httpexpect.Response) {
 								r.Status(http.StatusBadRequest).JSON().Object().Keys().Contains("error", "description")
-							}, "services.0.id")
+							}, false, "services.0.id")
 						})
 
 						Context("when catalog service name is removed", func() {
 							verifyPATCHWhenCatalogFieldIsMissing(func(r *httpexpect.Response) {
 								r.Status(http.StatusBadRequest).JSON().Object().Keys().Contains("error", "description")
-							}, "services.0.name")
+							}, false, "services.0.name")
 						})
 
 						Context("when catalog service description is removed", func() {
 							verifyPATCHWhenCatalogFieldIsMissing(func(r *httpexpect.Response) {
 								r.Status(http.StatusOK)
-							}, "services.0.description")
+							}, true, "services.0.description")
 						})
 
 						Context("when tags are invalid json", func() {
 							verifyPATCHWhenCatalogFieldHasValue(func(r *httpexpect.Response) {
 								r.Status(http.StatusBadRequest).JSON().Object().Keys().Contains("error", "description")
-							}, "services.0.tags", "{invalid")
+							}, false, "services.0.tags", "invalidddd")
 						})
 
 						Context("when requires is invalid json", func() {
 							verifyPATCHWhenCatalogFieldHasValue(func(r *httpexpect.Response) {
 								r.Status(http.StatusBadRequest).JSON().Object().Keys().Contains("error", "description")
-							}, "services.0.requires", "{invalid")
+							}, false, "services.0.requires", "{invalid")
 						})
 
 						Context("when metadata is invalid json", func() {
 							verifyPATCHWhenCatalogFieldHasValue(func(r *httpexpect.Response) {
 								r.Status(http.StatusBadRequest).JSON().Object().Keys().Contains("error", "description")
-							}, "services.0.metadata", "{invalid")
+							}, false, "services.0.metadata", "{invalid")
 						})
 					})
 
@@ -1180,6 +1256,11 @@ var _ = test.DescribeTestsFor(test.TestCase{
 
 							assertInvocationCount(brokerServer.CatalogEndpointRequests, 1)
 						})
+
+						It("is returned from the repository as part of the brokers catalog field", func() {
+							assertRepositoryReturnsExpectedCatalogAfterPatching(brokerID, string(brokerServer.Catalog))
+
+						})
 					})
 
 					Context("when an existing service plan is removed", func() {
@@ -1211,14 +1292,20 @@ var _ = test.DescribeTestsFor(test.TestCase{
 
 							assertInvocationCount(brokerServer.CatalogEndpointRequests, 1)
 						})
+
+						It("is not returned from the repository as part of the brokers catalog field", func() {
+							assertRepositoryReturnsExpectedCatalogAfterPatching(brokerID, string(brokerServer.Catalog))
+						})
 					})
 
 					Context("when an existing service plan is modified", func() {
 						Context("when catalog service plan id is modified but the catalog name is not", func() {
-							BeforeEach(func() {
-								sbCatalog := brokerServer.Catalog
+							var expectedCatalog string
 
-								catalog, err := sjson.Set(string(sbCatalog), "services.0.plans.0.id", "new-id")
+							BeforeEach(func() {
+								expectedCatalog = string(brokerServer.Catalog)
+
+								catalog, err := sjson.Set(string(brokerServer.Catalog), "services.0.plans.0.id", "new-id")
 								Expect(err).ToNot(HaveOccurred())
 
 								brokerServer.Catalog = common.SBCatalog(catalog)
@@ -1230,6 +1317,10 @@ var _ = test.DescribeTestsFor(test.TestCase{
 									Status(http.StatusConflict).JSON().Object().Keys().Contains("error", "description")
 
 								assertInvocationCount(brokerServer.CatalogEndpointRequests, 1)
+							})
+
+							Specify("the catalog before the modification is returned by the repository", func() {
+								assertRepositoryReturnsExpectedCatalogAfterPatching(brokerID, expectedCatalog)
 
 							})
 						})
@@ -1237,31 +1328,31 @@ var _ = test.DescribeTestsFor(test.TestCase{
 						Context("when catalog plan id is removed", func() {
 							verifyPATCHWhenCatalogFieldIsMissing(func(r *httpexpect.Response) {
 								r.Status(http.StatusBadRequest).JSON().Object().Keys().Contains("error", "description")
-							}, "services.0.plans.0.id")
+							}, false, "services.0.plans.0.id")
 						})
 
 						Context("when catalog plan name is removed", func() {
 							verifyPATCHWhenCatalogFieldIsMissing(func(r *httpexpect.Response) {
 								r.Status(http.StatusBadRequest).JSON().Object().Keys().Contains("error", "description")
-							}, "services.0.plans.0.name")
+							}, false, "services.0.plans.0.name")
 						})
 
 						Context("when catalog plan description is removed", func() {
 							verifyPATCHWhenCatalogFieldIsMissing(func(r *httpexpect.Response) {
 								r.Status(http.StatusOK)
-							}, "services.0.plans.0.description")
+							}, true, "services.0.plans.0.description")
 						})
 
 						Context("when schemas is invalid json", func() {
 							verifyPATCHWhenCatalogFieldHasValue(func(r *httpexpect.Response) {
 								r.Status(http.StatusBadRequest).JSON().Object().Keys().Contains("error", "description")
-							}, "services.0.plans.0.schemas", "{invalid")
+							}, false, "services.0.plans.0.schemas", "{invalid")
 						})
 
 						Context("when metadata is invalid json", func() {
 							verifyPATCHWhenCatalogFieldHasValue(func(r *httpexpect.Response) {
 								r.Status(http.StatusBadRequest).JSON().Object().Keys().Contains("error", "description")
-							}, "services.0.plans.0.metadata", "{invalid")
+							}, false, "services.0.plans.0.metadata", []byte(`{invalid`))
 						})
 					})
 				})
@@ -1285,7 +1376,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 						})
 						patchLabelsBody["labels"] = patchLabels
 
-						id = ctx.SMWithOAuth.POST("/v1/service_brokers").
+						id = ctx.SMWithOAuth.POST(web.ServiceBrokersURL).
 							WithJSON(postBrokerRequestWithLabels).
 							Expect().Status(http.StatusCreated).JSON().Object().Value("id").String().Raw()
 					})
@@ -1293,7 +1384,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 					Context("Add new label", func() {
 						It("Should return 200", func() {
 							label := types.Labels{changedLabelKey: changedLabelValues}
-							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + id).
+							ctx.SMWithOAuth.PATCH(web.ServiceBrokersURL + "/" + id).
 								WithJSON(patchLabelsBody).
 								Expect().
 								Status(http.StatusOK).JSON().Object().Value("labels").Object().ContainsMap(label)
@@ -1302,12 +1393,12 @@ var _ = test.DescribeTestsFor(test.TestCase{
 
 					Context("Add label with existing key and value", func() {
 						It("Should return 200", func() {
-							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + id).
+							ctx.SMWithOAuth.PATCH(web.ServiceBrokersURL + "/" + id).
 								WithJSON(patchLabelsBody).
 								Expect().
 								Status(http.StatusOK)
 
-							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + id).
+							ctx.SMWithOAuth.PATCH(web.ServiceBrokersURL + "/" + id).
 								WithJSON(patchLabelsBody).
 								Expect().
 								Status(http.StatusOK)
@@ -1325,7 +1416,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 							for _, val := range changedLabelValues {
 								labelValuesObj = append(labelValuesObj, val)
 							}
-							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + id).
+							ctx.SMWithOAuth.PATCH(web.ServiceBrokersURL + "/" + id).
 								WithJSON(patchLabelsBody).
 								Expect().
 								Status(http.StatusOK).JSON().
@@ -1345,7 +1436,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 								labelValuesObj = append(labelValuesObj, val)
 							}
 
-							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + id).
+							ctx.SMWithOAuth.PATCH(web.ServiceBrokersURL + "/" + id).
 								WithJSON(patchLabelsBody).
 								Expect().
 								Status(http.StatusOK).JSON().
@@ -1361,7 +1452,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 							changedLabelValues = []string{values[0].(string)}
 						})
 						It("Should return 200", func() {
-							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + id).
+							ctx.SMWithOAuth.PATCH(web.ServiceBrokersURL + "/" + id).
 								WithJSON(patchLabelsBody).
 								Expect().
 								Status(http.StatusOK)
@@ -1374,7 +1465,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 							changedLabelKey = "cluster_id"
 						})
 						It("Should return 200", func() {
-							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + id).
+							ctx.SMWithOAuth.PATCH(web.ServiceBrokersURL + "/" + id).
 								WithJSON(patchLabelsBody).
 								Expect().
 								Status(http.StatusOK).JSON().
@@ -1388,7 +1479,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 							changedLabelKey = ""
 						})
 						It("Should return 400", func() {
-							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + id).
+							ctx.SMWithOAuth.PATCH(web.ServiceBrokersURL + "/" + id).
 								WithJSON(patchLabelsBody).
 								Expect().
 								Status(http.StatusBadRequest)
@@ -1401,7 +1492,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 							changedLabelKey = "non-existing-ey"
 						})
 						It("Should return 200", func() {
-							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + id).
+							ctx.SMWithOAuth.PATCH(web.ServiceBrokersURL + "/" + id).
 								WithJSON(patchLabelsBody).
 								Expect().
 								Status(http.StatusOK)
@@ -1417,11 +1508,11 @@ var _ = test.DescribeTestsFor(test.TestCase{
 							changedLabelValues = []string{valueToRemove}
 						})
 						It("Should return 200", func() {
-							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + id).
+							ctx.SMWithOAuth.PATCH(web.ServiceBrokersURL + "/" + id).
 								WithJSON(patchLabelsBody).
 								Expect().
 								Status(http.StatusOK).JSON().
-								Path("$.labels[*].value[*]").Array().NotContains(valueToRemove)
+								Path("$.labels[*]").Array().NotContains(valueToRemove)
 						})
 					})
 
@@ -1436,11 +1527,11 @@ var _ = test.DescribeTestsFor(test.TestCase{
 							changedLabelValues = valuesToRemove
 						})
 						It("Should return 200", func() {
-							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + id).
+							ctx.SMWithOAuth.PATCH(web.ServiceBrokersURL + "/" + id).
 								WithJSON(patchLabelsBody).
 								Expect().
 								Status(http.StatusOK).JSON().
-								Path("$.labels[*].value[*]").Array().NotContains(valuesToRemove)
+								Path("$.labels[*]").Array().NotContains(valuesToRemove)
 						})
 					})
 
@@ -1456,11 +1547,11 @@ var _ = test.DescribeTestsFor(test.TestCase{
 							changedLabelValues = valuesToRemove
 						})
 						It("Should return 200 with this key gone", func() {
-							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + id).
+							ctx.SMWithOAuth.PATCH(web.ServiceBrokersURL + "/" + id).
 								WithJSON(patchLabelsBody).
 								Expect().
 								Status(http.StatusOK).JSON().
-								Path("$.labels[*].key[*]").Array().NotContains(changedLabelKey)
+								Path("$.labels").Object().Keys().NotContains(changedLabelKey)
 						})
 					})
 
@@ -1470,7 +1561,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 							changedLabelValues = []string{}
 						})
 						It("Should return 400", func() {
-							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + id).
+							ctx.SMWithOAuth.PATCH(web.ServiceBrokersURL + "/" + id).
 								WithJSON(patchLabelsBody).
 								Expect().
 								Status(http.StatusBadRequest)
@@ -1484,7 +1575,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 							changedLabelValues = []string{"non-existing-value"}
 						})
 						It("Should return 200", func() {
-							ctx.SMWithOAuth.PATCH("/v1/service_brokers/" + id).
+							ctx.SMWithOAuth.PATCH(web.ServiceBrokersURL + "/" + id).
 								WithJSON(patchLabelsBody).
 								Expect().
 								Status(http.StatusOK)
@@ -1503,7 +1594,7 @@ func blueprint(setNullFieldsValues bool) func(ctx *common.TestContext) common.Ob
 		if !setNullFieldsValues {
 			delete(brokerJSON, "description")
 		}
-		obj := ctx.SMWithOAuth.POST("/v1/service_brokers").WithJSON(brokerJSON).
+		obj := ctx.SMWithOAuth.POST(web.ServiceBrokersURL).WithJSON(brokerJSON).
 			Expect().
 			Status(http.StatusCreated).JSON().Object().Raw()
 		delete(obj, "credentials")

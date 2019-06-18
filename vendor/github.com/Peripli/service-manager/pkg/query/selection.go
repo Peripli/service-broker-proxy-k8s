@@ -19,13 +19,12 @@ package query
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/Peripli/service-manager/pkg/util"
-
-	"github.com/Peripli/service-manager/pkg/web"
 )
 
 // Operator is a query operator
@@ -38,8 +37,12 @@ const (
 	NotEqualsOperator Operator = "!="
 	// GreaterThanOperator takes two operands and tests if the left is greater than the right
 	GreaterThanOperator Operator = "gt"
+	// GreaterThanOrEqualOperator takes two operands and tests if the left is greater than or equal the right
+	GreaterThanOrEqualOperator Operator = "gte"
 	// LessThanOperator takes two operands and tests if the left is lesser than the right
 	LessThanOperator Operator = "lt"
+	// LessThanOrEqualOperator takes two operands and tests if the left is lesser than or equal the right
+	LessThanOrEqualOperator Operator = "lte"
 	// InOperator takes two operands and tests if the left is contained in the right
 	InOperator Operator = "in"
 	// NotInOperator takes two operands and tests if the left is not contained in the right
@@ -60,16 +63,16 @@ func (op Operator) IsNullable() bool {
 
 // IsNumeric returns true if the operator works only with numeric operands
 func (op Operator) IsNumeric() bool {
-	return op == LessThanOperator || op == GreaterThanOperator
+	return op == LessThanOperator || op == GreaterThanOperator || op == LessThanOrEqualOperator || op == GreaterThanOrEqualOperator
 }
 
 var operators = []Operator{EqualsOperator, NotEqualsOperator, InOperator,
-	NotInOperator, GreaterThanOperator, LessThanOperator, EqualsOrNilOperator}
+	NotInOperator, GreaterThanOperator, GreaterThanOrEqualOperator, LessThanOperator, LessThanOrEqualOperator, EqualsOrNilOperator}
 
 const (
 	// OpenBracket is the token that denotes the beginning of a multivariate operand
 	OpenBracket rune = '['
-	// OpenBracket is the token that denotes the end of a multivariate operand
+	// CloseBracket is the token that denotes the end of a multivariate operand
 	CloseBracket rune = ']'
 	// Separator is the separator between field and label queries
 	Separator rune = '|'
@@ -115,9 +118,10 @@ func newCriterion(leftOp string, operator Operator, rightOp []string, criteriaTy
 	return Criterion{LeftOp: leftOp, Operator: operator, RightOp: rightOp, Type: criteriaType}
 }
 
+// Validate the criterion fields
 func (c Criterion) Validate() error {
 	if len(c.RightOp) > 1 && !c.Operator.IsMultiVariate() {
-		return fmt.Errorf("multiple values %s received for single value operation %s", c.RightOp, c.Operator)
+		return &util.UnsupportedQueryError{Message: fmt.Sprintf("multiple values %s received for single value operation %s", c.RightOp, c.Operator)}
 	}
 	if c.Operator.IsNullable() && c.Type != FieldQuery {
 		return &util.UnsupportedQueryError{Message: "nullable operations are supported only for field queries"}
@@ -134,7 +138,7 @@ func (c Criterion) Validate() error {
 	}
 	for _, op := range c.RightOp {
 		if strings.ContainsRune(op, '\n') {
-			return fmt.Errorf("%s with key \"%s\" has value \"%s\" contaning forbidden new line character", c.Type, c.LeftOp, op)
+			return &util.UnsupportedQueryError{Message: fmt.Sprintf("%s with key \"%s\" has value \"%s\" contaning forbidden new line character", c.Type, c.LeftOp, op)}
 		}
 	}
 	return nil
@@ -199,7 +203,7 @@ func ContextWithCriteria(ctx context.Context, criteria []Criterion) context.Cont
 }
 
 // BuildCriteriaFromRequest builds criteria for the given request's query params and returns an error if the query is not valid
-func BuildCriteriaFromRequest(request *web.Request) ([]Criterion, error) {
+func BuildCriteriaFromRequest(request *http.Request) ([]Criterion, error) {
 	var criteria []Criterion
 	for _, queryType := range supportedQueryTypes {
 		queryValues := request.URL.Query().Get(string(queryType))
@@ -265,7 +269,9 @@ func process(input string, criteriaType CriterionType) ([]Criterion, error) {
 		}
 	}
 	if len(c) == 0 {
-		return nil, fmt.Errorf("%s is not a valid %s", input, criteriaType)
+		return nil, &util.UnsupportedQueryError{
+			Message: fmt.Sprintf("%s is not a valid %s", input, criteriaType),
+		}
 	}
 	return c, nil
 }
@@ -307,13 +313,13 @@ func findRightOp(remaining string, leftOp string, operator Operator, criteriaTyp
 		if strings.IndexRune(firstElement, OpenBracket) == 0 {
 			rightOp[0] = firstElement[1:]
 		} else {
-			return nil, -1, fmt.Errorf("operator %s for %s %s requires right operand to be surrounded in %c%c", operator, criteriaType, leftOp, OpenBracket, CloseBracket)
+			return nil, -1, &util.UnsupportedQueryError{Message: fmt.Sprintf("operator %s for %s %s requires right operand to be surrounded in %c%c", operator, criteriaType, leftOp, OpenBracket, CloseBracket)}
 		}
 		lastElement := rightOp[len(rightOp)-1]
 		if rune(lastElement[len(lastElement)-1]) == CloseBracket {
 			rightOp[len(rightOp)-1] = lastElement[:len(lastElement)-1]
 		} else {
-			return nil, -1, fmt.Errorf("operator %s for %s %s requires right operand to be surrounded in %c%c", operator, criteriaType, leftOp, OpenBracket, CloseBracket)
+			return nil, -1, &util.UnsupportedQueryError{Message: fmt.Sprintf("operator %s for %s %s requires right operand to be surrounded in %c%c", operator, criteriaType, leftOp, OpenBracket, CloseBracket)}
 		}
 	}
 	if len(rightOp) == 0 {

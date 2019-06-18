@@ -19,22 +19,23 @@ package sm
 import (
 	"time"
 
+	"net/http"
+
 	"github.com/Peripli/service-manager/pkg/env"
 	"github.com/pkg/errors"
-	"net/http"
 )
 
 // DefaultSettings builds a default Service Manager Settings
 func DefaultSettings() *Settings {
 	return &Settings{
-		User:              "",
-		Password:          "",
-		URL:               "",
-		OSBAPIPath:        "",
-		RequestTimeout:    5 * time.Second,
-		ResyncPeriod:      5 * time.Minute,
-		SkipSSLValidation: false,
-		Transport:         nil,
+		User:                 "",
+		Password:             "",
+		URL:                  "",
+		OSBAPIPath:           "/v1/osb",
+		NotificationsAPIPath: "/v1/notifications",
+		RequestTimeout:       5 * time.Second,
+		SkipSSLValidation:    false,
+		Transport:            nil,
 	}
 }
 
@@ -53,13 +54,13 @@ func NewSettings(env env.Environment) (*Settings, error) {
 
 // Settings type holds SM Client config properties
 type Settings struct {
-	User              string
-	Password          string
-	URL               string
-	OSBAPIPath        string        `mapstructure:"osb_api_path"`
-	RequestTimeout    time.Duration `mapstructure:"request_timeout"`
-	ResyncPeriod      time.Duration `mapstructure:"resync_period"`
-	SkipSSLValidation bool          `mapstructure:"skip_ssl_validation"`
+	User                 string
+	Password             string
+	URL                  string
+	OSBAPIPath           string        `mapstructure:"osb_api_path"`
+	NotificationsAPIPath string        `mapstructure:"notifications_api_path"`
+	RequestTimeout       time.Duration `mapstructure:"request_timeout"`
+	SkipSSLValidation    bool          `mapstructure:"skip_ssl_validation"`
 
 	Transport http.RoundTripper
 }
@@ -78,10 +79,10 @@ func (c *Settings) Validate() error {
 	if len(c.OSBAPIPath) == 0 {
 		return errors.New("SM configuration OSB API Path missing")
 	}
-	if c.RequestTimeout == 0 {
-		return errors.New("SM configuration RequestTimeout missing")
+	if c.NotificationsAPIPath == "" {
+		return errors.New("SM configuration Notifications API path must be non-empty string")
 	}
-	if c.ResyncPeriod == 0 {
+	if c.RequestTimeout == 0 {
 		return errors.New("SM configuration RequestTimeout missing")
 	}
 	return nil

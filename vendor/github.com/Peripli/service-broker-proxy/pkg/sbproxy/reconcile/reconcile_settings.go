@@ -18,10 +18,11 @@ package reconcile
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/pkg/errors"
 )
+
+// DefaultProxyBrokerPrefix prefix for brokers registered by the proxy
+const DefaultProxyBrokerPrefix = "sm-"
 
 // Settings type represents the sbproxy settings
 type Settings struct {
@@ -29,18 +30,16 @@ type Settings struct {
 	Username string `mapstructure:"username"`
 	Password string `mapstructure:"password"`
 
-	VisibilityCache bool          `mapstructure:"visibility_cache"`
-	CacheExpiration time.Duration `mapstructure:"cache_expiration"`
+	BrokerPrefix string `mapstructure:"broker_prefix"`
 }
 
 // DefaultSettings creates default proxy settings
 func DefaultSettings() *Settings {
 	return &Settings{
-		URL:             "",
-		Username:        "",
-		Password:        "",
-		VisibilityCache: true,
-		CacheExpiration: 2 * time.Hour,
+		URL:          "",
+		Username:     "",
+		Password:     "",
+		BrokerPrefix: DefaultProxyBrokerPrefix,
 	}
 }
 
@@ -54,11 +53,6 @@ func (c *Settings) Validate() error {
 	}
 	if len(c.Password) == 0 {
 		return errors.New("validate settings: missing password")
-	}
-	if c.VisibilityCache {
-		if time.Minute > c.CacheExpiration {
-			return errors.New("validate settings: if cache is enabled, cache_expiration should be at least 1 minute")
-		}
 	}
 	return nil
 }

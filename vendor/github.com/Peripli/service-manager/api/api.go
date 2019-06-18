@@ -20,35 +20,32 @@ package api
 import (
 	"context"
 	"fmt"
-	"net/http"
 
-	"github.com/Peripli/service-manager/api/visibility"
+	"github.com/Peripli/service-manager/pkg/util"
 
-	"github.com/Peripli/service-manager/api/broker"
-	"github.com/Peripli/service-manager/api/platform"
+	"github.com/Peripli/service-manager/pkg/types"
+	"github.com/Peripli/service-manager/pkg/ws"
 
-	"github.com/Peripli/service-manager/api/service_offering"
-	"github.com/Peripli/service-manager/api/service_plan"
+	apiNotifications "github.com/Peripli/service-manager/api/notifications"
 
 	"github.com/Peripli/service-manager/api/filters"
-	"github.com/Peripli/service-manager/api/filters/authn/basic"
-	"github.com/Peripli/service-manager/api/filters/authn/oauth"
 	"github.com/Peripli/service-manager/api/info"
 	"github.com/Peripli/service-manager/api/osb"
 	"github.com/Peripli/service-manager/pkg/health"
-	"github.com/Peripli/service-manager/pkg/security"
 	secfilters "github.com/Peripli/service-manager/pkg/security/filters"
 	"github.com/Peripli/service-manager/pkg/web"
 	"github.com/Peripli/service-manager/storage"
-	osbc "github.com/pmorie/go-open-service-broker-client/v2"
 )
+
+const osbVersion = "2.13"
 
 // Settings type to be loaded from the environment
 type Settings struct {
-	TokenIssuerURL    string `mapstructure:"token_issuer_url"`
-	ClientID          string `mapstructure:"client_id"`
-	SkipSSLValidation bool   `mapstructure:"skip_ssl_validation"`
-	TokenBasicAuth    bool   `mapstructure:"token_basic_auth"`
+	TokenIssuerURL    string `mapstructure:"token_issuer_url" description:"url of the token issuer which to use for validating tokens"`
+	ClientID          string `mapstructure:"client_id" description:"id of the client from which the token must be issued"`
+	SkipSSLValidation bool   `mapstructure:"skip_ssl_validation" description:"whether to skip ssl verification when making calls to external services"`
+	TokenBasicAuth    bool   `mapstructure:"token_basic_auth" description:"specifies if client credentials to the authorization server should be sent in the header as basic auth (true) or in the body (false)"`
+	OSBVersion        string `mapstructure:"-"`
 }
 
 // DefaultSettings returns default values for API settings
@@ -58,6 +55,7 @@ func DefaultSettings() *Settings {
 		ClientID:          "",
 		SkipSSLValidation: false,
 		TokenBasicAuth:    true, // RFC 6749 section 2.3.1
+		OSBVersion:        osbVersion,
 	}
 }
 
@@ -69,61 +67,59 @@ func (s *Settings) Validate() error {
 	return nil
 }
 
+type Options struct {
+	Repository  storage.Repository
+	APISettings *Settings
+	WSSettings  *ws.Settings
+	Notificator storage.Notificator
+}
+
 // New returns the minimum set of REST APIs needed for the Service Manager
-func New(ctx context.Context, repository storage.Repository, settings *Settings, encrypter security.Encrypter) (*web.API, error) {
-	bearerAuthnFilter, err := oauth.NewFilter(ctx, settings.TokenIssuerURL, settings.ClientID)
+func New(ctx context.Context, options *Options) (*web.API, error) {
+	bearerAuthnFilter, err := filters.NewOIDCAuthnFilter(ctx, options.APISettings.TokenIssuerURL, options.APISettings.ClientID)
 	if err != nil {
 		return nil, err
 	}
+
 	return &web.API{
 		// Default controllers - more filters can be registered using the relevant API methods
 		Controllers: []web.Controller{
-			&broker.Controller{
-				Repository:          repository,
-				OSBClientCreateFunc: newOSBClient(settings.SkipSSLValidation),
-				Encrypter:           encrypter,
-			},
-			&platform.Controller{
-				PlatformStorage: repository.Platform(),
-				Encrypter:       encrypter,
-			},
-			&service_offering.Controller{
-				ServiceOfferingStorage: repository.ServiceOffering(),
-			},
-			&service_plan.Controller{
-				ServicePlanStorage: repository.ServicePlan(),
-			},
-			&visibility.Controller{
-				Repository: repository,
-			},
+			NewController(options.Repository, web.ServiceBrokersURL, types.ServiceBrokerType, func() types.Object {
+				return &types.ServiceBroker{}
+			}),
+			NewController(options.Repository, web.PlatformsURL, types.PlatformType, func() types.Object {
+				return &types.Platform{}
+			}),
+			NewController(options.Repository, web.VisibilitiesURL, types.VisibilityType, func() types.Object {
+				return &types.Visibility{}
+			}),
+			apiNotifications.NewController(ctx, options.Repository, options.WSSettings, options.Notificator),
+			NewServiceOfferingController(options.Repository),
+			NewServicePlanController(options.Repository),
 			&info.Controller{
-				TokenIssuer:    settings.TokenIssuerURL,
-				TokenBasicAuth: settings.TokenBasicAuth,
+				TokenIssuer:    options.APISettings.TokenIssuerURL,
+				TokenBasicAuth: options.APISettings.TokenBasicAuth,
 			},
-			osb.NewController(&osb.StorageBrokerFetcher{
-				BrokerStorage: repository.Broker(),
-				Encrypter:     encrypter,
-			}, &osb.StorageCatalogFetcher{
-				CatalogStorage: repository.ServiceOffering(),
+			&osb.Controller{
+				BrokerFetcher: func(ctx context.Context, brokerID string) (*types.ServiceBroker, error) {
+					br, err := options.Repository.Get(ctx, types.ServiceBrokerType, brokerID)
+					if err != nil {
+						return nil, util.HandleStorageError(err, "broker")
+					}
+					return br.(*types.ServiceBroker), nil
+				},
 			},
-				http.DefaultTransport,
-			),
 		},
 		// Default filters - more filters can be registered using the relevant API methods
 		Filters: []web.Filter{
 			&filters.Logging{},
-			basic.NewFilter(repository.Credentials(), encrypter),
+			filters.NewBasicAuthnFilter(options.Repository),
 			bearerAuthnFilter,
 			secfilters.NewRequiredAuthnFilter(),
 			&filters.SelectionCriteria{},
+			&filters.PlatformAwareVisibilityFilter{},
+			&filters.PatchOnlyLabelsFilter{},
 		},
 		Registry: health.NewDefaultRegistry(),
 	}, nil
-}
-
-func newOSBClient(skipSsl bool) osbc.CreateFunc {
-	return func(configuration *osbc.ClientConfiguration) (osbc.Client, error) {
-		configuration.Insecure = skipSsl
-		return osbc.NewClient(configuration)
-	}
 }

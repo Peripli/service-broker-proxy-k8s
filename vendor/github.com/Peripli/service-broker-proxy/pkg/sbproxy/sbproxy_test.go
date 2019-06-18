@@ -21,13 +21,11 @@ import (
 	. "github.com/onsi/gomega"
 
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/Peripli/service-broker-proxy/pkg/platform/platformfakes"
-	"github.com/Peripli/service-manager/pkg/env/envfakes"
 	"github.com/Peripli/service-manager/pkg/web"
 	"github.com/gavv/httpexpect"
 	"github.com/spf13/pflag"
@@ -38,7 +36,6 @@ var _ = Describe("Sbproxy", func() {
 	var cancel context.CancelFunc
 	var fakePlatformClient *platformfakes.FakeClient
 	var fakeBrokerClient *platformfakes.FakeBrokerClient
-	var fakeEnv *envfakes.FakeEnvironment
 
 	BeforeEach(func() {
 		ctx = context.TODO()
@@ -50,47 +47,43 @@ var _ = Describe("Sbproxy", func() {
 		fakePlatformClient.BrokerReturns(fakeBrokerClient)
 		fakePlatformClient.VisibilityReturns(&platformfakes.FakeVisibilityClient{})
 		fakePlatformClient.CatalogFetcherReturns(&platformfakes.FakeCatalogFetcher{})
-
-		fakeEnv = &envfakes.FakeEnvironment{}
 	})
 
 	Describe("New", func() {
-		Context("when setting up config fails", func() {
-			It("should panic", func() {
-				fakeEnv.UnmarshalReturns(fmt.Errorf("error"))
-
-				Expect(func() {
-					New(ctx, cancel, fakeEnv, fakePlatformClient)
-				}).To(Panic())
-			})
-		})
-
 		Context("when validating config fails", func() {
 			It("should panic", func() {
-				Expect(func() {
-					New(ctx, cancel, DefaultEnv(func(set *pflag.FlagSet) {
-						set.Set("app.url", "http://localhost:8080")
-						set.Set("sm.user", "")
-						set.Set("sm.password", "admin")
-						set.Set("sm.url", "http://localhost:8080")
-						set.Set("sm.osb_api_path", "/osb")
-						set.Set("log.level", "")
-					}), fakePlatformClient)
-				}).To(Panic())
+				env, err := DefaultEnv(func(set *pflag.FlagSet) {
+					set.Set("app.url", "http://localhost:8080")
+					set.Set("sm.user", "")
+					set.Set("sm.password", "admin")
+					set.Set("sm.url", "http://localhost:8080")
+					set.Set("sm.osb_api_path", "/osb")
+					set.Set("log.level", "")
+				})
+				Expect(err).ToNot(HaveOccurred())
+				settings, err := NewSettings(env)
+				Expect(err).ToNot(HaveOccurred())
+				smProxyBuilder, err := New(ctx, cancel, settings, fakePlatformClient)
+				Expect(err).To(HaveOccurred())
+				Expect(smProxyBuilder).To(BeNil())
 			})
 		})
 
 		Context("when creating sm client fails due to missing config properties", func() {
 			It("should panic", func() {
-				Expect(func() {
-					New(ctx, cancel, DefaultEnv(func(set *pflag.FlagSet) {
-						set.Set("app.url", "http://localhost:8080")
-						set.Set("sm.user", "")
-						set.Set("sm.password", "admin")
-						set.Set("sm.url", "http://localhost:8080")
-						set.Set("sm.osb_api_path", "/osb")
-					}), fakePlatformClient)
-				}).To(Panic())
+				env, err := DefaultEnv(func(set *pflag.FlagSet) {
+					set.Set("app.url", "http://localhost:8080")
+					set.Set("sm.user", "")
+					set.Set("sm.password", "admin")
+					set.Set("sm.url", "http://localhost:8080")
+					set.Set("sm.osb_api_path", "/osb")
+				})
+				Expect(err).ToNot(HaveOccurred())
+				settings, err := NewSettings(env)
+				Expect(err).ToNot(HaveOccurred())
+				smProxyBuilder, err := New(ctx, cancel, settings, fakePlatformClient)
+				Expect(err).To(HaveOccurred())
+				Expect(smProxyBuilder).To(BeNil())
 			})
 		})
 
@@ -99,8 +92,7 @@ var _ = Describe("Sbproxy", func() {
 
 			BeforeEach(func() {
 				fakeBrokerClient.GetBrokersReturns([]platform.ServiceBroker{}, nil)
-
-				proxy := New(ctx, cancel, DefaultEnv(func(set *pflag.FlagSet) {
+				env, err := DefaultEnv(func(set *pflag.FlagSet) {
 					set.Set("app.url", "http://localhost:8080")
 					set.Set("app.username", "admin")
 					set.Set("app.password", "admin")
@@ -108,7 +100,12 @@ var _ = Describe("Sbproxy", func() {
 					set.Set("sm.password", "admin")
 					set.Set("sm.url", "http://localhost:8080")
 					set.Set("sm.osb_api_path", "/osb")
-				}), fakePlatformClient)
+				})
+				Expect(err).ToNot(HaveOccurred())
+				settings, err := NewSettings(env)
+				Expect(err).ToNot(HaveOccurred())
+				proxy, err := New(ctx, cancel, settings, fakePlatformClient)
+				Expect(err).ToNot(HaveOccurred())
 				proxy.RegisterControllers(testController{})
 				SMProxy = httpexpect.New(GinkgoT(), httptest.NewServer(proxy.Build().Server.Router).URL)
 			})

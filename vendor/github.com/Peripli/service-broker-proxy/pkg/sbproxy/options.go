@@ -17,6 +17,7 @@
 package sbproxy
 
 import (
+	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/notifications"
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/reconcile"
 	"github.com/Peripli/service-broker-proxy/pkg/sm"
 	"github.com/Peripli/service-manager/pkg/env"
@@ -28,10 +29,11 @@ import (
 
 // Settings type holds all config properties for the sbproxy
 type Settings struct {
-	Server    *server.Settings    `mapstructure:"server"`
-	Log       *log.Settings       `mapstructure:"log"`
-	Sm        *sm.Settings        `mapstructure:"sm"`
-	Reconcile *reconcile.Settings `mapstructure:"app"`
+	Server    *server.Settings                `mapstructure:"server"`
+	Log       *log.Settings                   `mapstructure:"log"`
+	Sm        *sm.Settings                    `mapstructure:"sm"`
+	Reconcile *reconcile.Settings             `mapstructure:"app"`
+	Producer  *notifications.ProducerSettings `mapstructure:"producer"`
 }
 
 // DefaultSettings returns default value for the proxy settings
@@ -41,6 +43,7 @@ func DefaultSettings() *Settings {
 		Log:       log.DefaultSettings(),
 		Sm:        sm.DefaultSettings(),
 		Reconcile: reconcile.DefaultSettings(),
+		Producer:  notifications.DefaultProducerSettings(),
 	}
 }
 
@@ -63,7 +66,7 @@ func AddPFlags(set *pflag.FlagSet) {
 
 // Validate validates that the configuration contains all mandatory properties
 func (c *Settings) Validate() error {
-	validatable := []util.InputValidator{c.Server, c.Log, c.Sm, c.Reconcile}
+	validatable := []util.InputValidator{c.Server, c.Log, c.Sm, c.Reconcile, c.Producer}
 
 	for _, item := range validatable {
 		if err := item.Validate(); err != nil {

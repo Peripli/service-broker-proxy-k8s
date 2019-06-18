@@ -5,7 +5,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/Peripli/service-broker-proxy/badge.svg?branch=master)](https://coveralls.io/github/Peripli/service-broker-proxy)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/Peripli/service-broker-proxy/blob/master/LICENSE)
 
-Framework for writing Serrvice Manager broker proxies.
+Framework for writing Service Manager broker proxies.
 
 ## Purpose
 

@@ -18,24 +18,38 @@ package platform
 
 import (
 	"context"
-	"encoding/json"
+
+	"github.com/Peripli/service-manager/pkg/types"
 )
+
+// Visibility generic visibility entity
+type Visibility struct {
+	Public             bool
+	CatalogPlanID      string
+	PlatformBrokerName string
+	Labels             map[string]string
+}
+
+// ModifyPlanAccessRequest type used for requests by the platform client
+type ModifyPlanAccessRequest struct {
+	BrokerName    string       `json:"broker_name"`
+	CatalogPlanID string       `json:"catalog_plan_id"`
+	Labels        types.Labels `json:"labels"`
+}
 
 // VisibilityClient interface for platform clients to implement if they support
 // platform specific service and plan visibilities
 //go:generate counterfeiter . VisibilityClient
 type VisibilityClient interface {
 	// GetVisibilitiesByBrokers get currently available visibilities in the platform for specific broker names
-	GetVisibilitiesByBrokers(context.Context, []string) ([]*ServiceVisibilityEntity, error)
+	GetVisibilitiesByBrokers(context.Context, []string) ([]*Visibility, error)
 
 	// VisibilityScopeLabelKey returns a specific label key which should be used when converting SM visibilities to platform.Visibilities
 	VisibilityScopeLabelKey() string
 
-	// EnableAccessForPlan enables the access to the plan with the specified GUID for
-	// the entities in the data
-	EnableAccessForPlan(ctx context.Context, data json.RawMessage, catalogPlanID, platformBrokerName string) error
+	// EnableAccessForPlan enables the access for the specified plan
+	EnableAccessForPlan(ctx context.Context, request *ModifyPlanAccessRequest) error
 
-	// DisableAccessForPlan disables the access to the plan with the specified GUID for
-	// the entities in the data
-	DisableAccessForPlan(ctx context.Context, data json.RawMessage, catalogPlanID, platformBrokerName string) error
+	// DisableAccessForPlan disables the access for the specified plan
+	DisableAccessForPlan(ctx context.Context, request *ModifyPlanAccessRequest) error
 }

@@ -30,8 +30,20 @@ import (
 // DoRequestFunc is an alias for any function that takes an http request and returns a response and error
 type DoRequestFunc func(request *http.Request) (*http.Response, error)
 
+func BasicAuthDecorator(username, password string, requestFunc DoRequestFunc) DoRequestFunc {
+	return func(req *http.Request) (*http.Response, error) {
+		req.SetBasicAuth(username, password)
+		return requestFunc(req)
+	}
+}
+
 // SendRequest sends a request to the specified client and the provided URL with the specified parameters and body.
 func SendRequest(ctx context.Context, doRequest DoRequestFunc, method, url string, params map[string]string, body interface{}) (*http.Response, error) {
+	return SendRequestWithHeaders(ctx, doRequest, method, url, params, body, map[string]string{})
+}
+
+// SendRequestWithHeaders sends a request to the specified client and the provided URL with the specified parameters, body and headers.
+func SendRequestWithHeaders(ctx context.Context, doRequest DoRequestFunc, method, url string, params map[string]string, body interface{}, headers map[string]string) (*http.Response, error) {
 	var bodyReader io.Reader
 
 	if body != nil {
@@ -45,6 +57,10 @@ func SendRequest(ctx context.Context, doRequest DoRequestFunc, method, url strin
 	request, err := http.NewRequest(method, url, bodyReader)
 	if err != nil {
 		return nil, err
+	}
+
+	for key, value := range headers {
+		request.Header.Add(key, value)
 	}
 
 	if params != nil {

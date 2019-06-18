@@ -29,9 +29,9 @@ type Brokers struct {
 
 // Broker type used for responses from the Service Manager client
 type Broker struct {
-	ID        string `json:"id"`
-	BrokerURL string `json:"broker_url"`
-
+	ID               string                     `json:"id"`
+	Name             string                     `json:"name"`
+	BrokerURL        string                     `json:"broker_url"`
 	ServiceOfferings []types.ServiceOffering    `json:"services"`
 	Metadata         map[string]json.RawMessage `json:"metadata,omitempty"`
 }

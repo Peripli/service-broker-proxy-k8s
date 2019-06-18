@@ -21,10 +21,10 @@ package platform
 // return nil for the specific client.
 //go:generate counterfeiter . Client
 type Client interface {
-	// Broker return BrokerClient which handles platform specific broker operations
+	// Broker returns a BrokerClient which handles platform specific broker operations
 	Broker() BrokerClient
-	// Visibility return VisibilityClient which handles platform specific service visibility operations
+	// Visibility returns a VisibilityClient which handles platform specific service visibility operations
 	Visibility() VisibilityClient
-	// CatalogFetcher return CatalogFetcher which handles platform specific fetching of service catalogs
+	// CatalogFetcher returns a CatalogFetcher which handles platform specific fetching of service catalogs
 	CatalogFetcher() CatalogFetcher
 }
