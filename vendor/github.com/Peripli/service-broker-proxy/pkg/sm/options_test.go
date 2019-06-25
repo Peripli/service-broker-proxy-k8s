@@ -18,11 +18,12 @@ package sm
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/Peripli/service-manager/pkg/env/envfakes"
 	"github.com/fatih/structs"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"time"
 )
 
 var _ = Describe("Config", func() {
@@ -67,7 +68,6 @@ var _ = Describe("Config", func() {
 					Password:          "admin",
 					OSBAPIPath:        "/osb",
 					RequestTimeout:    5 * time.Second,
-					ResyncPeriod:      5 * time.Minute,
 					SkipSSLValidation: true,
 					Transport:         nil,
 				}
@@ -158,9 +158,9 @@ var _ = Describe("Config", func() {
 			})
 		})
 
-		Context("when resync period is missing", func() {
-			It("returns an error", func() {
-				config.ResyncPeriod = 0
+		Context("when NotificationsAPIPath is empty", func() {
+			It("returns and error", func() {
+				config.NotificationsAPIPath = ""
 				assertErrorDuringValidate()
 			})
 		})

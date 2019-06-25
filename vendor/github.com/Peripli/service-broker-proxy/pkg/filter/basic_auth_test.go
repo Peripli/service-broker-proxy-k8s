@@ -17,12 +17,13 @@
 package filter
 
 import (
+	"net/http"
+
 	"github.com/Peripli/service-manager/pkg/util"
 	"github.com/Peripli/service-manager/pkg/web"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
-	"net/http"
 )
 
 var _ = Describe("Basic Authentication wrapper", func() {
@@ -44,7 +45,7 @@ var _ = Describe("Basic Authentication wrapper", func() {
 	}
 
 	BeforeEach(func() {
-		filter = NewBasicAuthFilter(validUsername, validPassword)
+		filter = NewBasicAuthnFilter(validUsername, validPassword)
 	})
 
 	DescribeTable("when given a request with basic authorization",

@@ -22,7 +22,6 @@ import (
 	"net/http"
 
 	"github.com/Peripli/service-manager/pkg/health"
-
 	"github.com/Peripli/service-manager/pkg/log"
 	"github.com/Peripli/service-manager/pkg/util/slice"
 )
@@ -36,7 +35,7 @@ type API struct {
 	Filters []Filter
 
 	// Registry is the health indicators registry for this API
-	health.Registry
+	*health.Registry
 }
 
 // pluginSegment represents one piece of a web.Plugin. Each web.Plugin is decomposed into as many plugin segments as

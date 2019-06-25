@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-package reconcile
+package reconcile_test
 
 import (
-	"time"
+	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/reconcile"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-func validSettings() *Settings {
-	settings := DefaultSettings()
+func validSettings() *reconcile.Settings {
+	settings := reconcile.DefaultSettings()
 	settings.URL = "http://localhost:8080"
 	settings.Username = "user"
 	settings.Password = "password"
@@ -61,14 +61,6 @@ var _ = Describe("Reconcile", func() {
 				It("returns an error", func() {
 					settings := validSettings()
 					settings.Password = ""
-					Expect(settings.Validate()).Should(HaveOccurred())
-				})
-			})
-
-			Context("when CacheExpiration is less then 1 minute", func() {
-				It("returns an error", func() {
-					settings := validSettings()
-					settings.CacheExpiration = time.Second
 					Expect(settings.Validate()).Should(HaveOccurred())
 				})
 			})

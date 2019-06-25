@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
-package reconcile
+package reconcile_test
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/reconcile"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -26,4 +29,8 @@ import (
 func TestReconcile(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Reconcile Suite")
+}
+
+func brokerProxyName(brokerName, brokerID string) string {
+	return fmt.Sprintf("%s%s-%s", reconcile.DefaultProxyBrokerPrefix, brokerName, brokerID)
 }

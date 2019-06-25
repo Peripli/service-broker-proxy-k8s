@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package reconcile
+package reconcile_test
 
 import (
 	"context"
 	"fmt"
-	"sync"
-	"time"
+
+	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/reconcile"
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/Peripli/service-broker-proxy/pkg/platform/platformfakes"
@@ -30,7 +30,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
-	cache "github.com/patrickmn/go-cache"
 )
 
 var _ = Describe("Reconcile brokers", func() {
@@ -39,21 +38,21 @@ var _ = Describe("Reconcile brokers", func() {
 	var (
 		fakeSMClient *smfakes.FakeClient
 
-		fakePlatformCatalogFetcher *platformfakes.FakeCatalogFetcher
-		fakePlatformBrokerClient   *platformfakes.FakeBrokerClient
+		fakePlatformCatalogFetcher     *platformfakes.FakeCatalogFetcher
+		fakePlatformBrokerClient       *platformfakes.FakeBrokerClient
+		fakePlatformVisibilitiesClient *platformfakes.FakeVisibilityClient
 
-		waitGroup *sync.WaitGroup
-
-		reconciliationTask *ReconciliationTask
+		reconciler *reconcile.Reconciler
 
 		smbroker1 sm.Broker
 		smbroker2 sm.Broker
 		smbroker3 sm.Broker
 
-		platformbroker1        platform.ServiceBroker
-		platformbroker2        platform.ServiceBroker
-		platformbrokerNonProxy platform.ServiceBroker
-		platformBrokerProxy    platform.ServiceBroker
+		platformbroker1         platform.ServiceBroker
+		platformbroker2         platform.ServiceBroker
+		platformbrokerNonProxy  platform.ServiceBroker
+		platformbrokerNonProxy2 platform.ServiceBroker
+		platformBrokerProxy     platform.ServiceBroker
 	)
 
 	stubCreateBrokerToSucceed := func(ctx context.Context, r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
@@ -84,13 +83,11 @@ var _ = Describe("Reconcile brokers", func() {
 
 		fakePlatformBrokerClient = &platformfakes.FakeBrokerClient{}
 		fakePlatformCatalogFetcher = &platformfakes.FakeCatalogFetcher{}
+		fakePlatformVisibilitiesClient = &platformfakes.FakeVisibilityClient{}
 
 		fakePlatformClient.BrokerReturns(fakePlatformBrokerClient)
 		fakePlatformClient.CatalogFetcherReturns(fakePlatformCatalogFetcher)
-		fakePlatformClient.VisibilityReturns(nil)
-
-		visibilityCache := cache.New(5*time.Minute, 10*time.Minute)
-		waitGroup = &sync.WaitGroup{}
+		fakePlatformClient.VisibilityReturns(fakePlatformVisibilitiesClient)
 
 		platformClient := struct {
 			*platformfakes.FakeCatalogFetcher
@@ -100,28 +97,35 @@ var _ = Describe("Reconcile brokers", func() {
 			FakeClient:         fakePlatformClient,
 		}
 
-		reconciliationTask = NewTask(
-			context.TODO(), DefaultSettings(), waitGroup, platformClient, fakeSMClient,
-			fakeAppHost, visibilityCache)
+		reconciler = &reconcile.Reconciler{
+			Resyncer: reconcile.NewResyncer(reconcile.DefaultSettings(), platformClient, fakeSMClient, fakeAppHost),
+		}
 
 		smbroker1 = sm.Broker{
 			ID:        "smBrokerID1",
+			Name:      "smBroker1",
 			BrokerURL: "https://smBroker1.com",
 			ServiceOfferings: []types.ServiceOffering{
 				{
-					ID:                  "smBroker1ServiceID1",
+					Base: types.Base{
+						ID: "smBroker1ServiceID1",
+					},
 					Name:                "smBroker1Service1",
 					Description:         "description",
 					Bindable:            true,
 					BindingsRetrievable: true,
 					Plans: []*types.ServicePlan{
 						{
-							ID:          "smBroker1ServiceID1PlanID1",
+							Base: types.Base{
+								ID: "smBroker1ServiceID1PlanID1",
+							},
 							Name:        "smBroker1Service1Plan1",
 							Description: "description",
 						},
 						{
-							ID:          "smBroker1ServiceID1PlanID2",
+							Base: types.Base{
+								ID: "smBroker1ServiceID1PlanID2",
+							},
 							Name:        "smBroker1Service1Plan2",
 							Description: "description",
 						},
@@ -132,22 +136,29 @@ var _ = Describe("Reconcile brokers", func() {
 
 		smbroker2 = sm.Broker{
 			ID:        "smBrokerID2",
+			Name:      "smBroker2",
 			BrokerURL: "https://smBroker2.com",
 			ServiceOfferings: []types.ServiceOffering{
 				{
-					ID:                  "smBroker2ServiceID1",
+					Base: types.Base{
+						ID: "smBroker2ServiceID1",
+					},
 					Name:                "smBroker2Service1",
 					Description:         "description",
 					Bindable:            true,
 					BindingsRetrievable: true,
 					Plans: []*types.ServicePlan{
 						{
-							ID:          "smBroker2ServiceID1PlanID1",
+							Base: types.Base{
+								ID: "smBroker2ServiceID1PlanID1",
+							},
 							Name:        "smBroker2Service1Plan1",
 							Description: "description",
 						},
 						{
-							ID:          "smBroker2ServiceID1PlanID2",
+							Base: types.Base{
+								ID: "smBroker2ServiceID1PlanID2",
+							},
 							Name:        "smBroker2Service1Plan2",
 							Description: "description",
 						},
@@ -158,13 +169,13 @@ var _ = Describe("Reconcile brokers", func() {
 
 		platformbroker1 = platform.ServiceBroker{
 			GUID:      "platformBrokerID1",
-			Name:      ProxyBrokerPrefix + "smBrokerID1",
+			Name:      brokerProxyName("smBroker1", "smBrokerID1"),
 			BrokerURL: fakeAppHost + "/" + smbroker1.ID,
 		}
 
 		platformbroker2 = platform.ServiceBroker{
 			GUID:      "platformBrokerID2",
-			Name:      ProxyBrokerPrefix + "smBrokerID2",
+			Name:      brokerProxyName("smBroker2", "smBrokerID2"),
 			BrokerURL: fakeAppHost + "/" + smbroker2.ID,
 		}
 
@@ -174,15 +185,21 @@ var _ = Describe("Reconcile brokers", func() {
 			BrokerURL: "https://platformBroker3.com",
 		}
 
+		platformbrokerNonProxy2 = platform.ServiceBroker{
+			GUID:      "platformBrokerID4",
+			Name:      "platformBroker4",
+			BrokerURL: "https://platformBroker4.com",
+		}
+
 		smbroker3 = sm.Broker{
 			ID:        "smBrokerID3",
+			Name:      platformbrokerNonProxy.Name,
 			BrokerURL: platformbrokerNonProxy.BrokerURL,
-			// ServiceOfferings: []types.ServiceOffering{},
 		}
 
 		platformBrokerProxy = platform.ServiceBroker{
 			GUID:      platformbrokerNonProxy.GUID,
-			Name:      "sm-proxy-" + smbroker3.ID,
+			Name:      brokerProxyName(smbroker3.Name, smbroker3.ID),
 			BrokerURL: fakeAppHost + "/" + smbroker3.ID,
 		}
 	})
@@ -324,7 +341,7 @@ var _ = Describe("Reconcile brokers", func() {
 			},
 		}),
 
-		Entry("When broker is in SM and is also in platform it should be catalog refetched and access enabled", testCase{
+		Entry("When broker is in SM and is also in platform it should be catalog refetched", testCase{
 			stubs: func() {
 				stubPlatformOpsToSucceed()
 			},
@@ -379,6 +396,7 @@ var _ = Describe("Reconcile brokers", func() {
 			platformBrokers: func() ([]platform.ServiceBroker, error) {
 				return []platform.ServiceBroker{
 					platformbrokerNonProxy,
+					platformbrokerNonProxy2,
 				}, nil
 			},
 			smBrokers: func() ([]sm.Broker, error) {
@@ -393,7 +411,7 @@ var _ = Describe("Reconcile brokers", func() {
 			},
 		}),
 
-		Entry("When broker is registered in the platform, but not yet known to the proxy, it should be updated", testCase{
+		Entry("When broker is registered in the platform and SM, but not yet proxified, it should be updated", testCase{
 			stubs: func() {
 				stubPlatformOpsToSucceed()
 				stubPlatformUpdateBroker()
@@ -401,6 +419,7 @@ var _ = Describe("Reconcile brokers", func() {
 			platformBrokers: func() ([]platform.ServiceBroker, error) {
 				return []platform.ServiceBroker{
 					platformbrokerNonProxy,
+					platformbrokerNonProxy2,
 				}, nil
 			},
 			smBrokers: func() ([]sm.Broker, error) {
@@ -419,9 +438,52 @@ var _ = Describe("Reconcile brokers", func() {
 				}
 			},
 		}),
+		Entry("when a broker is renamed in the platform it should rename it back", testCase{
+			// smBroker is registered in SM (as sm-smBroker-<id> in the platform), but it was renamed in the platform
+			stubs: func() {
+				stubPlatformOpsToSucceed()
+				stubPlatformUpdateBroker()
+			},
+			platformBrokers: func() ([]platform.ServiceBroker, error) {
+				return []platform.ServiceBroker{
+					{
+						Name:             brokerProxyName("smBroker1", smbroker2.ID), // the name of smBroker1 is changed in the platform
+						BrokerURL:        platformbroker1.BrokerURL,
+						ServiceOfferings: platformbroker1.ServiceOfferings,
+						GUID:             platformbroker1.GUID,
+						Metadata:         platformbroker1.Metadata,
+					},
+					platformbroker2,
+				}, nil
+			},
+			smBrokers: func() ([]sm.Broker, error) {
+				return []sm.Broker{
+					smbroker1,
+					smbroker2,
+				}, nil
+			},
+			expectations: func() expectations {
+				return expectations{
+					reconcileCreateCalledFor: []platform.ServiceBroker{},
+					reconcileUpdateCalledFor: []platform.ServiceBroker{
+						{
+							Name:             brokerProxyName("smBroker1", smbroker1.ID), // the broker should be updated with the name of smBroker1
+							BrokerURL:        platformbroker1.BrokerURL,
+							ServiceOfferings: platformbroker1.ServiceOfferings,
+							GUID:             platformbroker1.GUID,
+							Metadata:         platformbroker1.Metadata,
+						},
+					},
+					reconcileDeleteCalledFor: []platform.ServiceBroker{},
+					reconcileCatalogCalledFor: []platform.ServiceBroker{
+						platformbroker2,
+					},
+				}
+			},
+		}),
 	}
 
-	DescribeTable("Run", func(t testCase) {
+	DescribeTable("resync", func(t testCase) {
 		smBrokers, err1 := t.smBrokers()
 		platformBrokers, err2 := t.platformBrokers()
 
@@ -429,10 +491,10 @@ var _ = Describe("Reconcile brokers", func() {
 		fakePlatformBrokerClient.GetBrokersReturns(platformBrokers, err2)
 		t.stubs()
 
-		reconciliationTask.Run()
+		reconciler.Resyncer.Resync(context.TODO())
 
 		if err1 != nil {
-			Expect(len(fakePlatformBrokerClient.Invocations())).To(Equal(1))
+			Expect(len(fakePlatformBrokerClient.Invocations())).To(Equal(0))
 			Expect(len(fakePlatformCatalogFetcher.Invocations())).To(Equal(0))
 			Expect(fakeSMClient.GetBrokersCallCount()).To(Equal(1))
 			return
@@ -441,7 +503,7 @@ var _ = Describe("Reconcile brokers", func() {
 		if err2 != nil {
 			Expect(len(fakePlatformBrokerClient.Invocations())).To(Equal(1))
 			Expect(len(fakePlatformCatalogFetcher.Invocations())).To(Equal(0))
-			Expect(fakeSMClient.GetBrokersCallCount()).To(Equal(0))
+			Expect(fakeSMClient.GetBrokersCallCount()).To(Equal(1))
 			return
 		}
 

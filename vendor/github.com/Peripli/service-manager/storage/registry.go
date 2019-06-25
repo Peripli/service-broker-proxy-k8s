@@ -21,51 +21,37 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/Peripli/service-manager/pkg/util"
+
 	"github.com/Peripli/service-manager/pkg/log"
 )
 
-var (
-	mux      sync.RWMutex
-	storages = make(map[string]Storage)
-)
+func InitializeWithSafeTermination(ctx context.Context, s Storage, settings *Settings, wg *sync.WaitGroup, decorators ...TransactionalRepositoryDecorator) (TransactionalRepository, error) {
+	if s == nil || settings == nil {
+		return nil, fmt.Errorf("storage and storage settings cannot be nil")
+	}
 
-// Register adds a storage with the given name
-func Register(name string, storage Storage) {
-	mux.RLock()
-	defer mux.RUnlock()
-	logger := log.D()
-	if storage == nil {
-		logger.Panicln("storage: Register storage is nil")
-	}
-	if _, dup := storages[name]; dup {
-		logger.Panicf("storage: Register called twice for storage with name %s", name)
-	}
-	storages[name] = storage
-}
+	util.StartInWaitGroupWithContext(ctx, func(c context.Context) {
+		<-c.Done()
+		log.C(c).Debug("Context cancelled. Closing storage...")
+		if err := s.Close(); err != nil {
+			log.D().Error(err)
+		}
+	}, wg)
 
-// Use specifies the storage for the given name
-// Returns the storage ready to be used and an error if one occurred during initialization
-// Upon context.Done signal the storage will be closed
-func Use(ctx context.Context, name string, options *Settings) (Storage, error) {
-	mux.Lock()
-	defer mux.Unlock()
-	storage, exists := storages[name]
-	if !exists {
-		return nil, fmt.Errorf("error locating storage with name %s", name)
-	}
-	if err := storage.Open(options); err != nil {
+	if err := s.Open(settings); err != nil {
 		return nil, fmt.Errorf("error opening storage: %s", err)
 	}
-	storages[name] = storage
-	go awaitTermination(ctx, storage)
-	return storage, nil
-}
 
-func awaitTermination(ctx context.Context, storage Storage) {
-	<-ctx.Done()
-	logger := log.C(ctx)
-	logger.Debug("Context cancelled. Closing storage...")
-	if err := storage.Close(); err != nil {
-		logger.Error(err)
+	var decoratedRepository TransactionalRepository
+	var err error
+	decoratedRepository = s
+	for i := range decorators {
+		decoratedRepository, err = decorators[len(decorators)-1-i](decoratedRepository)
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	return decoratedRepository, nil
 }

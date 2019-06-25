@@ -18,24 +18,30 @@ package common
 
 import (
 	"context"
+	"encoding/base64"
 	"flag"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path"
 	"runtime"
+	"sync"
 
+	"github.com/gavv/httpexpect"
 	"github.com/gofrs/uuid"
-
-	"github.com/Peripli/service-manager/pkg/log"
-
-	"github.com/Peripli/service-manager/pkg/types"
+	"github.com/gorilla/websocket"
 	"github.com/onsi/ginkgo"
 	"github.com/spf13/pflag"
 
+	"github.com/Peripli/service-manager/config"
 	"github.com/Peripli/service-manager/pkg/env"
+	"github.com/Peripli/service-manager/pkg/log"
 	"github.com/Peripli/service-manager/pkg/sm"
-	"github.com/gavv/httpexpect"
-	. "github.com/onsi/ginkgo"
+	"github.com/Peripli/service-manager/pkg/types"
+	"github.com/Peripli/service-manager/pkg/util"
+	"github.com/Peripli/service-manager/pkg/web"
+	"github.com/Peripli/service-manager/storage"
 )
 
 func init() {
@@ -61,20 +67,31 @@ type TestContextBuilder struct {
 }
 
 type TestContext struct {
+	wg            *sync.WaitGroup
+	wsConnections []*websocket.Conn
+
 	SM           *httpexpect.Expect
 	SMWithOAuth  *httpexpect.Expect
 	SMWithBasic  *httpexpect.Expect
+	SMRepository storage.Repository
+
 	TestPlatform *types.Platform
 
 	Servers map[string]FakeServer
 }
 
 type testSMServer struct {
+	cancel context.CancelFunc
 	*httptest.Server
 }
 
 func (ts *testSMServer) URL() string {
 	return ts.Server.URL
+}
+
+func (ts *testSMServer) Close() {
+	ts.Server.Close()
+	ts.cancel()
 }
 
 // DefaultTestContext sets up a test context with default values
@@ -87,6 +104,7 @@ func NewTestContextBuilder() *TestContextBuilder {
 	return &TestContextBuilder{
 		envPreHooks: []func(set *pflag.FlagSet){
 			SetTestFileLocation,
+			SetNotificationsCleanerSettings,
 		},
 		Environment: TestEnv,
 		envPostHooks: []func(env env.Environment, servers map[string]FakeServer){
@@ -114,7 +132,21 @@ func NewTestContextBuilder() *TestContextBuilder {
 func SetTestFileLocation(set *pflag.FlagSet) {
 	_, b, _, _ := runtime.Caller(0)
 	basePath := path.Dir(b)
-	set.Set("file.location", basePath)
+	err := set.Set("file.location", basePath)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func SetNotificationsCleanerSettings(set *pflag.FlagSet) {
+	err := set.Set("storage.notification.clean_interval", "24h")
+	if err != nil {
+		panic(err)
+	}
+	err = set.Set("storage.notification.keep_for", "24h")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestEnv(additionalFlagFuncs ...func(set *pflag.FlagSet)) env.Environment {
@@ -134,7 +166,8 @@ func TestEnv(additionalFlagFuncs ...func(set *pflag.FlagSet)) env.Environment {
 
 	additionalFlagFuncs = append(additionalFlagFuncs, f)
 
-	return sm.DefaultEnv(additionalFlagFuncs...)
+	env, _ := env.Default(append([]func(set *pflag.FlagSet){config.AddPFlags}, additionalFlagFuncs...)...)
+	return env
 }
 
 func (tcb *TestContextBuilder) SkipBasicAuthClientSetup(shouldSkip bool) *TestContextBuilder {
@@ -191,11 +224,12 @@ func (tcb *TestContextBuilder) Build() *TestContext {
 	for _, envPostHook := range tcb.envPostHooks {
 		envPostHook(environment, tcb.Servers)
 	}
+	wg := &sync.WaitGroup{}
 
-	smServer := newSMServer(environment, tcb.smExtensions)
+	smServer, smRepository := newSMServer(environment, wg, tcb.smExtensions)
 	tcb.Servers[SMServer] = smServer
 
-	SM := httpexpect.New(GinkgoT(), smServer.URL())
+	SM := httpexpect.New(ginkgo.GinkgoT(), smServer.URL())
 	oauthServer := tcb.Servers[OauthServer].(*OAuthServer)
 	accessToken := oauthServer.CreateToken(tcb.defaultTokenClaims)
 	SMWithOAuth := SM.Builder(func(req *httpexpect.Request) {
@@ -205,14 +239,16 @@ func (tcb *TestContextBuilder) Build() *TestContext {
 	RemoveAllPlatforms(SMWithOAuth)
 
 	testContext := &TestContext{
-		SM:          SM,
-		SMWithOAuth: SMWithOAuth,
-		Servers:     tcb.Servers,
+		wg:           wg,
+		SM:           SM,
+		SMWithOAuth:  SMWithOAuth,
+		Servers:      tcb.Servers,
+		SMRepository: smRepository,
 	}
 
 	if !tcb.shouldSkipBasicAuthClient {
 		platformJSON := MakePlatform("tcb-platform-test", "tcb-platform-test", "platform-type", "test-platform")
-		platform := RegisterPlatformInSM(platformJSON, SMWithOAuth)
+		platform := RegisterPlatformInSM(platformJSON, SMWithOAuth, map[string]string{})
 		SMWithBasic := SM.Builder(func(req *httpexpect.Request) {
 			username, password := platform.Credentials.Basic.Username, platform.Credentials.Basic.Password
 			req.WithBasicAuth(username, password)
@@ -222,10 +258,9 @@ func (tcb *TestContextBuilder) Build() *TestContext {
 	}
 
 	return testContext
-
 }
 
-func newSMServer(smEnv env.Environment, fs []func(ctx context.Context, smb *sm.ServiceManagerBuilder, env env.Environment) error) *testSMServer {
+func newSMServer(smEnv env.Environment, wg *sync.WaitGroup, fs []func(ctx context.Context, smb *sm.ServiceManagerBuilder, env env.Environment) error) (*testSMServer, storage.Repository) {
 	ctx, cancel := context.WithCancel(context.Background())
 	s := struct {
 		Log *log.Settings
@@ -239,19 +274,40 @@ func newSMServer(smEnv env.Environment, fs []func(ctx context.Context, smb *sm.S
 		panic(err)
 	}
 	ctx = log.Configure(ctx, s.Log)
-	smb := sm.New(ctx, cancel, smEnv)
+
+	cfg, err := config.NewForEnv(smEnv)
+	if err != nil {
+		panic(err)
+	}
+
+	smb, err := sm.New(ctx, cancel, cfg)
+	if err != nil {
+		panic(err)
+	}
+
 	for _, registerExtensionsFunc := range fs {
 		if err := registerExtensionsFunc(ctx, smb, smEnv); err != nil {
 			panic(fmt.Sprintf("error creating test SM server: %s", err))
 		}
 	}
 	serviceManager := smb.Build()
-	return &testSMServer{
-		Server: httptest.NewServer(serviceManager.Server.Router),
+
+	err = smb.Notificator.Start(ctx, wg)
+	if err != nil {
+		panic(err)
 	}
+	err = smb.NotificationCleaner.Start(ctx, wg)
+	if err != nil {
+		panic(err)
+	}
+
+	return &testSMServer{
+		cancel: cancel,
+		Server: httptest.NewServer(serviceManager.Server.Router),
+	}, smb.Storage
 }
 
-func (ctx *TestContext) RegisterBrokerWithCatalogAndLabels(catalog SBCatalog, labels Object) (string, Object, *BrokerServer) {
+func (ctx *TestContext) RegisterBrokerWithCatalogAndLabels(catalog SBCatalog, brokerData Object) (string, Object, *BrokerServer) {
 	brokerServer := NewBrokerServerWithCatalog(catalog)
 	UUID, err := uuid.NewV4()
 	if err != nil {
@@ -273,15 +329,38 @@ func (ctx *TestContext) RegisterBrokerWithCatalogAndLabels(catalog SBCatalog, la
 		},
 	}
 
-	if len(labels) != 0 {
-		brokerJSON["labels"] = labels
-	}
+	MergeObjects(brokerJSON, brokerData)
 
-	brokerID := RegisterBrokerInSM(brokerJSON, ctx.SMWithOAuth)
+	broker := RegisterBrokerInSM(brokerJSON, ctx.SMWithOAuth, map[string]string{})
+	brokerID := broker["id"].(string)
 	brokerServer.ResetCallHistory()
 	ctx.Servers[BrokerServerPrefix+brokerID] = brokerServer
 	brokerJSON["id"] = brokerID
-	return brokerID, brokerJSON, brokerServer
+	return brokerID, broker, brokerServer
+}
+
+func MergeObjects(target, source Object) {
+	for k, v := range source {
+		obj, ok := v.(Object)
+		if ok {
+			var tobj Object
+			tv, exists := target[k]
+			if exists {
+				tobj, ok = tv.(Object)
+				if !ok {
+					// incompatible types, just overwrite
+					target[k] = v
+					continue
+				}
+			} else {
+				tobj = Object{}
+				target[k] = tobj
+			}
+			MergeObjects(tobj, obj)
+		} else {
+			target[k] = v
+		}
+	}
 }
 
 func (ctx *TestContext) RegisterBrokerWithCatalog(catalog SBCatalog) (string, Object, *BrokerServer) {
@@ -302,7 +381,7 @@ func (ctx *TestContext) RegisterPlatform() *types.Platform {
 		"type":        "testType",
 		"description": "testDescrption",
 	}
-	return RegisterPlatformInSM(platformJSON, ctx.SMWithOAuth)
+	return RegisterPlatformInSM(platformJSON, ctx.SMWithOAuth, map[string]string{})
 }
 
 func (ctx *TestContext) CleanupBroker(id string) {
@@ -313,17 +392,85 @@ func (ctx *TestContext) CleanupBroker(id string) {
 }
 
 func (ctx *TestContext) Cleanup() {
-	RemoveAllBrokers(ctx.SMWithOAuth)
-	RemoveAllPlatforms(ctx.SMWithOAuth)
+	if ctx == nil {
+		return
+	}
+
+	ctx.CleanupAdditionalResources()
 
 	for _, server := range ctx.Servers {
 		server.Close()
 	}
+	ctx.Servers = map[string]FakeServer{}
+
+	ctx.wg.Wait()
 }
 
 func (ctx *TestContext) CleanupAdditionalResources() {
-	ctx.SMWithOAuth.DELETE("/v1/service_brokers").
-		Expect()
-	ctx.SMWithOAuth.DELETE("/v1/platforms").WithQuery("fieldQuery", "id != "+ctx.TestPlatform.ID).
-		Expect()
+	if ctx == nil {
+		return
+	}
+
+	_, err := ctx.SMRepository.Delete(context.TODO(), types.NotificationType)
+	if err != nil && err != util.ErrNotFoundInStorage {
+		panic(err)
+	}
+
+	ctx.SMWithOAuth.DELETE("/v1/service_brokers").Expect()
+
+	if ctx.TestPlatform != nil {
+		ctx.SMWithOAuth.DELETE("/v1/platforms").WithQuery("fieldQuery", "id != "+ctx.TestPlatform.ID).Expect()
+	} else {
+		ctx.SMWithOAuth.DELETE("/v1/platforms").Expect()
+	}
+	var smServer FakeServer
+	for serverName, server := range ctx.Servers {
+		if serverName == SMServer {
+			smServer = server
+		} else {
+			server.Close()
+		}
+	}
+	ctx.Servers = map[string]FakeServer{SMServer: smServer}
+
+	for _, conn := range ctx.wsConnections {
+		conn.Close()
+	}
+	ctx.wsConnections = nil
+}
+
+func (ctx *TestContext) ConnectWebSocket(platform *types.Platform, queryParams map[string]string) (*websocket.Conn, *http.Response, error) {
+	smURL := ctx.Servers[SMServer].URL()
+	smEndpoint, _ := url.Parse(smURL)
+	smEndpoint.Scheme = "ws"
+	smEndpoint.Path = web.NotificationsURL
+	q := smEndpoint.Query()
+	for k, v := range queryParams {
+		q.Add(k, v)
+	}
+	smEndpoint.RawQuery = q.Encode()
+
+	headers := http.Header{}
+	encodedPlatform := base64.StdEncoding.EncodeToString([]byte(platform.Credentials.Basic.Username + ":" + platform.Credentials.Basic.Password))
+	headers.Add("Authorization", "Basic "+encodedPlatform)
+
+	wsEndpoint := smEndpoint.String()
+	conn, resp, err := websocket.DefaultDialer.Dial(wsEndpoint, headers)
+	if conn != nil {
+		ctx.wsConnections = append(ctx.wsConnections, conn)
+	}
+	return conn, resp, err
+}
+
+func (ctx *TestContext) CloseWebSocket(conn *websocket.Conn) {
+	if conn == nil {
+		return
+	}
+	conn.Close()
+	for i, c := range ctx.wsConnections {
+		if c == conn {
+			ctx.wsConnections = append(ctx.wsConnections[:i], ctx.wsConnections[i+1:]...)
+			return
+		}
+	}
 }

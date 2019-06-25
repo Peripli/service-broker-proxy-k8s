@@ -2,21 +2,18 @@
 package platformfakes
 
 import (
-	context "context"
-	json "encoding/json"
-	sync "sync"
+	"context"
+	"sync"
 
-	platform "github.com/Peripli/service-broker-proxy/pkg/platform"
+	"github.com/Peripli/service-broker-proxy/pkg/platform"
 )
 
 type FakeVisibilityClient struct {
-	DisableAccessForPlanStub        func(context.Context, json.RawMessage, string, string) error
+	DisableAccessForPlanStub        func(context.Context, *platform.ModifyPlanAccessRequest) error
 	disableAccessForPlanMutex       sync.RWMutex
 	disableAccessForPlanArgsForCall []struct {
 		arg1 context.Context
-		arg2 json.RawMessage
-		arg3 string
-		arg4 string
+		arg2 *platform.ModifyPlanAccessRequest
 	}
 	disableAccessForPlanReturns struct {
 		result1 error
@@ -24,13 +21,11 @@ type FakeVisibilityClient struct {
 	disableAccessForPlanReturnsOnCall map[int]struct {
 		result1 error
 	}
-	EnableAccessForPlanStub        func(context.Context, json.RawMessage, string, string) error
+	EnableAccessForPlanStub        func(context.Context, *platform.ModifyPlanAccessRequest) error
 	enableAccessForPlanMutex       sync.RWMutex
 	enableAccessForPlanArgsForCall []struct {
 		arg1 context.Context
-		arg2 json.RawMessage
-		arg3 string
-		arg4 string
+		arg2 *platform.ModifyPlanAccessRequest
 	}
 	enableAccessForPlanReturns struct {
 		result1 error
@@ -38,18 +33,18 @@ type FakeVisibilityClient struct {
 	enableAccessForPlanReturnsOnCall map[int]struct {
 		result1 error
 	}
-	GetVisibilitiesByBrokersStub        func(context.Context, []string) ([]*platform.ServiceVisibilityEntity, error)
+	GetVisibilitiesByBrokersStub        func(context.Context, []string) ([]*platform.Visibility, error)
 	getVisibilitiesByBrokersMutex       sync.RWMutex
 	getVisibilitiesByBrokersArgsForCall []struct {
 		arg1 context.Context
 		arg2 []string
 	}
 	getVisibilitiesByBrokersReturns struct {
-		result1 []*platform.ServiceVisibilityEntity
+		result1 []*platform.Visibility
 		result2 error
 	}
 	getVisibilitiesByBrokersReturnsOnCall map[int]struct {
-		result1 []*platform.ServiceVisibilityEntity
+		result1 []*platform.Visibility
 		result2 error
 	}
 	VisibilityScopeLabelKeyStub        func() string
@@ -66,19 +61,17 @@ type FakeVisibilityClient struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeVisibilityClient) DisableAccessForPlan(arg1 context.Context, arg2 json.RawMessage, arg3 string, arg4 string) error {
+func (fake *FakeVisibilityClient) DisableAccessForPlan(arg1 context.Context, arg2 *platform.ModifyPlanAccessRequest) error {
 	fake.disableAccessForPlanMutex.Lock()
 	ret, specificReturn := fake.disableAccessForPlanReturnsOnCall[len(fake.disableAccessForPlanArgsForCall)]
 	fake.disableAccessForPlanArgsForCall = append(fake.disableAccessForPlanArgsForCall, struct {
 		arg1 context.Context
-		arg2 json.RawMessage
-		arg3 string
-		arg4 string
-	}{arg1, arg2, arg3, arg4})
-	fake.recordInvocation("DisableAccessForPlan", []interface{}{arg1, arg2, arg3, arg4})
+		arg2 *platform.ModifyPlanAccessRequest
+	}{arg1, arg2})
+	fake.recordInvocation("DisableAccessForPlan", []interface{}{arg1, arg2})
 	fake.disableAccessForPlanMutex.Unlock()
 	if fake.DisableAccessForPlanStub != nil {
-		return fake.DisableAccessForPlanStub(arg1, arg2, arg3, arg4)
+		return fake.DisableAccessForPlanStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
@@ -93,17 +86,17 @@ func (fake *FakeVisibilityClient) DisableAccessForPlanCallCount() int {
 	return len(fake.disableAccessForPlanArgsForCall)
 }
 
-func (fake *FakeVisibilityClient) DisableAccessForPlanCalls(stub func(context.Context, json.RawMessage, string, string) error) {
+func (fake *FakeVisibilityClient) DisableAccessForPlanCalls(stub func(context.Context, *platform.ModifyPlanAccessRequest) error) {
 	fake.disableAccessForPlanMutex.Lock()
 	defer fake.disableAccessForPlanMutex.Unlock()
 	fake.DisableAccessForPlanStub = stub
 }
 
-func (fake *FakeVisibilityClient) DisableAccessForPlanArgsForCall(i int) (context.Context, json.RawMessage, string, string) {
+func (fake *FakeVisibilityClient) DisableAccessForPlanArgsForCall(i int) (context.Context, *platform.ModifyPlanAccessRequest) {
 	fake.disableAccessForPlanMutex.RLock()
 	defer fake.disableAccessForPlanMutex.RUnlock()
 	argsForCall := fake.disableAccessForPlanArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeVisibilityClient) DisableAccessForPlanReturns(result1 error) {
@@ -129,19 +122,17 @@ func (fake *FakeVisibilityClient) DisableAccessForPlanReturnsOnCall(i int, resul
 	}{result1}
 }
 
-func (fake *FakeVisibilityClient) EnableAccessForPlan(arg1 context.Context, arg2 json.RawMessage, arg3 string, arg4 string) error {
+func (fake *FakeVisibilityClient) EnableAccessForPlan(arg1 context.Context, arg2 *platform.ModifyPlanAccessRequest) error {
 	fake.enableAccessForPlanMutex.Lock()
 	ret, specificReturn := fake.enableAccessForPlanReturnsOnCall[len(fake.enableAccessForPlanArgsForCall)]
 	fake.enableAccessForPlanArgsForCall = append(fake.enableAccessForPlanArgsForCall, struct {
 		arg1 context.Context
-		arg2 json.RawMessage
-		arg3 string
-		arg4 string
-	}{arg1, arg2, arg3, arg4})
-	fake.recordInvocation("EnableAccessForPlan", []interface{}{arg1, arg2, arg3, arg4})
+		arg2 *platform.ModifyPlanAccessRequest
+	}{arg1, arg2})
+	fake.recordInvocation("EnableAccessForPlan", []interface{}{arg1, arg2})
 	fake.enableAccessForPlanMutex.Unlock()
 	if fake.EnableAccessForPlanStub != nil {
-		return fake.EnableAccessForPlanStub(arg1, arg2, arg3, arg4)
+		return fake.EnableAccessForPlanStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
@@ -156,17 +147,17 @@ func (fake *FakeVisibilityClient) EnableAccessForPlanCallCount() int {
 	return len(fake.enableAccessForPlanArgsForCall)
 }
 
-func (fake *FakeVisibilityClient) EnableAccessForPlanCalls(stub func(context.Context, json.RawMessage, string, string) error) {
+func (fake *FakeVisibilityClient) EnableAccessForPlanCalls(stub func(context.Context, *platform.ModifyPlanAccessRequest) error) {
 	fake.enableAccessForPlanMutex.Lock()
 	defer fake.enableAccessForPlanMutex.Unlock()
 	fake.EnableAccessForPlanStub = stub
 }
 
-func (fake *FakeVisibilityClient) EnableAccessForPlanArgsForCall(i int) (context.Context, json.RawMessage, string, string) {
+func (fake *FakeVisibilityClient) EnableAccessForPlanArgsForCall(i int) (context.Context, *platform.ModifyPlanAccessRequest) {
 	fake.enableAccessForPlanMutex.RLock()
 	defer fake.enableAccessForPlanMutex.RUnlock()
 	argsForCall := fake.enableAccessForPlanArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeVisibilityClient) EnableAccessForPlanReturns(result1 error) {
@@ -192,7 +183,7 @@ func (fake *FakeVisibilityClient) EnableAccessForPlanReturnsOnCall(i int, result
 	}{result1}
 }
 
-func (fake *FakeVisibilityClient) GetVisibilitiesByBrokers(arg1 context.Context, arg2 []string) ([]*platform.ServiceVisibilityEntity, error) {
+func (fake *FakeVisibilityClient) GetVisibilitiesByBrokers(arg1 context.Context, arg2 []string) ([]*platform.Visibility, error) {
 	var arg2Copy []string
 	if arg2 != nil {
 		arg2Copy = make([]string, len(arg2))
@@ -222,7 +213,7 @@ func (fake *FakeVisibilityClient) GetVisibilitiesByBrokersCallCount() int {
 	return len(fake.getVisibilitiesByBrokersArgsForCall)
 }
 
-func (fake *FakeVisibilityClient) GetVisibilitiesByBrokersCalls(stub func(context.Context, []string) ([]*platform.ServiceVisibilityEntity, error)) {
+func (fake *FakeVisibilityClient) GetVisibilitiesByBrokersCalls(stub func(context.Context, []string) ([]*platform.Visibility, error)) {
 	fake.getVisibilitiesByBrokersMutex.Lock()
 	defer fake.getVisibilitiesByBrokersMutex.Unlock()
 	fake.GetVisibilitiesByBrokersStub = stub
@@ -235,28 +226,28 @@ func (fake *FakeVisibilityClient) GetVisibilitiesByBrokersArgsForCall(i int) (co
 	return argsForCall.arg1, argsForCall.arg2
 }
 
-func (fake *FakeVisibilityClient) GetVisibilitiesByBrokersReturns(result1 []*platform.ServiceVisibilityEntity, result2 error) {
+func (fake *FakeVisibilityClient) GetVisibilitiesByBrokersReturns(result1 []*platform.Visibility, result2 error) {
 	fake.getVisibilitiesByBrokersMutex.Lock()
 	defer fake.getVisibilitiesByBrokersMutex.Unlock()
 	fake.GetVisibilitiesByBrokersStub = nil
 	fake.getVisibilitiesByBrokersReturns = struct {
-		result1 []*platform.ServiceVisibilityEntity
+		result1 []*platform.Visibility
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeVisibilityClient) GetVisibilitiesByBrokersReturnsOnCall(i int, result1 []*platform.ServiceVisibilityEntity, result2 error) {
+func (fake *FakeVisibilityClient) GetVisibilitiesByBrokersReturnsOnCall(i int, result1 []*platform.Visibility, result2 error) {
 	fake.getVisibilitiesByBrokersMutex.Lock()
 	defer fake.getVisibilitiesByBrokersMutex.Unlock()
 	fake.GetVisibilitiesByBrokersStub = nil
 	if fake.getVisibilitiesByBrokersReturnsOnCall == nil {
 		fake.getVisibilitiesByBrokersReturnsOnCall = make(map[int]struct {
-			result1 []*platform.ServiceVisibilityEntity
+			result1 []*platform.Visibility
 			result2 error
 		})
 	}
 	fake.getVisibilitiesByBrokersReturnsOnCall[i] = struct {
-		result1 []*platform.ServiceVisibilityEntity
+		result1 []*platform.Visibility
 		result2 error
 	}{result1, result2}
 }

@@ -2,10 +2,10 @@
 package platformfakes
 
 import (
-	context "context"
-	sync "sync"
+	"context"
+	"sync"
 
-	platform "github.com/Peripli/service-broker-proxy/pkg/platform"
+	"github.com/Peripli/service-broker-proxy/pkg/platform"
 )
 
 type FakeCatalogFetcher struct {

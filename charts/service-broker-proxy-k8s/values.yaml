@@ -36,17 +36,18 @@ app:
 config:
   server:
     port: 8081
-    request_timeout: 4000ms
-    shutdown_timeout: 4000ms
+    request_timeout: 6000ms
+    shutdown_timeout: 6000ms
   log:
-    level: debug
+    level: info
     format: text
   sm:
-    url: http://service-manager.local.pcfdev.io
+    url: http://service-manager.dev.cfdev.sh
     osb_api_path: /v1/osb
     request_timeout: 6000ms
     skip_ssl_validation: false
-    resync_period: 1m
+  producer:
+    resync_period: 1h
   k8s:
     client:
       timeout: 30000ms

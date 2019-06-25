@@ -20,7 +20,6 @@ import (
 	"net/http"
 
 	"github.com/Peripli/service-manager/pkg/query"
-	"github.com/Peripli/service-manager/pkg/util"
 	"github.com/Peripli/service-manager/pkg/web"
 )
 
@@ -41,13 +40,13 @@ func (*SelectionCriteria) Name() string {
 // Run represents the selection criteria middleware function that processes the request and configures the request-scoped selection criteria.
 func (l *SelectionCriteria) Run(req *web.Request, next web.Handler) (*web.Response, error) {
 	ctx := req.Context()
-	criteria, err := query.BuildCriteriaFromRequest(req)
+	criteria, err := query.BuildCriteriaFromRequest(req.Request)
 	if err != nil {
-		return nil, util.HandleSelectionError(err)
+		return nil, err
 	}
 	ctx, err = query.AddCriteria(ctx, criteria...)
 	if err != nil {
-		return nil, util.HandleSelectionError(err)
+		return nil, err
 	}
 	req.Request = req.WithContext(ctx)
 	return next.Handle(req)

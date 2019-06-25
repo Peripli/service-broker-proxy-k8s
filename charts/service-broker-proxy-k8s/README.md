@@ -33,7 +33,7 @@ Parameter | Description | Default
 `image.repository`| image repository |`quay.io/service-manager/sb-proxy-k8s`
 `image.tag`| tag of image  |`master`
 `image.pullsecret` | name of the secret containing pull secrets |
-`config.sm.url` | service manager url | `http://service-manager.local.pcfdev.io`
+`config.sm.url` | service manager url | `http://service-manager.dev.cfdev.sh`
 `sm.user` | username | `admin`
 `sm.password` | password | `admin`
 `app.user` | username credential used to register the proxy as a broker| `admin`

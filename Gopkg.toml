@@ -21,17 +21,17 @@
 #
 [prune]
   [[prune.project]]
-    name = "github.com/kubernetes-incubator/service-catalog"
+    name = "github.com/kubernetes-sigs/service-catalog"
     # service catalog has some wierd files that are too long on Windows
     non-go = true
 
 [[constraint]]
-  name = "github.com/kubernetes-incubator/service-catalog"
-  version = "=0.1.40"
+  name = "github.com/kubernetes-sigs/service-catalog"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/Peripli/service-broker-proxy"
-  version = "=0.3.1"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/onsi/ginkgo"
@@ -45,3 +45,28 @@
 [[override]]
   name = "gopkg.in/fsnotify.v1"
   source = "https://github.com/fsnotify/fsnotify.git"
+
+# Specify kubernetes dependency versions
+[[override]]
+  branch = "release-1.14"
+  name = "k8s.io/api"
+
+[[override]]
+  branch = "release-1.14"
+  name = "k8s.io/apiextensions-apiserver"
+
+[[override]]
+  branch = "release-1.14"
+  name = "k8s.io/apimachinery"
+
+[[override]]
+  branch = "release-1.14"
+  name = "k8s.io/apiserver"
+
+[[override]]
+  branch = "release-11.0"
+  name = "k8s.io/client-go"
+
+[[override]]
+  branch = "release-1.14"
+  name = "k8s.io/code-generator"

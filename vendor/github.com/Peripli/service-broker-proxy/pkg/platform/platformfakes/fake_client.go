@@ -2,9 +2,9 @@
 package platformfakes
 
 import (
-	sync "sync"
+	"sync"
 
-	platform "github.com/Peripli/service-broker-proxy/pkg/platform"
+	"github.com/Peripli/service-broker-proxy/pkg/platform"
 )
 
 type FakeClient struct {

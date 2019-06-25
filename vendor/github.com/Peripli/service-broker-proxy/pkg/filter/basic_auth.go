@@ -17,25 +17,47 @@
 package filter
 
 import (
-	"context"
-	"github.com/Peripli/service-manager/api/filters/authn/basic"
-	"github.com/Peripli/service-manager/pkg/types"
-	"github.com/Peripli/service-manager/pkg/util"
+	"fmt"
+	"net/http"
+
+	httpsec "github.com/Peripli/service-manager/pkg/security/http"
+
+	"github.com/Peripli/service-manager/pkg/security/filters"
 	"github.com/Peripli/service-manager/pkg/web"
 )
 
-type basicAuthFilter struct {
-	web.Filter
+// BasicAuthnFilterName is the name of the Basic AuthenticationFilter
+const BasicAuthnFilterName string = "BasicAuthnFilter"
+
+// NewBasicAuthnFilter creates a new Basic Authentication Filter with inmemory authenticator
+func NewBasicAuthnFilter(user, password string) *filters.AuthenticationFilter {
+	return filters.NewAuthenticationFilter(&inmemoryBasicAuthenticator{
+		expectedUsername: user,
+		expectedPassword: password,
+	}, BasicAuthnFilterName, basicAuthnMatchers())
 }
 
-// NewBasicAuthFilter returns a filter configured to authenticate access based on the provided username and password
-func NewBasicAuthFilter(username, password string) web.Filter {
-	return &basicAuthFilter{
-		Filter: basic.NewFilter(&inMemoryCredentialsStorage{username: username, password: password}, &noOpEncrypter{}),
+type inmemoryBasicAuthenticator struct {
+	expectedUsername string
+	expectedPassword string
+}
+
+func (a *inmemoryBasicAuthenticator) Authenticate(request *http.Request) (*web.UserContext, httpsec.Decision, error) {
+	username, password, ok := request.BasicAuth()
+	if !ok {
+		return nil, httpsec.Abstain, nil
 	}
+
+	if username != a.expectedUsername || password != a.expectedPassword {
+		return nil, httpsec.Deny, fmt.Errorf("provided credentials are invalid")
+	}
+
+	return &web.UserContext{
+		Name: username,
+	}, httpsec.Allow, nil
 }
 
-func (ba *basicAuthFilter) FilterMatchers() []web.FilterMatcher {
+func basicAuthnMatchers() []web.FilterMatcher {
 	return []web.FilterMatcher{
 		{
 			Matchers: []web.Matcher{
@@ -43,31 +65,4 @@ func (ba *basicAuthFilter) FilterMatchers() []web.FilterMatcher {
 			},
 		},
 	}
-}
-
-type noOpEncrypter struct {
-}
-
-func (*noOpEncrypter) Encrypt(ctx context.Context, plaintext []byte) ([]byte, error) {
-	return plaintext, nil
-}
-
-func (*noOpEncrypter) Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error) {
-	return ciphertext, nil
-}
-
-type inMemoryCredentialsStorage struct {
-	username, password string
-}
-
-func (p *inMemoryCredentialsStorage) Get(ctx context.Context, username string) (*types.Credentials, error) {
-	if username != p.username {
-		return nil, util.ErrNotFoundInStorage
-	}
-	return &types.Credentials{
-		Basic: &types.Basic{
-			Password: p.password,
-			Username: p.username,
-		},
-	}, nil
 }
