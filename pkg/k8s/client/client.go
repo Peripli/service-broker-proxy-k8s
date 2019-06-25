@@ -54,7 +54,7 @@ func (sca *ServiceCatalogAPI) UpdateClusterServiceBroker(broker *v1beta1.Cluster
 func (sca *ServiceCatalogAPI) SyncClusterServiceBroker(name string, retries int) error {
 	return sca.Sync(name, servicecatalog.ScopeOptions{
 		Scope: servicecatalog.ClusterScope,
-	}, resyncBrokerRetryCount)
+	}, retries)
 }
 
 // PlatformClient implements all broker, visibility and catalog specific operations for kubernetes
@@ -84,23 +84,23 @@ func NewClient(config *config.ClientConfiguration) (*PlatformClient, error) {
 }
 
 // Broker returns the platform client which handles broker operations
-func (b *PlatformClient) Broker() platform.BrokerClient {
-	return b
+func (pc *PlatformClient) Broker() platform.BrokerClient {
+	return pc
 }
 
 // CatalogFetcher returns the platform client which handles catalog fetch operations
-func (b *PlatformClient) CatalogFetcher() platform.CatalogFetcher {
-	return b
+func (pc *PlatformClient) CatalogFetcher() platform.CatalogFetcher {
+	return pc
 }
 
-// Visibility returns nil as the platform client cannot handle visibilities operations
-func (b *PlatformClient) Visibility() platform.VisibilityClient {
-	return b
+// Visibility returns the platform client which handles visibility operations
+func (pc *PlatformClient) Visibility() platform.VisibilityClient {
+	return pc
 }
 
 // GetBrokers returns all service-brokers currently registered in kubernetes service-catalog.
-func (b *PlatformClient) GetBrokers(ctx context.Context) ([]platform.ServiceBroker, error) {
-	brokers, err := b.platformAPI.RetrieveClusterServiceBrokers()
+func (pc *PlatformClient) GetBrokers(ctx context.Context) ([]platform.ServiceBroker, error) {
+	brokers, err := pc.platformAPI.RetrieveClusterServiceBrokers()
 	if err != nil {
 		return nil, fmt.Errorf("unable to list cluster-scoped brokers (%s)", err)
 	}
@@ -117,8 +117,8 @@ func (b *PlatformClient) GetBrokers(ctx context.Context) ([]platform.ServiceBrok
 }
 
 // GetBrokerByName returns the service-broker with the specified name currently registered in kubernetes service-catalog with.
-func (b *PlatformClient) GetBrokerByName(ctx context.Context, name string) (*platform.ServiceBroker, error) {
-	broker, err := b.platformAPI.RetrieveClusterServiceBrokerByName(name)
+func (pc *PlatformClient) GetBrokerByName(ctx context.Context, name string) (*platform.ServiceBroker, error) {
+	broker, err := pc.platformAPI.RetrieveClusterServiceBrokerByName(name)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get cluster-scoped broker (%s)", err)
 	}
@@ -131,11 +131,11 @@ func (b *PlatformClient) GetBrokerByName(ctx context.Context, name string) (*pla
 }
 
 // CreateBroker registers a new broker in kubernetes service-catalog.
-func (b *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	broker := newServiceBroker(r.Name, r.BrokerURL, b.regSecretRef)
+func (pc *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
+	broker := newServiceBroker(r.Name, r.BrokerURL, pc.regSecretRef)
 	broker.Spec.CommonServiceBrokerSpec.RelistBehavior = "Manual"
 
-	csb, err := b.platformAPI.CreateClusterServiceBroker(broker)
+	csb, err := pc.platformAPI.CreateClusterServiceBroker(broker)
 	if err != nil {
 		return nil, err
 	}
@@ -147,16 +147,16 @@ func (b *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateSer
 }
 
 // DeleteBroker deletes an existing broker in from kubernetes service-catalog.
-func (b *PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteServiceBrokerRequest) error {
-	return b.platformAPI.DeleteClusterServiceBroker(r.Name, &v1.DeleteOptions{})
+func (pc *PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteServiceBrokerRequest) error {
+	return pc.platformAPI.DeleteClusterServiceBroker(r.Name, &v1.DeleteOptions{})
 }
 
 // UpdateBroker updates a service broker in the kubernetes service-catalog.
-func (b *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
+func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
 	// Name and broker url are updateable
-	broker := newServiceBroker(r.Name, r.BrokerURL, b.regSecretRef)
+	broker := newServiceBroker(r.Name, r.BrokerURL, pc.regSecretRef)
 
-	updatedBroker, err := b.platformAPI.UpdateClusterServiceBroker(broker)
+	updatedBroker, err := pc.platformAPI.UpdateClusterServiceBroker(broker)
 	if err != nil {
 		return nil, err
 	}
@@ -169,8 +169,8 @@ func (b *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateSer
 
 // Fetch the new catalog information from reach service-broker registered in kubernetes,
 // so that it is visible in the kubernetes service-catalog.
-func (b *PlatformClient) Fetch(ctx context.Context, serviceBroker *platform.ServiceBroker) error {
-	return b.platformAPI.SyncClusterServiceBroker(serviceBroker.Name, 3)
+func (pc *PlatformClient) Fetch(ctx context.Context, serviceBroker *platform.ServiceBroker) error {
+	return pc.platformAPI.SyncClusterServiceBroker(serviceBroker.Name, resyncBrokerRetryCount)
 }
 
 func newServiceBroker(name string, url string, secret *v1beta1.ObjectReference) *v1beta1.ClusterServiceBroker {
@@ -192,26 +192,26 @@ func newServiceBroker(name string, url string, secret *v1beta1.ObjectReference) 
 }
 
 // GetVisibilitiesByBrokers get currently available visibilities in the platform for specific broker names
-func (b *PlatformClient) GetVisibilitiesByBrokers(ctx context.Context, brokers []string) ([]*platform.Visibility, error) {
+func (pc *PlatformClient) GetVisibilitiesByBrokers(ctx context.Context, brokers []string) ([]*platform.Visibility, error) {
 	// This will cause all brokers to re-fetch their catalogs
 	return nil, nil
 }
 
 // VisibilityScopeLabelKey returns a specific label key which should be used when converting SM visibilities to platform.Visibilities
-func (b *PlatformClient) VisibilityScopeLabelKey() string {
+func (pc *PlatformClient) VisibilityScopeLabelKey() string {
 	return ""
 }
 
 // EnableAccessForPlan enables the access for the specified plan
-func (b *PlatformClient) EnableAccessForPlan(ctx context.Context, request *platform.ModifyPlanAccessRequest) error {
-	return b.Fetch(ctx, &platform.ServiceBroker{
+func (pc *PlatformClient) EnableAccessForPlan(ctx context.Context, request *platform.ModifyPlanAccessRequest) error {
+	return pc.Fetch(ctx, &platform.ServiceBroker{
 		Name: request.BrokerName,
 	})
 }
 
 // DisableAccessForPlan disables the access for the specified plan
-func (b *PlatformClient) DisableAccessForPlan(ctx context.Context, request *platform.ModifyPlanAccessRequest) error {
-	return b.Fetch(ctx, &platform.ServiceBroker{
+func (pc *PlatformClient) DisableAccessForPlan(ctx context.Context, request *platform.ModifyPlanAccessRequest) error {
+	return pc.Fetch(ctx, &platform.ServiceBroker{
 		Name: request.BrokerName,
 	})
 }
