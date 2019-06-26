@@ -2,8 +2,7 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:12ca67aa83785463ca43979b7af1c9357f122df4d894fe1d18cd4ef018618006"
+  digest = "1:c236ab1520a0bc8dab629c166332bd6155c48ec3af363f28664f45b427502520"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
     "pkg/filter",
@@ -16,10 +15,11 @@
     "pkg/sm",
   ]
   pruneopts = ""
-  revision = "6c4c24e19c9c3feefd2a4f82a3ee73a4017d3030"
+  revision = "487f7be7b3703cd74eff37c1ca1eef1b82bff3fc"
+  version = "v0.5.0"
 
 [[projects]]
-  digest = "1:0f6804fc33c5452a1eb0a20c181c5d7aa16d70eb4d8448032d9dbca6d621ac28"
+  digest = "1:5e382f8d1facb07e559bd4cd2870b7f165e0a49ad64d378ee99d3727a09dc8e8"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -29,6 +29,7 @@
     "api/notifications",
     "api/osb",
     "pkg/env",
+    "pkg/filters/labels",
     "pkg/health",
     "pkg/log",
     "pkg/query",
@@ -47,8 +48,8 @@
     "storage/interceptors",
   ]
   pruneopts = ""
-  revision = "f8777da7502b76e51ac5a5ba288eeba345050bd3"
-  version = "v0.3.3"
+  revision = "be4f5e3b360a3bba7f05c79bf5d2946b9171ee46"
+  version = "v0.4.0"
 
 [[projects]]
   digest = "1:7361b225f87c640365f3b00b1b42bc2ab7b923c9f933ac8873d3ff3c08753165"
@@ -147,7 +148,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:16b2837c8b3cf045fa2cdc82af0cf78b19582701394484ae76b2c3bc3c99ad73"
+  digest = "1:5facc3828b6a56f9aec988433ea33fb4407a89460952ed75be5347cec07318c0"
   name = "github.com/googleapis/gnostic"
   packages = [
     "OpenAPIv2",
@@ -155,8 +156,8 @@
     "extensions",
   ]
   pruneopts = ""
-  revision = "7c663266750e7d82587642f65e60bc4083f1f84e"
-  version = "v0.2.0"
+  revision = "e73c7ec21d36ddb0711cb36d1502d18363b5c2c9"
+  version = "v0.3.0"
 
 [[projects]]
   digest = "1:dbbeb8ddb0be949954c8157ee8439c2adfd8dc1c9510eb44a6e58cb68c3dce28"
@@ -248,8 +249,7 @@
   version = "v1.0.2"
 
 [[projects]]
-  branch = "master"
-  digest = "1:8a69c97246b0f887cd264830ccb4fb474acd365f990da021097f2376296d8d14"
+  digest = "1:d74fc9cd6b43353307c45917730842b3662290adc0b64679ad62203bbe632cda"
   name = "github.com/kubernetes-sigs/service-catalog"
   packages = [
     "pkg/apis/servicecatalog",
@@ -264,7 +264,7 @@
     "pkg/svcat/service-catalog",
   ]
   pruneopts = "N"
-  revision = "492c01787080a7bc72dfb221007998e9c5abd773"
+  revision = "6d7cea62c1aa18b8296ce1c7263b431ade159f3a"
 
 [[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
@@ -466,7 +466,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a688b7859ee696f20cc5823f4685da54850e388fe9e7288f5d1653de48162c55"
+  digest = "1:90722da867436e04650b8491e5d9f690aeb2a4e305d548666bdd541d68d6cdbd"
   name = "golang.org/x/crypto"
   packages = [
     "ed25519",
@@ -475,11 +475,11 @@
     "ssh/terminal",
   ]
   pruneopts = ""
-  revision = "5c40567a22f818bd14a1ea7245dad9f8ef0691aa"
+  revision = "cc06ce4a13d484c0101a9e92913248488a75786d"
 
 [[projects]]
   branch = "master"
-  digest = "1:81205bca004fdbacb381172d3e6af57740b65e4f6d1c21cef72f9e6afad096ec"
+  digest = "1:5c6b8395efd72ad4250b7747e2b1a0683c3edb7b0346a938ff45240c7ec53691"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -493,7 +493,7 @@
     "idna",
   ]
   pruneopts = ""
-  revision = "3f473d35a33aa6fdd203e306dc439b797820e3f1"
+  revision = "3b0461eec859c4b73bb64fdc8285971fd33e3938"
 
 [[projects]]
   branch = "master"
@@ -508,14 +508,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e2a6a7d92d5bdb8002c65aa0916c725c4afc019827d415a46046acafc42edb16"
+  digest = "1:0cc6f08b513a8ae7ee7d5edfb89c528224c8f64cbd5d7587c9c758f9fab9dba2"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "93c9922d18aeb82498a065f07aec7ad7fa60dfb7"
+  revision = "c5567b49c5d04a5f83870795b8c0e2df43a8ce32"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -777,12 +777,12 @@
   revision = "11646d1007e006f6f24995cb905c68bc62901c81"
 
 [[projects]]
-  digest = "1:975a70b988168c3be18acc1d95bca85974f18be63c2024d14eb97fdcacab672a"
+  digest = "1:9eaf86f4f6fb4a8f177220d488ef1e3255d06a691cca95f14ef085d4cd1cef3c"
   name = "k8s.io/klog"
   packages = ["."]
   pruneopts = ""
-  revision = "78315d914a8af2453db4864e69230b647b1ff711"
-  version = "v0.3.2"
+  revision = "d98d8acdac006fb39831f1b25640813fef9c314f"
+  version = "v0.3.3"
 
 [[projects]]
   branch = "master"

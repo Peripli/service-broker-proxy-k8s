@@ -66,19 +66,19 @@ type PlatformClient struct {
 var _ platform.Client = &PlatformClient{}
 
 // NewClient create a client to communicate with the kubernetes service-catalog.
-func NewClient(config *config.ClientConfiguration) (*PlatformClient, error) {
-	if err := config.Validate(); err != nil {
+func NewClient(settings *config.Settings) (*PlatformClient, error) {
+	if err := settings.Validate(); err != nil {
 		return nil, err
 	}
-	svcatSDK, err := config.K8sClientCreateFunc(config.Client)
+	svcatSDK, err := settings.K8S.K8sClientCreateFunc(settings.K8S.ClientSettings)
 	if err != nil {
 		return nil, err
 	}
 	return &PlatformClient{
 		platformAPI: NewDefaultKubernetesAPI(svcatSDK),
 		regSecretRef: &v1beta1.ObjectReference{
-			Namespace: config.Secret.Namespace,
-			Name:      config.Secret.Name,
+			Namespace: settings.K8S.Secret.Namespace,
+			Name:      settings.K8S.Secret.Name,
 		},
 	}, nil
 }
@@ -99,14 +99,14 @@ func (pc *PlatformClient) Visibility() platform.VisibilityClient {
 }
 
 // GetBrokers returns all service-brokers currently registered in kubernetes service-catalog.
-func (pc *PlatformClient) GetBrokers(ctx context.Context) ([]platform.ServiceBroker, error) {
+func (pc *PlatformClient) GetBrokers(ctx context.Context) ([]*platform.ServiceBroker, error) {
 	brokers, err := pc.platformAPI.RetrieveClusterServiceBrokers()
 	if err != nil {
 		return nil, fmt.Errorf("unable to list cluster-scoped brokers (%s)", err)
 	}
-	var clientBrokers = make([]platform.ServiceBroker, 0)
+	var clientBrokers = make([]*platform.ServiceBroker, 0)
 	for _, broker := range brokers.Items {
-		serviceBroker := platform.ServiceBroker{
+		serviceBroker := &platform.ServiceBroker{
 			GUID:      string(broker.ObjectMeta.UID),
 			Name:      broker.Name,
 			BrokerURL: broker.Spec.URL,

@@ -3,6 +3,8 @@ package config
 import (
 	"testing"
 
+	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -13,7 +15,50 @@ func TestClient(t *testing.T) {
 }
 
 var _ = Describe("Kubernetes Broker Proxy", func() {
-	Describe("Config", func() {
+	Describe("Core proxy settings", func() {
+		Describe("Validation", func() {
+			var settings *Settings
+
+			BeforeEach(func() {
+				settings = &Settings{
+					Settings: *sbproxy.DefaultSettings(),
+					K8S:      DefaultClientConfiguration(),
+				}
+				settings.Sm.User = "user"
+				settings.Sm.Password = "pass"
+				settings.Sm.URL = "url"
+				settings.Reconcile.LegacyURL = "legacy_url"
+				settings.Reconcile.URL = "reconcile_url"
+				settings.K8S.Secret.Name = "abc"
+				settings.K8S.Secret.Namespace = "abc"
+			})
+
+			Context("when all properties available", func() {
+				It("should return nil", func() {
+					err := settings.Validate()
+					Expect(err).ToNot(HaveOccurred())
+				})
+			})
+
+			Context("when a core proxy setting is missing", func() {
+				It("should return error", func() {
+					settings.Sm.URL = ""
+					err := settings.Validate()
+					Expect(err).To(HaveOccurred())
+				})
+			})
+
+			Context("when a K8S setting is missing", func() {
+				It("should return error", func() {
+					settings.K8S.Secret.Name = ""
+					err := settings.Validate()
+					Expect(err).To(HaveOccurred())
+				})
+			})
+		})
+	})
+
+	Describe("K8S Config", func() {
 		Describe("Validation", func() {
 			var config *ClientConfiguration
 
@@ -41,7 +86,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 			Context("when LibraryConfig is missing", func() {
 				It("should fail", func() {
-					config.Client = nil
+					config.ClientSettings = nil
 					err := config.Validate()
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("K8S client configuration missing"))
@@ -50,7 +95,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 			Context("when LibraryConfig.Timeout is missing", func() {
 				It("should fail", func() {
-					config.Client.Timeout = 0
+					config.ClientSettings.Timeout = 0
 					err := config.Validate()
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("K8S client configuration timeout missing"))
@@ -59,7 +104,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 			Context("when LibraryConfig.NewClusterConfig is missing", func() {
 				It("should fail", func() {
-					config.Client.NewClusterConfig = nil
+					config.ClientSettings.NewClusterConfig = nil
 					err := config.Validate()
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(Equal("K8S client cluster configuration missing"))

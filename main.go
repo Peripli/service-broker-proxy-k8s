@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+
 	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/client"
 	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/config"
 
@@ -22,22 +23,17 @@ func main() {
 		panic(fmt.Errorf("error creating environment: %s", err))
 	}
 
-	platformConfig, err := config.NewConfig(env)
+	proxySettings, err := config.NewConfig(env)
 	if err != nil {
 		panic(fmt.Errorf("error loading config: %s", err))
 	}
 
-	platformClient, err := client.NewClient(platformConfig)
+	platformClient, err := client.NewClient(proxySettings)
 	if err != nil {
 		panic(fmt.Errorf("error creating K8S client: %s", err))
 	}
 
-	settings, err := sbproxy.NewSettings(env)
-	if err != nil {
-		panic(fmt.Errorf("error creating settings from environment: %s", err))
-	}
-
-	proxyBuilder, err := sbproxy.New(ctx, cancel, settings, platformClient)
+	proxyBuilder, err := sbproxy.New(ctx, cancel, &proxySettings.Settings, platformClient)
 	if err != nil {
 		panic(fmt.Errorf("error creating sbproxy: %s", err))
 	}
