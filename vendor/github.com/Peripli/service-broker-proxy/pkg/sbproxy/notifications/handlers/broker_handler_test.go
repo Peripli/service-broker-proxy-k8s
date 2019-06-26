@@ -74,7 +74,7 @@ var _ = Describe("Broker Handler", func() {
 			BrokerClient:   fakeBrokerClient,
 			CatalogFetcher: fakeCatalogFetcher,
 			ProxyPrefix:    "proxyPrefix",
-			ProxyPath:      "proxyPath",
+			SMPath:         "proxyPath",
 		}
 	})
 
@@ -222,7 +222,7 @@ var _ = Describe("Broker Handler", func() {
 				expectedUpdateBrokerRequest = &platform.UpdateServiceBrokerRequest{
 					GUID:      smBrokerID,
 					Name:      brokerProxyName(brokerHandler.ProxyPrefix, brokerName, smBrokerID),
-					BrokerURL: brokerHandler.ProxyPath + "/" + smBrokerID,
+					BrokerURL: brokerHandler.SMPath + "/" + smBrokerID,
 				}
 
 				fakeBrokerClient.UpdateBrokerReturns(nil, fmt.Errorf("error"))
@@ -262,7 +262,7 @@ var _ = Describe("Broker Handler", func() {
 
 					expectedCreateBrokerRequest = &platform.CreateServiceBrokerRequest{
 						Name:      brokerProxyName(brokerHandler.ProxyPrefix, brokerName, smBrokerID),
-						BrokerURL: brokerHandler.ProxyPath + "/" + smBrokerID,
+						BrokerURL: brokerHandler.SMPath + "/" + smBrokerID,
 					}
 
 					fakeBrokerClient.CreateBrokerReturns(nil, nil)
@@ -473,7 +473,7 @@ var _ = Describe("Broker Handler", func() {
 					return &platform.ServiceBroker{
 						GUID:      smBrokerID,
 						Name:      brokerProxyName(brokerHandler.ProxyPrefix, name, smBrokerID),
-						BrokerURL: brokerHandler.ProxyPath + "/" + smBrokerID,
+						BrokerURL: brokerHandler.SMPath + "/" + smBrokerID,
 					}, nil
 				}
 				fakeBrokerClient.UpdateBrokerReturns(nil, nil)
@@ -493,7 +493,7 @@ var _ = Describe("Broker Handler", func() {
 				Expect(updateRequest).To(Equal(&platform.UpdateServiceBrokerRequest{
 					GUID:      smBrokerID,
 					Name:      brokerProxyName(brokerHandler.ProxyPrefix, newBrokerName, smBrokerID),
-					BrokerURL: brokerHandler.ProxyPath + "/" + smBrokerID,
+					BrokerURL: brokerHandler.SMPath + "/" + smBrokerID,
 				}))
 			})
 		})
@@ -503,7 +503,7 @@ var _ = Describe("Broker Handler", func() {
 				fakeBrokerClient.GetBrokerByNameReturns(&platform.ServiceBroker{
 					GUID:      smBrokerID,
 					Name:      brokerProxyName(brokerHandler.ProxyPrefix, smBrokerID, smBrokerID),
-					BrokerURL: brokerHandler.ProxyPath + "/" + smBrokerID,
+					BrokerURL: brokerHandler.SMPath + "/" + smBrokerID,
 				}, nil)
 
 			})
@@ -527,7 +527,7 @@ var _ = Describe("Broker Handler", func() {
 					expectedUpdateBrokerRequest = &platform.ServiceBroker{
 						GUID:      smBrokerID,
 						Name:      brokerProxyName(brokerHandler.ProxyPrefix, brokerName, smBrokerID),
-						BrokerURL: brokerHandler.ProxyPath + "/" + smBrokerID,
+						BrokerURL: brokerHandler.SMPath + "/" + smBrokerID,
 					}
 
 					fakeCatalogFetcher.FetchReturns(nil)
@@ -641,7 +641,7 @@ var _ = Describe("Broker Handler", func() {
 				fakeBrokerClient.GetBrokerByNameReturns(&platform.ServiceBroker{
 					GUID:      smBrokerID,
 					Name:      brokerHandler.ProxyPrefix + brokerName,
-					BrokerURL: brokerHandler.ProxyPath + "/" + smBrokerID,
+					BrokerURL: brokerHandler.SMPath + "/" + smBrokerID,
 				}, nil)
 			})
 

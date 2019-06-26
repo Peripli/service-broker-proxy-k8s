@@ -2,25 +2,25 @@
 package smfakes
 
 import (
-	context "context"
-	sync "sync"
+	"context"
+	"sync"
 
-	sm "github.com/Peripli/service-broker-proxy/pkg/sm"
-	types "github.com/Peripli/service-manager/pkg/types"
+	"github.com/Peripli/service-broker-proxy/pkg/sm"
+	"github.com/Peripli/service-manager/pkg/types"
 )
 
 type FakeClient struct {
-	GetBrokersStub        func(context.Context) ([]sm.Broker, error)
+	GetBrokersStub        func(context.Context) ([]*types.ServiceBroker, error)
 	getBrokersMutex       sync.RWMutex
 	getBrokersArgsForCall []struct {
 		arg1 context.Context
 	}
 	getBrokersReturns struct {
-		result1 []sm.Broker
+		result1 []*types.ServiceBroker
 		result2 error
 	}
 	getBrokersReturnsOnCall map[int]struct {
-		result1 []sm.Broker
+		result1 []*types.ServiceBroker
 		result2 error
 	}
 	GetPlansStub        func(context.Context) ([]*types.ServicePlan, error)
@@ -81,7 +81,7 @@ type FakeClient struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeClient) GetBrokers(arg1 context.Context) ([]sm.Broker, error) {
+func (fake *FakeClient) GetBrokers(arg1 context.Context) ([]*types.ServiceBroker, error) {
 	fake.getBrokersMutex.Lock()
 	ret, specificReturn := fake.getBrokersReturnsOnCall[len(fake.getBrokersArgsForCall)]
 	fake.getBrokersArgsForCall = append(fake.getBrokersArgsForCall, struct {
@@ -105,7 +105,7 @@ func (fake *FakeClient) GetBrokersCallCount() int {
 	return len(fake.getBrokersArgsForCall)
 }
 
-func (fake *FakeClient) GetBrokersCalls(stub func(context.Context) ([]sm.Broker, error)) {
+func (fake *FakeClient) GetBrokersCalls(stub func(context.Context) ([]*types.ServiceBroker, error)) {
 	fake.getBrokersMutex.Lock()
 	defer fake.getBrokersMutex.Unlock()
 	fake.GetBrokersStub = stub
@@ -118,28 +118,28 @@ func (fake *FakeClient) GetBrokersArgsForCall(i int) context.Context {
 	return argsForCall.arg1
 }
 
-func (fake *FakeClient) GetBrokersReturns(result1 []sm.Broker, result2 error) {
+func (fake *FakeClient) GetBrokersReturns(result1 []*types.ServiceBroker, result2 error) {
 	fake.getBrokersMutex.Lock()
 	defer fake.getBrokersMutex.Unlock()
 	fake.GetBrokersStub = nil
 	fake.getBrokersReturns = struct {
-		result1 []sm.Broker
+		result1 []*types.ServiceBroker
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeClient) GetBrokersReturnsOnCall(i int, result1 []sm.Broker, result2 error) {
+func (fake *FakeClient) GetBrokersReturnsOnCall(i int, result1 []*types.ServiceBroker, result2 error) {
 	fake.getBrokersMutex.Lock()
 	defer fake.getBrokersMutex.Unlock()
 	fake.GetBrokersStub = nil
 	if fake.getBrokersReturnsOnCall == nil {
 		fake.getBrokersReturnsOnCall = make(map[int]struct {
-			result1 []sm.Broker
+			result1 []*types.ServiceBroker
 			result2 error
 		})
 	}
 	fake.getBrokersReturnsOnCall[i] = struct {
-		result1 []sm.Broker
+		result1 []*types.ServiceBroker
 		result2 error
 	}{result1, result2}
 }

@@ -19,12 +19,10 @@ package reconcile_test
 import (
 	"context"
 	"fmt"
-
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/reconcile"
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/Peripli/service-broker-proxy/pkg/platform/platformfakes"
-	"github.com/Peripli/service-broker-proxy/pkg/sm"
 	"github.com/Peripli/service-broker-proxy/pkg/sm/smfakes"
 	"github.com/Peripli/service-manager/pkg/types"
 	. "github.com/onsi/ginkgo"
@@ -33,7 +31,6 @@ import (
 )
 
 var _ = Describe("Reconcile brokers", func() {
-	const fakeAppHost = "https://smproxy.com"
 
 	var (
 		fakeSMClient *smfakes.FakeClient
@@ -44,15 +41,19 @@ var _ = Describe("Reconcile brokers", func() {
 
 		reconciler *reconcile.Reconciler
 
-		smbroker1 sm.Broker
-		smbroker2 sm.Broker
-		smbroker3 sm.Broker
+		smbroker1      *types.ServiceBroker
+		smbroker2      *types.ServiceBroker
+		smbroker3      *types.ServiceBroker
+		smOrphanBroker *types.ServiceBroker
 
-		platformbroker1         platform.ServiceBroker
-		platformbroker2         platform.ServiceBroker
-		platformbrokerNonProxy  platform.ServiceBroker
-		platformbrokerNonProxy2 platform.ServiceBroker
-		platformBrokerProxy     platform.ServiceBroker
+		platformbroker1                  *platform.ServiceBroker
+		platformbroker2                  *platform.ServiceBroker
+		platformbrokerNonProxy           *platform.ServiceBroker
+		platformbrokerNonProxy2          *platform.ServiceBroker
+		platformBrokerProxy              *platform.ServiceBroker
+		platformBrokerProxy2             *platform.ServiceBroker
+		platformOrphanBrokerProxy        *platform.ServiceBroker
+		platformOrphanBrokerProxyRenamed *platform.ServiceBroker
 	)
 
 	stubCreateBrokerToSucceed := func(ctx context.Context, r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
@@ -73,8 +74,8 @@ var _ = Describe("Reconcile brokers", func() {
 		fakePlatformCatalogFetcher.FetchReturns(nil)
 	}
 
-	stubPlatformUpdateBroker := func() {
-		fakePlatformBrokerClient.UpdateBrokerReturns(&platformBrokerProxy, nil)
+	stubPlatformUpdateBroker := func(broker *platform.ServiceBroker) {
+		fakePlatformBrokerClient.UpdateBrokerReturns(broker, nil)
 	}
 
 	BeforeEach(func() {
@@ -98,123 +99,101 @@ var _ = Describe("Reconcile brokers", func() {
 		}
 
 		reconciler = &reconcile.Reconciler{
-			Resyncer: reconcile.NewResyncer(reconcile.DefaultSettings(), platformClient, fakeSMClient, fakeAppHost),
+			Resyncer: reconcile.NewResyncer(reconcile.DefaultSettings(), platformClient, fakeSMClient, fakeSMAppHost, fakeProxyPathPattern),
 		}
 
-		smbroker1 = sm.Broker{
-			ID:        "smBrokerID1",
+		smbroker1 = &types.ServiceBroker{
+			Base: types.Base{
+				ID: "smBrokerID1",
+			},
 			Name:      "smBroker1",
 			BrokerURL: "https://smBroker1.com",
-			ServiceOfferings: []types.ServiceOffering{
-				{
-					Base: types.Base{
-						ID: "smBroker1ServiceID1",
-					},
-					Name:                "smBroker1Service1",
-					Description:         "description",
-					Bindable:            true,
-					BindingsRetrievable: true,
-					Plans: []*types.ServicePlan{
-						{
-							Base: types.Base{
-								ID: "smBroker1ServiceID1PlanID1",
-							},
-							Name:        "smBroker1Service1Plan1",
-							Description: "description",
-						},
-						{
-							Base: types.Base{
-								ID: "smBroker1ServiceID1PlanID2",
-							},
-							Name:        "smBroker1Service1Plan2",
-							Description: "description",
-						},
-					},
-				},
-			},
 		}
 
-		smbroker2 = sm.Broker{
-			ID:        "smBrokerID2",
+		smbroker2 = &types.ServiceBroker{
+			Base: types.Base{
+				ID: "smBrokerID2",
+			},
 			Name:      "smBroker2",
 			BrokerURL: "https://smBroker2.com",
-			ServiceOfferings: []types.ServiceOffering{
-				{
-					Base: types.Base{
-						ID: "smBroker2ServiceID1",
-					},
-					Name:                "smBroker2Service1",
-					Description:         "description",
-					Bindable:            true,
-					BindingsRetrievable: true,
-					Plans: []*types.ServicePlan{
-						{
-							Base: types.Base{
-								ID: "smBroker2ServiceID1PlanID1",
-							},
-							Name:        "smBroker2Service1Plan1",
-							Description: "description",
-						},
-						{
-							Base: types.Base{
-								ID: "smBroker2ServiceID1PlanID2",
-							},
-							Name:        "smBroker2Service1Plan2",
-							Description: "description",
-						},
-					},
-				},
-			},
 		}
 
-		platformbroker1 = platform.ServiceBroker{
-			GUID:      "platformBrokerID1",
-			Name:      brokerProxyName("smBroker1", "smBrokerID1"),
-			BrokerURL: fakeAppHost + "/" + smbroker1.ID,
-		}
-
-		platformbroker2 = platform.ServiceBroker{
-			GUID:      "platformBrokerID2",
-			Name:      brokerProxyName("smBroker2", "smBrokerID2"),
-			BrokerURL: fakeAppHost + "/" + smbroker2.ID,
-		}
-
-		platformbrokerNonProxy = platform.ServiceBroker{
+		platformbrokerNonProxy = &platform.ServiceBroker{
 			GUID:      "platformBrokerID3",
 			Name:      "platformBroker3",
 			BrokerURL: "https://platformBroker3.com",
 		}
 
-		platformbrokerNonProxy2 = platform.ServiceBroker{
+		platformbrokerNonProxy2 = &platform.ServiceBroker{
 			GUID:      "platformBrokerID4",
 			Name:      "platformBroker4",
 			BrokerURL: "https://platformBroker4.com",
 		}
 
-		smbroker3 = sm.Broker{
-			ID:        "smBrokerID3",
+		smbroker3 = &types.ServiceBroker{
+			Base: types.Base{
+				ID: "smBrokerID3",
+			},
 			Name:      platformbrokerNonProxy.Name,
 			BrokerURL: platformbrokerNonProxy.BrokerURL,
 		}
 
-		platformBrokerProxy = platform.ServiceBroker{
+		platformbroker1 = &platform.ServiceBroker{
+			GUID:      "platformBrokerID1",
+			Name:      brokerProxyName(smbroker1.Name, smbroker1.ID),
+			BrokerURL: fakeSMAppHost + "/" + smbroker1.ID,
+		}
+
+		platformbroker2 = &platform.ServiceBroker{
+			GUID:      "platformBrokerID2",
+			Name:      brokerProxyName(smbroker2.Name, smbroker2.ID),
+			BrokerURL: fakeSMAppHost + "/" + smbroker2.ID,
+		}
+
+		platformBrokerProxy = &platform.ServiceBroker{
 			GUID:      platformbrokerNonProxy.GUID,
 			Name:      brokerProxyName(smbroker3.Name, smbroker3.ID),
-			BrokerURL: fakeAppHost + "/" + smbroker3.ID,
+			BrokerURL: fakeSMAppHost + "/" + smbroker3.ID,
+		}
+
+		smOrphanBroker = &types.ServiceBroker{
+			Base: types.Base{
+				ID: "orphanBrokerProxyID",
+			},
+			Name:      "orphanBrokerProxy",
+			BrokerURL: "https://orphanbroker.com",
+		}
+
+		platformOrphanBrokerProxy = &platform.ServiceBroker{
+			GUID:      "platformOrphanBrokerProxy",
+			Name:      brokerProxyName(smOrphanBroker.Name, smOrphanBroker.ID),
+			BrokerURL: fakeProxyAppHost + "/v1/osb/" + smOrphanBroker.ID,
+		}
+
+		platformOrphanBrokerProxyRenamed = &platform.ServiceBroker{
+			GUID:      "platformOrphanBrokerProxy",
+			Name:      "test",
+			BrokerURL: fakeProxyAppHost + "/v1/osb/" + smOrphanBroker.ID,
+		}
+
+		platformBrokerProxy2 = &platform.ServiceBroker{
+			GUID:      platformOrphanBrokerProxy.GUID,
+			Name:      brokerProxyName(smOrphanBroker.Name, smOrphanBroker.ID),
+			BrokerURL: fakeSMAppHost + "/" + smOrphanBroker.ID,
 		}
 	})
 
 	type expectations struct {
-		reconcileCreateCalledFor  []platform.ServiceBroker
-		reconcileDeleteCalledFor  []platform.ServiceBroker
-		reconcileCatalogCalledFor []platform.ServiceBroker
-		reconcileUpdateCalledFor  []platform.ServiceBroker
+		reconcileCreateCalledFor  []*platform.ServiceBroker
+		reconcileDeleteCalledFor  []*platform.ServiceBroker
+		reconcileCatalogCalledFor []*platform.ServiceBroker
+		reconcileUpdateCalledFor  []*platform.ServiceBroker
 	}
 
 	type testCase struct {
 		stubs           func()
-		platformBrokers func() ([]platform.ServiceBroker, error)
-		smBrokers       func() ([]sm.Broker, error)
+		platformBrokers func() ([]*platform.ServiceBroker, error)
+		smBrokers       func() ([]*types.ServiceBroker, error)
 
 		expectations func() expectations
 	}
@@ -224,17 +203,17 @@ var _ = Describe("Reconcile brokers", func() {
 			stubs: func() {
 
 			},
-			platformBrokers: func() ([]platform.ServiceBroker, error) {
-				return []platform.ServiceBroker{}, nil
+			platformBrokers: func() ([]*platform.ServiceBroker, error) {
+				return []*platform.ServiceBroker{}, nil
 			},
-			smBrokers: func() ([]sm.Broker, error) {
+			smBrokers: func() ([]*types.ServiceBroker, error) {
 				return nil, fmt.Errorf("error fetching brokers")
 			},
 			expectations: func() expectations {
 				return expectations{
-					reconcileCreateCalledFor:  []platform.ServiceBroker{},
-					reconcileDeleteCalledFor:  []platform.ServiceBroker{},
-					reconcileCatalogCalledFor: []platform.ServiceBroker{},
+					reconcileCreateCalledFor:  []*platform.ServiceBroker{},
+					reconcileDeleteCalledFor:  []*platform.ServiceBroker{},
+					reconcileCatalogCalledFor: []*platform.ServiceBroker{},
 				}
 			},
 		}),
@@ -243,17 +222,17 @@ var _ = Describe("Reconcile brokers", func() {
 			stubs: func() {
 
 			},
-			platformBrokers: func() ([]platform.ServiceBroker, error) {
+			platformBrokers: func() ([]*platform.ServiceBroker, error) {
 				return nil, fmt.Errorf("error fetching brokers")
 			},
-			smBrokers: func() ([]sm.Broker, error) {
-				return []sm.Broker{}, nil
+			smBrokers: func() ([]*types.ServiceBroker, error) {
+				return []*types.ServiceBroker{}, nil
 			},
 			expectations: func() expectations {
 				return expectations{
-					reconcileCreateCalledFor:  []platform.ServiceBroker{},
-					reconcileDeleteCalledFor:  []platform.ServiceBroker{},
-					reconcileCatalogCalledFor: []platform.ServiceBroker{},
+					reconcileCreateCalledFor:  []*platform.ServiceBroker{},
+					reconcileDeleteCalledFor:  []*platform.ServiceBroker{},
+					reconcileCatalogCalledFor: []*platform.ServiceBroker{},
 				}
 			},
 		}),
@@ -264,25 +243,25 @@ var _ = Describe("Reconcile brokers", func() {
 				fakePlatformCatalogFetcher.FetchReturns(fmt.Errorf("error"))
 				fakePlatformBrokerClient.CreateBrokerStub = stubCreateBrokerToReturnError
 			},
-			platformBrokers: func() ([]platform.ServiceBroker, error) {
-				return []platform.ServiceBroker{
+			platformBrokers: func() ([]*platform.ServiceBroker, error) {
+				return []*platform.ServiceBroker{
 					platformbroker2,
 				}, nil
 			},
-			smBrokers: func() ([]sm.Broker, error) {
-				return []sm.Broker{
+			smBrokers: func() ([]*types.ServiceBroker, error) {
+				return []*types.ServiceBroker{
 					smbroker1,
 				}, nil
 			},
 			expectations: func() expectations {
 				return expectations{
-					reconcileCreateCalledFor: []platform.ServiceBroker{
+					reconcileCreateCalledFor: []*platform.ServiceBroker{
 						platformbroker1,
 					},
-					reconcileDeleteCalledFor: []platform.ServiceBroker{
+					reconcileDeleteCalledFor: []*platform.ServiceBroker{
 						platformbroker2,
 					},
-					reconcileCatalogCalledFor: []platform.ServiceBroker{},
+					reconcileCatalogCalledFor: []*platform.ServiceBroker{},
 				}
 			},
 		}),
@@ -291,24 +270,23 @@ var _ = Describe("Reconcile brokers", func() {
 			stubs: func() {
 				stubPlatformOpsToSucceed()
 			},
-			platformBrokers: func() ([]platform.ServiceBroker, error) {
-				return []platform.ServiceBroker{
+			platformBrokers: func() ([]*platform.ServiceBroker, error) {
+				return []*platform.ServiceBroker{
 					platformbroker1,
 					platformbroker2,
 				}, nil
 			},
-			smBrokers: func() ([]sm.Broker, error) {
-				smbroker1.ServiceOfferings = nil
-				return []sm.Broker{
+			smBrokers: func() ([]*types.ServiceBroker, error) {
+				return []*types.ServiceBroker{
 					smbroker1,
 					smbroker2,
 				}, nil
 			},
 			expectations: func() expectations {
 				return expectations{
-					reconcileCreateCalledFor: []platform.ServiceBroker{},
-					reconcileDeleteCalledFor: []platform.ServiceBroker{},
-					reconcileCatalogCalledFor: []platform.ServiceBroker{
+					reconcileCreateCalledFor: []*platform.ServiceBroker{},
+					reconcileDeleteCalledFor: []*platform.ServiceBroker{},
+					reconcileCatalogCalledFor: []*platform.ServiceBroker{
 						platformbroker1,
 						platformbroker2,
 					},
@@ -320,23 +298,23 @@ var _ = Describe("Reconcile brokers", func() {
 			stubs: func() {
 				stubPlatformOpsToSucceed()
 			},
-			platformBrokers: func() ([]platform.ServiceBroker, error) {
-				return []platform.ServiceBroker{}, nil
+			platformBrokers: func() ([]*platform.ServiceBroker, error) {
+				return []*platform.ServiceBroker{}, nil
 			},
-			smBrokers: func() ([]sm.Broker, error) {
-				return []sm.Broker{
+			smBrokers: func() ([]*types.ServiceBroker, error) {
+				return []*types.ServiceBroker{
 					smbroker1,
 					smbroker2,
 				}, nil
 			},
 			expectations: func() expectations {
 				return expectations{
-					reconcileCreateCalledFor: []platform.ServiceBroker{
+					reconcileCreateCalledFor: []*platform.ServiceBroker{
 						platformbroker1,
 						platformbroker2,
 					},
-					reconcileDeleteCalledFor:  []platform.ServiceBroker{},
-					reconcileCatalogCalledFor: []platform.ServiceBroker{},
+					reconcileDeleteCalledFor:  []*platform.ServiceBroker{},
+					reconcileCatalogCalledFor: []*platform.ServiceBroker{},
 				}
 			},
 		}),
@@ -345,22 +323,74 @@ var _ = Describe("Reconcile brokers", func() {
 			stubs: func() {
 				stubPlatformOpsToSucceed()
 			},
-			platformBrokers: func() ([]platform.ServiceBroker, error) {
-				return []platform.ServiceBroker{
+			platformBrokers: func() ([]*platform.ServiceBroker, error) {
+				return []*platform.ServiceBroker{
 					platformbroker1,
 				}, nil
 			},
-			smBrokers: func() ([]sm.Broker, error) {
-				return []sm.Broker{
+			smBrokers: func() ([]*types.ServiceBroker, error) {
+				return []*types.ServiceBroker{
 					smbroker1,
 				}, nil
 			},
 			expectations: func() expectations {
 				return expectations{
-					reconcileCreateCalledFor: []platform.ServiceBroker{},
-					reconcileDeleteCalledFor: []platform.ServiceBroker{},
-					reconcileCatalogCalledFor: []platform.ServiceBroker{
+					reconcileCreateCalledFor: []*platform.ServiceBroker{},
+					reconcileDeleteCalledFor: []*platform.ServiceBroker{},
+					reconcileCatalogCalledFor: []*platform.ServiceBroker{
 						platformbroker1,
+					},
+				}
+			},
+		}),
+
+		Entry("When broker is in SM and is also in platform but points to proxy URL it should be updated to point to SM URL", testCase{
+			stubs: func() {
+				stubPlatformOpsToSucceed()
+				stubPlatformUpdateBroker(platformBrokerProxy2)
+			},
+			platformBrokers: func() ([]*platform.ServiceBroker, error) {
+				return []*platform.ServiceBroker{
+					platformOrphanBrokerProxy,
+				}, nil
+			},
+			smBrokers: func() ([]*types.ServiceBroker, error) {
+				return []*types.ServiceBroker{
+					smOrphanBroker,
+				}, nil
+			},
+			expectations: func() expectations {
+				return expectations{
+					reconcileCreateCalledFor: []*platform.ServiceBroker{},
+					reconcileDeleteCalledFor: []*platform.ServiceBroker{},
+					reconcileUpdateCalledFor: []*platform.ServiceBroker{
+						platformBrokerProxy2,
+					},
+				}
+			},
+		}),
+
+		Entry("When broker is in SM and is also in platform but points to proxy URL and was renamed in platform it should be updated to point to SM URL and name should be restored", testCase{
+			stubs: func() {
+				stubPlatformOpsToSucceed()
+				stubPlatformUpdateBroker(platformBrokerProxy2)
+			},
+			platformBrokers: func() ([]*platform.ServiceBroker, error) {
+				return []*platform.ServiceBroker{
+					platformOrphanBrokerProxyRenamed,
+				}, nil
+			},
+			smBrokers: func() ([]*types.ServiceBroker, error) {
+				return []*types.ServiceBroker{
+					smOrphanBroker,
+				}, nil
+			},
+			expectations: func() expectations {
+				return expectations{
+					reconcileCreateCalledFor: []*platform.ServiceBroker{},
+					reconcileDeleteCalledFor: []*platform.ServiceBroker{},
+					reconcileUpdateCalledFor: []*platform.ServiceBroker{
+						platformBrokerProxy2,
 					},
 				}
 			},
@@ -370,21 +400,21 @@ var _ = Describe("Reconcile brokers", func() {
 			stubs: func() {
 				stubPlatformOpsToSucceed()
 			},
-			platformBrokers: func() ([]platform.ServiceBroker, error) {
-				return []platform.ServiceBroker{
+			platformBrokers: func() ([]*platform.ServiceBroker, error) {
+				return []*platform.ServiceBroker{
 					platformbroker1,
 				}, nil
 			},
-			smBrokers: func() ([]sm.Broker, error) {
-				return []sm.Broker{}, nil
+			smBrokers: func() ([]*types.ServiceBroker, error) {
+				return []*types.ServiceBroker{}, nil
 			},
 			expectations: func() expectations {
 				return expectations{
-					reconcileCreateCalledFor: []platform.ServiceBroker{},
-					reconcileDeleteCalledFor: []platform.ServiceBroker{
+					reconcileCreateCalledFor: []*platform.ServiceBroker{},
+					reconcileDeleteCalledFor: []*platform.ServiceBroker{
 						platformbroker1,
 					},
-					reconcileCatalogCalledFor: []platform.ServiceBroker{},
+					reconcileCatalogCalledFor: []*platform.ServiceBroker{},
 				}
 			},
 		}),
@@ -393,20 +423,20 @@ var _ = Describe("Reconcile brokers", func() {
 			stubs: func() {
 				stubPlatformOpsToSucceed()
 			},
-			platformBrokers: func() ([]platform.ServiceBroker, error) {
-				return []platform.ServiceBroker{
+			platformBrokers: func() ([]*platform.ServiceBroker, error) {
+				return []*platform.ServiceBroker{
 					platformbrokerNonProxy,
 					platformbrokerNonProxy2,
 				}, nil
 			},
-			smBrokers: func() ([]sm.Broker, error) {
-				return []sm.Broker{}, nil
+			smBrokers: func() ([]*types.ServiceBroker, error) {
+				return []*types.ServiceBroker{}, nil
 			},
 			expectations: func() expectations {
 				return expectations{
-					reconcileCreateCalledFor:  []platform.ServiceBroker{},
-					reconcileDeleteCalledFor:  []platform.ServiceBroker{},
-					reconcileCatalogCalledFor: []platform.ServiceBroker{},
+					reconcileCreateCalledFor:  []*platform.ServiceBroker{},
+					reconcileDeleteCalledFor:  []*platform.ServiceBroker{},
+					reconcileCatalogCalledFor: []*platform.ServiceBroker{},
 				}
 			},
 		}),
@@ -414,25 +444,25 @@ var _ = Describe("Reconcile brokers", func() {
 		Entry("When broker is registered in the platform and SM, but not yet proxified, it should be updated", testCase{
 			stubs: func() {
 				stubPlatformOpsToSucceed()
-				stubPlatformUpdateBroker()
+				stubPlatformUpdateBroker(platformBrokerProxy)
 			},
-			platformBrokers: func() ([]platform.ServiceBroker, error) {
-				return []platform.ServiceBroker{
+			platformBrokers: func() ([]*platform.ServiceBroker, error) {
+				return []*platform.ServiceBroker{
 					platformbrokerNonProxy,
 					platformbrokerNonProxy2,
 				}, nil
 			},
-			smBrokers: func() ([]sm.Broker, error) {
-				return []sm.Broker{
+			smBrokers: func() ([]*types.ServiceBroker, error) {
+				return []*types.ServiceBroker{
 					smbroker3,
 				}, nil
 			},
 			expectations: func() expectations {
 				return expectations{
-					reconcileCreateCalledFor:  []platform.ServiceBroker{},
-					reconcileDeleteCalledFor:  []platform.ServiceBroker{},
-					reconcileCatalogCalledFor: []platform.ServiceBroker{},
-					reconcileUpdateCalledFor: []platform.ServiceBroker{
+					reconcileCreateCalledFor:  []*platform.ServiceBroker{},
+					reconcileDeleteCalledFor:  []*platform.ServiceBroker{},
+					reconcileCatalogCalledFor: []*platform.ServiceBroker{},
+					reconcileUpdateCalledFor: []*platform.ServiceBroker{
 						platformBrokerProxy,
 					},
 				}
@@ -442,40 +472,36 @@ var _ = Describe("Reconcile brokers", func() {
 			// smBroker is registered in SM (as sm-smBroker-<id> in the platform), but it was renamed in the platform
 			stubs: func() {
 				stubPlatformOpsToSucceed()
-				stubPlatformUpdateBroker()
+				stubPlatformUpdateBroker(platformBrokerProxy)
 			},
-			platformBrokers: func() ([]platform.ServiceBroker, error) {
-				return []platform.ServiceBroker{
+			platformBrokers: func() ([]*platform.ServiceBroker, error) {
+				return []*platform.ServiceBroker{
 					{
-						Name:             brokerProxyName("smBroker1", smbroker2.ID), // the name of smBroker1 is changed in the platform
-						BrokerURL:        platformbroker1.BrokerURL,
-						ServiceOfferings: platformbroker1.ServiceOfferings,
-						GUID:             platformbroker1.GUID,
-						Metadata:         platformbroker1.Metadata,
+						Name:      brokerProxyName("smBroker1", smbroker2.ID), // the name of smBroker1 is changed in the platform
+						BrokerURL: platformbroker1.BrokerURL,
+						GUID:      platformbroker1.GUID,
 					},
 					platformbroker2,
 				}, nil
 			},
-			smBrokers: func() ([]sm.Broker, error) {
-				return []sm.Broker{
+			smBrokers: func() ([]*types.ServiceBroker, error) {
+				return []*types.ServiceBroker{
 					smbroker1,
 					smbroker2,
 				}, nil
 			},
 			expectations: func() expectations {
 				return expectations{
-					reconcileCreateCalledFor: []platform.ServiceBroker{},
-					reconcileUpdateCalledFor: []platform.ServiceBroker{
+					reconcileCreateCalledFor: []*platform.ServiceBroker{},
+					reconcileUpdateCalledFor: []*platform.ServiceBroker{
 						{
-							Name:             brokerProxyName("smBroker1", smbroker1.ID), // the broker should be updated with the name of smBroker1
-							BrokerURL:        platformbroker1.BrokerURL,
-							ServiceOfferings: platformbroker1.ServiceOfferings,
-							GUID:             platformbroker1.GUID,
-							Metadata:         platformbroker1.Metadata,
+							Name:      brokerProxyName("smBroker1", smbroker1.ID), // the broker should be updated with the name of smBroker1
+							BrokerURL: platformbroker1.BrokerURL,
+							GUID:      platformbroker1.GUID,
 						},
 					},
-					reconcileDeleteCalledFor: []platform.ServiceBroker{},
-					reconcileCatalogCalledFor: []platform.ServiceBroker{
+					reconcileDeleteCalledFor: []*platform.ServiceBroker{},
+					reconcileCatalogCalledFor: []*platform.ServiceBroker{
 						platformbroker2,
 					},
 				}
@@ -523,7 +549,7 @@ var _ = Describe("Reconcile brokers", func() {
 		Expect(fakePlatformCatalogFetcher.FetchCallCount()).To(Equal(len(expected.reconcileCatalogCalledFor)))
 		for index, broker := range expected.reconcileCatalogCalledFor {
 			_, serviceBroker := fakePlatformCatalogFetcher.FetchArgsForCall(index)
-			Expect(serviceBroker).To(Equal(&broker))
+			Expect(serviceBroker).To(Equal(broker))
 		}
 
 		Expect(fakePlatformBrokerClient.DeleteBrokerCallCount()).To(Equal(len(expected.reconcileDeleteCalledFor)))
