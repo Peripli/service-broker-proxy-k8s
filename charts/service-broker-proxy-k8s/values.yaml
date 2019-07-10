@@ -13,7 +13,6 @@ image:
 service:
   type: ClusterIP
   port: 80
-  app_legacy_url:
 
 file:
   name: application
@@ -29,6 +28,8 @@ sm:
 securityContext: {}
 
 config:
+  app:
+    legacy_url:
   server:
     port: 8081
     request_timeout: 6000ms
