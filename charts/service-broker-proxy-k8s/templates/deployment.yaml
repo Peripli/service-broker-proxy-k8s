@@ -56,7 +56,11 @@ spec:
               name: {{ template "service-broker-proxy.fullname" . }}-regsecret
               key: password
         - name: APP_URL
+          {{- if .Values.config.app.url }}
+          value: {{ .Values.config.app.url }}
+          {{- else}}
           value: {{ .Values.config.sm.url }}
+          {{- end}}
         - name: APP_LEGACY_URL
           {{- if .Values.config.app.legacy_url }}
           value: {{ .Values.config.app.legacy_url }}

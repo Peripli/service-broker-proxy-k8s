@@ -30,6 +30,7 @@ securityContext: {}
 config:
   app:
     legacy_url:
+    url:
   server:
     port: 8081
     request_timeout: 6000ms

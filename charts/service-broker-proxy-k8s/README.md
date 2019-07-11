@@ -26,7 +26,7 @@ To use your own images you can set `image.repository`, `image.tag` and `image.pu
 `image.pullsecret` to name a secret containing the credentials.
 ## Configuration
 
-The following table lists the configurable parameters of the service broker proxy for K8S chart and their default values.
+The following table lists some of the configurable parameters of the service broker proxy for K8S chart and their default values.
 
 Parameter | Description | Default
 --------- | ----------- | -------
@@ -34,8 +34,6 @@ Parameter | Description | Default
 `image.tag`| tag of image  |`master`
 `image.pullsecret` | name of the secret containing pull secrets |
 `config.sm.url` | service manager url | `http://service-manager.dev.cfdev.sh`
-`sm.user` | username | `admin`
-`sm.password` | password | `admin`
-`app.user` | username credential used to register the proxy as a broker| `admin`
-`app.password` | password used to register the proxy as a broker | `admin`
+`sm.user` | username for service manager | `admin`
+`sm.password` | password for service manager | `admin`
 `securityContext` | Custom [security context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/) for server containers | `{}`
