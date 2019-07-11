@@ -20,7 +20,11 @@ From the root folder of this repository, execute:
 helm install charts/service-broker-proxy-k8s --name service-broker-proxy --namespace service-broker-proxy --set config.sm.url=<SM_URL> --set sm.user=<USER> --set sm.password=<PASSWORD>
 ```
 
-**Note:** Make sure you substitute &lt;SM_URL&gt; with the Service Manager url, &lt;USER&gt; and &lt;PASSWORD&gt; with the credentials for the Service Manager. The credentials can be obtained when registering the cluster in Service Manager.
+**Note:** Make sure you substitute &lt;SM_URL&gt; with the Service Manager url, &lt;USER&gt; and &lt;PASSWORD&gt; with the credentials for the Service Manager. Registering the cluster in Service Manager as a platform resource will generate and return credentials. For example:
+
+```sh
+smctl register-platform my-cluster kubernetes
+```
 
 To use your own images you can set `image.repository`, `image.tag` and `image.pullPolicy` to the helm install command. In case your image is pulled from a private repository, you can use
 `image.pullsecret` to name a secret containing the credentials.
