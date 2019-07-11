@@ -28,36 +28,42 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// reconcileBrokers attempts to reconcile the current brokers state in the platform (existingBrokers)
-// to match the desired broker state coming from the Service Manager (payloadBrokers).
-func (r *resyncJob) reconcileBrokers(ctx context.Context, existingBrokers, payloadBrokers []platform.ServiceBroker) {
-	brokerKeyMap := indexBrokers(existingBrokers, func(broker platform.ServiceBroker) (string, bool) {
+// to match the desired broker state coming from the Service Manager (desiredBrokers).
+func (r *resyncJob) reconcileBrokers(ctx context.Context, existingBrokers, desiredBrokers []*platform.ServiceBroker) {
+	brokerKeyMap := indexBrokers(existingBrokers, func(broker *platform.ServiceBroker) (string, bool) {
 		return getBrokerKey(broker), true
 	})
-	proxyBrokerIDMap := indexBrokers(existingBrokers, func(broker platform.ServiceBroker) (string, bool) {
-		if strings.HasPrefix(broker.BrokerURL, r.proxyPath) {
-			return broker.BrokerURL[strings.LastIndex(broker.BrokerURL, "/")+1:], true
+	proxyBrokerIDMap := indexBrokers(existingBrokers, func(broker *platform.ServiceBroker) (string, bool) {
+		brokerID := brokerIDFromURL(broker.BrokerURL)
+		if strings.HasPrefix(broker.BrokerURL, r.smPath) {
+			return brokerID, true
 		}
+
+		if broker.BrokerURL == fmt.Sprintf(r.proxyPathPattern, brokerID) {
+			return brokerID, true
+		}
+
 		return "", false
 	})
 
-	for _, payloadBroker := range payloadBrokers {
-		existingBroker, alreadyProxified := proxyBrokerIDMap[payloadBroker.GUID]
-		delete(proxyBrokerIDMap, payloadBroker.GUID)
-
-		platformBroker, shouldBeProxified := brokerKeyMap[getBrokerKey(payloadBroker)]
+	for _, desiredBroker := range desiredBrokers {
+		desiredBroker := desiredBroker
+		existingBroker, alreadyProxified := proxyBrokerIDMap[desiredBroker.GUID]
+		delete(proxyBrokerIDMap, desiredBroker.GUID)
 
 		if alreadyProxified {
-			if existingBroker.Name != r.brokerProxyName(&payloadBroker) { // broker name has been changed in the platform
-				r.updateBrokerRegistration(ctx, existingBroker.GUID, &payloadBroker)
+			if existingBroker.Name != r.brokerProxyName(desiredBroker) || !strings.HasPrefix(existingBroker.BrokerURL, r.smPath) { // broker name has been changed in the platform or broker proxy URL should be updated
+				r.updateBrokerRegistration(ctx, existingBroker.GUID, desiredBroker)
 				continue
 			}
 			r.fetchBrokerCatalog(ctx, existingBroker)
 		} else {
+			platformBroker, shouldBeProxified := brokerKeyMap[getBrokerKey(desiredBroker)]
+
 			if shouldBeProxified {
-				r.updateBrokerRegistration(ctx, platformBroker.GUID, &payloadBroker)
+				r.updateBrokerRegistration(ctx, platformBroker.GUID, desiredBroker)
 			} else {
-				r.createBrokerRegistration(ctx, &payloadBroker)
+				r.createBrokerRegistration(ctx, desiredBroker)
 			}
 		}
 	}
@@ -67,7 +73,7 @@ func (r *resyncJob) reconcileBrokers(ctx context.Context, existingBrokers, paylo
 	}
 }
 
-func (r *resyncJob) getBrokersFromSM(ctx context.Context) ([]platform.ServiceBroker, error) {
+func (r *resyncJob) getBrokersFromSM(ctx context.Context) ([]*platform.ServiceBroker, error) {
 	logger := log.C(ctx)
 	logger.Info("resyncJob getting brokers from Service Manager...")
 
@@ -76,14 +82,12 @@ func (r *resyncJob) getBrokersFromSM(ctx context.Context) ([]platform.ServiceBro
 		return nil, errors.Wrap(err, "error getting brokers from SM")
 	}
 
-	brokersFromSM := make([]platform.ServiceBroker, 0, len(proxyBrokers))
+	brokersFromSM := make([]*platform.ServiceBroker, 0, len(proxyBrokers))
 	for _, broker := range proxyBrokers {
-		brokerReg := platform.ServiceBroker{
-			GUID:             broker.ID,
-			Name:             broker.Name,
-			BrokerURL:        broker.BrokerURL,
-			ServiceOfferings: broker.ServiceOfferings,
-			Metadata:         broker.Metadata,
+		brokerReg := &platform.ServiceBroker{
+			GUID:      broker.ID,
+			Name:      broker.Name,
+			BrokerURL: broker.BrokerURL,
 		}
 		brokersFromSM = append(brokersFromSM, brokerReg)
 	}
@@ -110,7 +114,7 @@ func (r *resyncJob) createBrokerRegistration(ctx context.Context, broker *platfo
 
 	createRequest := &platform.CreateServiceBrokerRequest{
 		Name:      r.brokerProxyName(broker),
-		BrokerURL: r.proxyPath + "/" + broker.GUID,
+		BrokerURL: r.smPath + "/" + broker.GUID,
 	}
 
 	if b, err := r.platformClient.Broker().CreateBroker(ctx, createRequest); err != nil {
@@ -127,7 +131,7 @@ func (r *resyncJob) updateBrokerRegistration(ctx context.Context, brokerGUID str
 	updateRequest := &platform.UpdateServiceBrokerRequest{
 		GUID:      brokerGUID,
 		Name:      r.brokerProxyName(broker),
-		BrokerURL: r.proxyPath + "/" + broker.GUID,
+		BrokerURL: r.smPath + "/" + broker.GUID,
 	}
 
 	if b, err := r.platformClient.Broker().UpdateBroker(ctx, updateRequest); err != nil {
@@ -165,16 +169,20 @@ func logBroker(broker *platform.ServiceBroker) logrus.Fields {
 	}
 }
 
-func getBrokerKey(broker platform.ServiceBroker) string {
+func brokerIDFromURL(brokerURL string) string {
+	return brokerURL[strings.LastIndex(brokerURL, "/")+1:]
+}
+
+func getBrokerKey(broker *platform.ServiceBroker) string {
 	return fmt.Sprintf("name:%s|url:%s", broker.Name, broker.BrokerURL)
 }
 
-func indexBrokers(brokers []platform.ServiceBroker, indexingFunc func(broker platform.ServiceBroker) (string, bool)) map[string]*platform.ServiceBroker {
+func indexBrokers(brokers []*platform.ServiceBroker, indexingFunc func(broker *platform.ServiceBroker) (string, bool)) map[string]*platform.ServiceBroker {
 	brokerMap := map[string]*platform.ServiceBroker{}
 	for _, broker := range brokers {
 		broker := broker
 		if key, ok := indexingFunc(broker); ok {
-			brokerMap[key] = &broker
+			brokerMap[key] = broker
 		}
 	}
 	return brokerMap

@@ -13,7 +13,6 @@ image:
 service:
   type: ClusterIP
   port: 80
-  app_url:
 
 file:
   name: application
@@ -28,12 +27,10 @@ sm:
 # Security context
 securityContext: {}
 
-# Credentials used to register the proxy as a broker
-app:
-  username: admin
-  password: admin
-
 config:
+  app:
+    legacy_url:
+    url:
   server:
     port: 8081
     request_timeout: 6000ms

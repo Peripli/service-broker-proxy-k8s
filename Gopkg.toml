@@ -27,11 +27,11 @@
 
 [[constraint]]
   name = "github.com/kubernetes-sigs/service-catalog"
-  branch = "master"
+  revision = "6d7cea62c1aa18b8296ce1c7263b431ade159f3a"
 
 [[constraint]]
   name = "github.com/Peripli/service-broker-proxy"
-  branch = "master"
+  version = "=0.5.0"
 
 [[constraint]]
   name = "github.com/onsi/ginkgo"

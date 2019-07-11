@@ -45,32 +45,28 @@ spec:
           value: {{ template "service-broker-proxy.fullname" . }}-regsecret
         - name: K8S_SECRET_NAMESPACE
           value: {{ .Release.Namespace }}
-        - name: APP_URL
-          {{- if .Values.service.app_url }}
-          value: {{ .Values.service.app_url }}
-          {{- else}}
-          value: http://{{ template "service-broker-proxy.fullname" . }}.{{ .Release.Namespace }}:{{ .Values.service.port }}
-          {{- end}}
-        - name: APP_USERNAME
+        - name: SM_USER
           valueFrom:
             secretKeyRef:
               name: {{ template "service-broker-proxy.fullname" . }}-regsecret
               key: username
-        - name: APP_PASSWORD
+        - name: SM_PASSWORD
           valueFrom:
             secretKeyRef:
               name: {{ template "service-broker-proxy.fullname" . }}-regsecret
               key: password
-        - name: SM_USER
-          valueFrom:
-            secretKeyRef:
-              name: {{ template "service-broker-proxy.fullname" . }}-secret
-              key: sm_user
-        - name: SM_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: {{ template "service-broker-proxy.fullname" . }}-secret
-              key: sm_password
+        - name: APP_URL
+          {{- if .Values.config.app.url }}
+          value: {{ .Values.config.app.url }}
+          {{- else}}
+          value: {{ .Values.config.sm.url }}
+          {{- end}}
+        - name: APP_LEGACY_URL
+          {{- if .Values.config.app.legacy_url }}
+          value: {{ .Values.config.app.legacy_url }}
+          {{- else}}
+          value: http://{{ template "service-broker-proxy.fullname" . }}.{{ .Release.Namespace }}:{{ .Values.service.port }}
+          {{- end}}
         ports:
         - name: http
           containerPort: 8081

@@ -73,7 +73,7 @@ type BrokerResourceNotificationsHandler struct {
 	CatalogFetcher platform.CatalogFetcher
 
 	ProxyPrefix string
-	ProxyPath   string
+	SMPath      string
 }
 
 // OnCreate creates brokers from the specified notification payload by invoking the proper platform clients
@@ -254,7 +254,7 @@ func (bnh *BrokerResourceNotificationsHandler) unmarshalPayload(operationType ty
 }
 
 func (bnh *BrokerResourceNotificationsHandler) brokerProxyPath(broker *types.ServiceBroker) string {
-	return bnh.ProxyPath + "/" + broker.GetID()
+	return bnh.SMPath + "/" + broker.GetID()
 }
 
 func (bnh *BrokerResourceNotificationsHandler) brokerProxyName(broker *types.ServiceBroker) string {

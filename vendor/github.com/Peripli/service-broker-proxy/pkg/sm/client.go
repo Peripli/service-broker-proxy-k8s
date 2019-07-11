@@ -50,7 +50,7 @@ const (
 // Client provides the logic for calling into the Service Manager
 //go:generate counterfeiter . Client
 type Client interface {
-	GetBrokers(ctx context.Context) ([]Broker, error)
+	GetBrokers(ctx context.Context) ([]*types.ServiceBroker, error)
 	GetVisibilities(ctx context.Context) ([]*types.Visibility, error)
 	GetPlans(ctx context.Context) ([]*types.ServicePlan, error)
 	GetServiceOfferingsByBrokerIDs(ctx context.Context, brokerIDs []string) ([]*types.ServiceOffering, error)
@@ -93,16 +93,16 @@ func NewClient(config *Settings) (*ServiceManagerClient, error) {
 
 // GetBrokers calls the Service Manager in order to obtain all brokers that need to be registered
 // in the service broker proxy
-func (c *ServiceManagerClient) GetBrokers(ctx context.Context) ([]Broker, error) {
+func (c *ServiceManagerClient) GetBrokers(ctx context.Context) ([]*types.ServiceBroker, error) {
 	log.C(ctx).Debugf("Getting brokers for proxy from Service Manager at %s", c.host)
 
-	result := &Brokers{}
+	result := &types.ServiceBrokers{}
 	err := c.call(ctx, fmt.Sprintf(APIInternalBrokers, c.host), nil, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting brokers from Service Manager")
 	}
 
-	return result.Brokers, nil
+	return result.ServiceBrokers, nil
 }
 
 // GetVisibilities returns plan visibilities from Service Manager

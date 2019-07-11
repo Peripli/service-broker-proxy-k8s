@@ -26,18 +26,24 @@ import (
 func validSettings() *reconcile.Settings {
 	settings := reconcile.DefaultSettings()
 	settings.URL = "http://localhost:8080"
-	settings.Username = "user"
-	settings.Password = "password"
+	settings.LegacyURL = "http://localhost:8080"
 	return settings
 }
 
 var _ = Describe("Reconcile", func() {
-
 	Describe("Settings", func() {
 		Describe("Validate", func() {
 			Context("when all properties are set correctly", func() {
 				It("no error is returned", func() {
 					Expect(validSettings().Validate()).ShouldNot(HaveOccurred())
+				})
+			})
+
+			Context("when LegacyURL is missing", func() {
+				It("returns an error", func() {
+					settings := validSettings()
+					settings.LegacyURL = ""
+					Expect(settings.Validate()).Should(HaveOccurred())
 				})
 			})
 
@@ -49,18 +55,10 @@ var _ = Describe("Reconcile", func() {
 				})
 			})
 
-			Context("when Username is missing", func() {
+			Context("when max parallel requests is zero", func() {
 				It("returns an error", func() {
 					settings := validSettings()
-					settings.Username = ""
-					Expect(settings.Validate()).Should(HaveOccurred())
-				})
-			})
-
-			Context("when Password is missing", func() {
-				It("returns an error", func() {
-					settings := validSettings()
-					settings.Password = ""
+					settings.MaxParallelRequests = 0
 					Expect(settings.Validate()).Should(HaveOccurred())
 				})
 			})

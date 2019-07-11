@@ -3,8 +3,11 @@ package client
 import (
 	"context"
 	"errors"
-	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/api/apifakes"
 	"testing"
+
+	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
+
+	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/api/apifakes"
 
 	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/config"
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
@@ -28,11 +31,13 @@ func TestClient(t *testing.T) {
 var _ = Describe("Kubernetes Broker Proxy", func() {
 	var expectedError = errors.New("expected")
 	var clientConfig *config.ClientConfiguration
+	var proxySettings *sbproxy.Settings
+	var settings *config.Settings
 	var ctx context.Context
 	var k8sApi *apifakes.FakeKubernetesAPI
 
 	newDefaultPlatformClient := func() *PlatformClient {
-		client, err := NewClient(clientConfig)
+		client, err := NewClient(settings)
 		Expect(err).ToNot(HaveOccurred())
 		client.platformAPI = k8sApi
 		return client
@@ -41,8 +46,11 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 	BeforeSuite(func() {
 		Expect(os.Setenv("KUBERNETES_SERVICE_HOST", "test")).ToNot(HaveOccurred())
 		Expect(os.Setenv("KUBERNETES_SERVICE_PORT", "1234")).ToNot(HaveOccurred())
+	})
+
+	BeforeEach(func() {
 		clientConfig = config.DefaultClientConfiguration()
-		clientConfig.Client.NewClusterConfig = func() (*rest.Config, error) {
+		clientConfig.ClientSettings.NewClusterConfig = func() (*rest.Config, error) {
 			return &rest.Config{
 				Host:            "https://fakeme",
 				BearerToken:     string("faketoken"),
@@ -52,18 +60,27 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 		clientConfig.Secret.Name = "secretName"
 		clientConfig.Secret.Namespace = "secretNamespace"
 		clientConfig.K8sClientCreateFunc = config.NewSvcatSDK
-		ctx = context.TODO()
-	})
 
-	BeforeEach(func() {
+		proxySettings = sbproxy.DefaultSettings()
+		proxySettings.Sm.User = "user"
+		proxySettings.Sm.Password = "pass"
+		proxySettings.Sm.URL = "url"
+		proxySettings.Reconcile.LegacyURL = "legacy_url"
+		proxySettings.Reconcile.URL = "reconcile_url"
+
+		settings = &config.Settings{
+			Settings: *proxySettings,
+			K8S:      clientConfig,
+		}
+		ctx = context.TODO()
 		k8sApi = &apifakes.FakeKubernetesAPI{}
 	})
 
 	Describe("New Client", func() {
 		Context("With invalid config", func() {
 			It("should return error", func() {
-				config := config.DefaultClientConfiguration()
-				_, err := NewClient(config)
+				settings.K8S = config.DefaultClientConfiguration()
+				_, err := NewClient(settings)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("properties of K8S secret configuration for broker registration missing"))
 			})
@@ -71,11 +88,10 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 		Context("With invalid config", func() {
 			It("should return error", func() {
-				clientConfig := *clientConfig // copy
 				clientConfig.K8sClientCreateFunc = func(libraryConfig *config.LibraryConfig) (*servicecatalog.SDK, error) {
 					return nil, expectedError
 				}
-				_, err := NewClient(&clientConfig)
+				_, err := NewClient(settings)
 				Expect(err).To(Equal(expectedError))
 			})
 		})

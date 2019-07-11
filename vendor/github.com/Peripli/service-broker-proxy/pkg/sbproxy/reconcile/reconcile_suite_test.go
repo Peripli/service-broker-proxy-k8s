@@ -18,12 +18,19 @@ package reconcile_test
 
 import (
 	"fmt"
+	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
 	"testing"
 
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/reconcile"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+)
+
+const (
+	fakeSMAppHost        = "https://sm.com"
+	fakeProxyAppHost     = "https://smproxy.com"
+	fakeProxyPathPattern = fakeProxyAppHost + sbproxy.APIPrefix + "/%s"
 )
 
 func TestReconcile(t *testing.T) {
