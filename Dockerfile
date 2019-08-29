@@ -3,7 +3,7 @@
 # docker container. The alpine build image has to match
 # the alpine image in the referencing runtime container.
 #########################################################
-FROM golang:1.11.2-alpine3.8 AS builder
+FROM golang:1.11.13-alpine3.10 AS builder
 
 # We need so that dep can fetch it's dependencies
 # RUN apk --no-cache add git
@@ -23,7 +23,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o /mai
 ########################################################
 # Build the runtime container
 ########################################################
-FROM alpine:3.8
+FROM alpine:3.10
 
 # required to use x.509 certs (HTTPS)
 RUN apk add --no-cache ca-certificates
