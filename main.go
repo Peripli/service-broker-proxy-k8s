@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Peripli/service-manager/pkg/security/filters"
+
 	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/client"
 	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/config"
 
@@ -16,7 +18,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	env, err := sbproxy.DefaultEnv(func(set *pflag.FlagSet) {
+	env, err := sbproxy.DefaultEnv(ctx, func(set *pflag.FlagSet) {
 		config.CreatePFlagsForK8SClient(set)
 	})
 	if err != nil {
@@ -37,6 +39,8 @@ func main() {
 	if err != nil {
 		panic(fmt.Errorf("error creating sbproxy: %s", err))
 	}
+
+	proxyBuilder.RegisterFilters(filters.NewRequiredAuthnFilter())
 
 	proxyBuilder.Build().Run()
 }
