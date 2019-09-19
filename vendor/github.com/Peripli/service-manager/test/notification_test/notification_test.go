@@ -172,12 +172,12 @@ var _ = Describe("Notifications Suite", func() {
 				catalog.AddService(cService)
 				id, _, _ := ctx.RegisterBrokerWithCatalog(catalog)
 
-				object := ctx.SMWithOAuth.GET("/v1/service_offerings").WithQuery("fieldQuery", "broker_id = "+id).
+				object := ctx.SMWithOAuth.GET("/v1/service_offerings").WithQuery("fieldQuery", fmt.Sprintf("broker_id eq '%s'", id)).
 					Expect()
 
 				so := object.Status(http.StatusOK).JSON().Object().Value("service_offerings").Array().First()
 
-				servicePlanID := ctx.SMWithOAuth.GET("/v1/service_plans").WithQuery("fieldQuery", fmt.Sprintf("service_offering_id = %s", so.Object().Value("id").String().Raw())).
+				servicePlanID := ctx.SMWithOAuth.GET("/v1/service_plans").WithQuery("fieldQuery", fmt.Sprintf("service_offering_id eq '%s'", so.Object().Value("id").String().Raw())).
 					Expect().
 					Status(http.StatusOK).JSON().Object().Value("service_plans").Array().First().Object().Value("id").String().Raw()
 				visReqBody["service_plan_id"] = servicePlanID
@@ -249,15 +249,18 @@ var _ = Describe("Notifications Suite", func() {
 				return obj["platform_id"].(string)
 			},
 			ExpectedAdditionalPayloadFunc: func(expected common.Object, repository storage.Repository) []byte {
-				expectedPlan, err := repository.Get(c, types.ServicePlanType, expected["service_plan_id"].(string))
+				byPlanID := query.ByField(query.EqualsOperator, "id", expected["service_plan_id"].(string))
+				expectedPlan, err := repository.Get(c, types.ServicePlanType, byPlanID)
 				Expect(err).ShouldNot(HaveOccurred())
 				expectedServicePlan := expectedPlan.(*types.ServicePlan)
 
-				service, err := repository.Get(c, types.ServiceOfferingType, expectedServicePlan.ServiceOfferingID)
+				byServiceID := query.ByField(query.EqualsOperator, "id", expectedServicePlan.ServiceOfferingID)
+				service, err := repository.Get(c, types.ServiceOfferingType, byServiceID)
 				Expect(err).ShouldNot(HaveOccurred())
 				serviceOffering := service.(*types.ServiceOffering)
 
-				broker, err := repository.Get(c, types.ServiceBrokerType, serviceOffering.BrokerID)
+				byBrokerID := query.ByField(query.EqualsOperator, "id", serviceOffering.BrokerID)
+				broker, err := repository.Get(c, types.ServiceBrokerType, byBrokerID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				serviceBroker := broker.(*types.ServiceBroker)

@@ -19,18 +19,17 @@ package sbproxy
 import (
 	"sync"
 
+	"github.com/Peripli/service-manager/api/configuration"
 	"github.com/Peripli/service-manager/pkg/types"
 
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/notifications/handlers"
 
 	"fmt"
 
-	"github.com/Peripli/service-broker-proxy/pkg/filter"
 	"github.com/Peripli/service-broker-proxy/pkg/logging"
 	"github.com/Peripli/service-manager/api/healthcheck"
 	"github.com/Peripli/service-manager/pkg/health"
 	"github.com/Peripli/service-manager/pkg/log"
-	secfilters "github.com/Peripli/service-manager/pkg/security/filters"
 	"github.com/Peripli/service-manager/pkg/util"
 
 	"context"
@@ -41,7 +40,6 @@ import (
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/reconcile"
 	"github.com/Peripli/service-broker-proxy/pkg/sm"
 	"github.com/Peripli/service-manager/api/filters"
-	smosb "github.com/Peripli/service-manager/api/osb"
 	"github.com/Peripli/service-manager/pkg/env"
 	"github.com/Peripli/service-manager/pkg/server"
 	"github.com/Peripli/service-manager/pkg/web"
@@ -82,14 +80,15 @@ type SMProxy struct {
 }
 
 // DefaultEnv creates a default environment that can be used to boot up a Service Broker proxy
-func DefaultEnv(additionalPFlags ...func(set *pflag.FlagSet)) (env.Environment, error) {
+func DefaultEnv(ctx context.Context, additionalPFlags ...func(set *pflag.FlagSet)) (env.Environment, error) {
 	set := pflag.NewFlagSet("Configuration Flags", pflag.ExitOnError)
 
 	AddPFlags(set)
 	for _, addFlags := range additionalPFlags {
 		addFlags(set)
 	}
-	return env.New(set)
+
+	return env.New(ctx, set)
 }
 
 // New creates service broker proxy that is configured from the provided environment and platform client.
@@ -98,34 +97,22 @@ func New(ctx context.Context, cancel context.CancelFunc, settings *Settings, pla
 		return nil, fmt.Errorf("error validating settings: %s", err)
 	}
 
-	ctx = log.Configure(ctx, settings.Log)
+	var err error
+	ctx, err = log.Configure(ctx, settings.Log)
+	if err != nil {
+		return nil, fmt.Errorf("error configuring logging: %s", err)
+	}
+
 	log.AddHook(&logging.ErrorLocationHook{})
 
 	util.HandleInterrupts(ctx, cancel)
 
 	api := &web.API{
 		Controllers: []web.Controller{
-			&smosb.Controller{
-				BrokerFetcher: func(ctx context.Context, brokerID string) (*types.ServiceBroker, error) {
-					return &types.ServiceBroker{
-						Base: types.Base{
-							ID: brokerID,
-						},
-						BrokerURL: fmt.Sprintf("%s%s/%s", settings.Sm.URL, settings.Sm.OSBAPIPath, brokerID),
-						Credentials: &types.Credentials{
-							Basic: &types.Basic{
-								Username: settings.Sm.User,
-								Password: settings.Sm.Password,
-							},
-						},
-					}, nil
-				},
-			},
+			&configuration.Controller{},
 		},
 		Filters: []web.Filter{
 			&filters.Logging{},
-			filter.NewBasicAuthnFilter(settings.Sm.User, settings.Sm.Password),
-			secfilters.NewRequiredAuthnFilter(),
 		},
 		Registry: health.NewDefaultRegistry(),
 	}
@@ -175,7 +162,9 @@ func New(ctx context.Context, cancel context.CancelFunc, settings *Settings, pla
 
 // Build builds the Service Manager
 func (smb *SMProxyBuilder) Build() *SMProxy {
-	smb.installHealth()
+	if err := smb.installHealth(); err != nil {
+		log.C(smb.ctx).Panic(err)
+	}
 
 	srv := server.New(smb.cfg.Server, smb.API)
 	srv.Use(filters.NewRecoveryMiddleware())
@@ -189,10 +178,27 @@ func (smb *SMProxyBuilder) Build() *SMProxy {
 	}
 }
 
-func (smb *SMProxyBuilder) installHealth() {
-	if len(smb.HealthIndicators) > 0 {
-		smb.RegisterControllers(healthcheck.NewController(smb.HealthIndicators, smb.HealthAggregationPolicy))
+func (smb *SMProxyBuilder) installHealth() error {
+	healthz, thresholds, err := health.Configure(smb.ctx, smb.HealthIndicators, smb.cfg.Health)
+	if err != nil {
+		return err
 	}
+
+	smb.RegisterControllers(healthcheck.NewController(healthz, thresholds))
+
+	if err := healthz.Start(); err != nil {
+		return err
+	}
+
+	util.StartInWaitGroupWithContext(smb.ctx, func(c context.Context) {
+		<-c.Done()
+		log.C(c).Debug("Context cancelled. Stopping health checks...")
+		if err := healthz.Stop(); err != nil {
+			log.C(c).Error(err)
+		}
+	}, smb.group)
+
+	return nil
 }
 
 // Run starts the proxy

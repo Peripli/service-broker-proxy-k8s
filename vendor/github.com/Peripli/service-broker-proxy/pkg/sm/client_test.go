@@ -24,6 +24,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Peripli/service-manager/pkg/log"
+
 	"github.com/Peripli/service-manager/pkg/types"
 	"github.com/pkg/errors"
 
@@ -103,6 +105,8 @@ var _ = Describe("Client", func() {
 		})
 	})
 
+	const CorrelationIDValue = "corelation-id-value"
+
 	type testCase struct {
 		expectations *common.HTTPExpectations
 		reaction     *common.HTTPReaction
@@ -124,6 +128,13 @@ var _ = Describe("Client", func() {
 		})
 		Expect(err).ShouldNot(HaveOccurred())
 		return client
+	}
+
+	testContextWithCorrelationID := func(correlationID string) context.Context {
+		ctx := context.Background()
+
+		entry := log.C(ctx).WithField(log.FieldCorrelationID, correlationID)
+		return log.ContextWithLogger(ctx, entry)
 	}
 
 	assertResponse := func(t *testCase, resp interface{}, err error) {
@@ -167,7 +178,8 @@ var _ = Describe("Client", func() {
 			expectations: &common.HTTPExpectations{
 				URL: fmt.Sprintf(APIInternalBrokers, "http://example.com"),
 				Headers: map[string]string{
-					"Authorization": "Basic " + basicAuth("admin", "admin"),
+					"Authorization":             "Basic " + basicAuth("admin", "admin"),
+					log.CorrelationIDHeaders[0]: CorrelationIDValue,
 				},
 			},
 			reaction: &common.HTTPReaction{
@@ -183,7 +195,8 @@ var _ = Describe("Client", func() {
 			expectations: &common.HTTPExpectations{
 				URL: fmt.Sprintf(APIInternalBrokers, "http://example.com"),
 				Headers: map[string]string{
-					"Authorization": "Basic " + basicAuth("admin", "admin"),
+					"Authorization":             "Basic " + basicAuth("admin", "admin"),
+					log.CorrelationIDHeaders[0]: CorrelationIDValue,
 				},
 			},
 			reaction: &common.HTTPReaction{
@@ -198,7 +211,8 @@ var _ = Describe("Client", func() {
 			expectations: &common.HTTPExpectations{
 				URL: fmt.Sprintf(APIInternalBrokers, "http://example.com"),
 				Headers: map[string]string{
-					"Authorization": "Basic " + basicAuth("admin", "admin"),
+					"Authorization":             "Basic " + basicAuth("admin", "admin"),
+					log.CorrelationIDHeaders[0]: CorrelationIDValue,
 				},
 			},
 			reaction: &common.HTTPReaction{
@@ -214,7 +228,8 @@ var _ = Describe("Client", func() {
 			expectations: &common.HTTPExpectations{
 				URL: fmt.Sprintf(APIInternalBrokers, "http://example.com"),
 				Headers: map[string]string{
-					"Authorization": "Basic " + basicAuth("admin", "admin"),
+					"Authorization":             "Basic " + basicAuth("admin", "admin"),
+					log.CorrelationIDHeaders[0]: CorrelationIDValue,
 				},
 			},
 			reaction: &common.HTTPReaction{
@@ -229,7 +244,7 @@ var _ = Describe("Client", func() {
 
 	DescribeTable("GETBrokers", func(t testCase) {
 		client := newClient(&t)
-		resp, err := client.GetBrokers(context.TODO())
+		resp, err := client.GetBrokers(testContextWithCorrelationID(CorrelationIDValue))
 		assertResponse(&t, resp, err)
 	}, brokerEntries...)
 
@@ -268,7 +283,8 @@ var _ = Describe("Client", func() {
 			expectations: &common.HTTPExpectations{
 				URL: fmt.Sprintf(APIPlans, "http://example.com"),
 				Headers: map[string]string{
-					"Authorization": "Basic " + basicAuth("admin", "admin"),
+					"Authorization":             "Basic " + basicAuth("admin", "admin"),
+					log.CorrelationIDHeaders[0]: CorrelationIDValue,
 				},
 			},
 			reaction: &common.HTTPReaction{
@@ -284,7 +300,8 @@ var _ = Describe("Client", func() {
 			expectations: &common.HTTPExpectations{
 				URL: fmt.Sprintf(APIPlans, "http://example.com"),
 				Headers: map[string]string{
-					"Authorization": "Basic " + basicAuth("admin", "admin"),
+					"Authorization":             "Basic " + basicAuth("admin", "admin"),
+					log.CorrelationIDHeaders[0]: CorrelationIDValue,
 				},
 			},
 			reaction: &common.HTTPReaction{
@@ -299,7 +316,7 @@ var _ = Describe("Client", func() {
 
 	DescribeTable("GETPlans", func(t testCase) {
 		client := newClient(&t)
-		resp, err := client.GetPlans(context.TODO())
+		resp, err := client.GetPlans(testContextWithCorrelationID(CorrelationIDValue))
 		assertResponse(&t, resp, err)
 	}, planEntries...)
 
@@ -336,7 +353,8 @@ var _ = Describe("Client", func() {
 			expectations: &common.HTTPExpectations{
 				URL: fmt.Sprintf(APIVisibilities, "http://example.com"),
 				Headers: map[string]string{
-					"Authorization": "Basic " + basicAuth("admin", "admin"),
+					"Authorization":             "Basic " + basicAuth("admin", "admin"),
+					log.CorrelationIDHeaders[0]: CorrelationIDValue,
 				},
 			},
 			reaction: &common.HTTPReaction{
@@ -352,7 +370,8 @@ var _ = Describe("Client", func() {
 			expectations: &common.HTTPExpectations{
 				URL: fmt.Sprintf(APIVisibilities, "http://example.com"),
 				Headers: map[string]string{
-					"Authorization": "Basic " + basicAuth("admin", "admin"),
+					"Authorization":             "Basic " + basicAuth("admin", "admin"),
+					log.CorrelationIDHeaders[0]: CorrelationIDValue,
 				},
 			},
 			reaction: &common.HTTPReaction{
@@ -367,7 +386,7 @@ var _ = Describe("Client", func() {
 
 	DescribeTable("GETPlans", func(t testCase) {
 		client := newClient(&t)
-		resp, err := client.GetVisibilities(context.TODO())
+		resp, err := client.GetVisibilities(testContextWithCorrelationID(CorrelationIDValue))
 		assertResponse(&t, resp, err)
 	}, visibilitiesEntries...)
 })

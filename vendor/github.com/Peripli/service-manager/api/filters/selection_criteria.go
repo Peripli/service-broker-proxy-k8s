@@ -17,7 +17,11 @@
 package filters
 
 import (
+	"fmt"
 	"net/http"
+	"net/url"
+
+	"github.com/Peripli/service-manager/pkg/util"
 
 	"github.com/Peripli/service-manager/pkg/query"
 	"github.com/Peripli/service-manager/pkg/web"
@@ -40,11 +44,24 @@ func (*SelectionCriteria) Name() string {
 // Run represents the selection criteria middleware function that processes the request and configures the request-scoped selection criteria.
 func (l *SelectionCriteria) Run(req *web.Request, next web.Handler) (*web.Response, error) {
 	ctx := req.Context()
-	criteria, err := query.BuildCriteriaFromRequest(req.Request)
-	if err != nil {
-		return nil, err
+	var criteria []query.Criterion
+	for _, queryType := range query.CriteriaTypes {
+		queryValue := req.URL.Query().Get(string(queryType))
+		unescaped, err := url.QueryUnescape(queryValue)
+		if err != nil {
+			return nil, &util.HTTPError{
+				ErrorType:   "BadRequest",
+				StatusCode:  http.StatusBadRequest,
+				Description: fmt.Sprintf("there is a symbol in the %s param that is not URL encoded: %v", queryType, err),
+			}
+		}
+		queryCriteria, err := query.Parse(queryType, unescaped)
+		if err != nil {
+			return nil, err
+		}
+		criteria = append(criteria, queryCriteria...)
 	}
-	ctx, err = query.AddCriteria(ctx, criteria...)
+	ctx, err := query.AddCriteria(ctx, criteria...)
 	if err != nil {
 		return nil, err
 	}

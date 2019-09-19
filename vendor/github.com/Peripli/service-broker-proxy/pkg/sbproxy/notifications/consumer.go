@@ -35,7 +35,11 @@ func (c *Consumer) Consume(ctx context.Context, n *types.Notification) {
 		return
 	}
 
-	entry := log.C(ctx).WithField(log.FieldCorrelationID, n.ID)
+	correlationID := n.CorrelationID
+	if correlationID == "" {
+		correlationID = n.ID
+	}
+	entry := log.C(ctx).WithField(log.FieldCorrelationID, correlationID)
 	ctx = log.ContextWithLogger(ctx, entry)
 
 	switch n.Type {
