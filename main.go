@@ -16,7 +16,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	env, err := sbproxy.DefaultEnv(func(set *pflag.FlagSet) {
+	env, err := sbproxy.DefaultEnv(ctx, func(set *pflag.FlagSet) {
 		config.CreatePFlagsForK8SClient(set)
 	})
 	if err != nil {
@@ -33,7 +33,7 @@ func main() {
 		panic(fmt.Errorf("error creating K8S client: %s", err))
 	}
 
-	proxyBuilder, err := sbproxy.New(ctx, cancel, &proxySettings.Settings, platformClient)
+	proxyBuilder, err := sbproxy.New(ctx, cancel, env, &proxySettings.Settings, platformClient)
 	if err != nil {
 		panic(fmt.Errorf("error creating sbproxy: %s", err))
 	}

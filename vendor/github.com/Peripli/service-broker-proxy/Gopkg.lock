@@ -2,10 +2,34 @@
 
 
 [[projects]]
-  digest = "1:e295fc4e3319a8c4ed7df47fe2e9159be7fdc234909f1e5c90b4b34f09198efe"
+  digest = "1:12156f9d8523585d9d875a03c4b5c6c6374f7370716cd814aa6781732ac942c5"
+  name = "github.com/InVisionApp/go-health"
+  packages = [
+    ".",
+    "checkers",
+  ]
+  pruneopts = "UT"
+  revision = "06e1878ab5a8acf6e841861c6cbfcc4d3036add0"
+  version = "v2.1.0"
+
+[[projects]]
+  digest = "1:be2deb3cba3d2526b3692d80483f59df6462aabc875aace2db263f2664f30670"
+  name = "github.com/InVisionApp/go-logger"
+  packages = [
+    ".",
+    "shims/logrus",
+  ]
+  pruneopts = "UT"
+  revision = "c377c6c3f6a48a6366517e86f77bafea18454ff1"
+  version = "v1.0.1"
+
+[[projects]]
+  branch = "get-config-api"
+  digest = "1:8871104c25cf2ed77b3fc449a5d2683dccb070ef4184816a6f0e83aa53d2b569"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
+    "api/configuration",
     "api/filters",
     "api/healthcheck",
     "api/info",
@@ -14,8 +38,8 @@
     "config",
     "pkg/env",
     "pkg/env/envfakes",
-    "pkg/filters/labels",
     "pkg/health",
+    "pkg/httpclient",
     "pkg/log",
     "pkg/query",
     "pkg/security",
@@ -39,8 +63,7 @@
     "test/testutil",
   ]
   pruneopts = "NT"
-  revision = "be4f5e3b360a3bba7f05c79bf5d2946b9171ee46"
-  version = "v0.4.0"
+  revision = "f07455f6961f3c55807456df81615b3e57d6da87"
 
 [[projects]]
   digest = "1:f780d408067189c4c42b53f7bb24ebf8fd2a1e4510b813ed6e79dd6563e38cc5"
@@ -151,12 +174,12 @@
   version = "v3.5.1"
 
 [[projects]]
-  digest = "1:318f1c959a8a740366fce4b1e1eb2fd914036b4af58fbd0a003349b305f118ad"
+  digest = "1:573ca21d3669500ff845bdebee890eb7fc7f0f50c59f2132f2a0c6b03d85086a"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   pruneopts = "UT"
-  revision = "b5d812f8a3706043e23a9cd5babf2e5423744d30"
-  version = "v1.3.1"
+  revision = "6c65a5562fc06764971b7c5d05c76c75e84bdbf7"
+  version = "v1.3.2"
 
 [[projects]]
   digest = "1:a63cff6b5d8b95638bfe300385d93b2a6d9d687734b863da8e09dc834510a690"
@@ -183,12 +206,12 @@
   version = "v1.6.1"
 
 [[projects]]
-  digest = "1:7b5c6e2eeaa9ae5907c391a91c132abfd5c9e8a784a341b5625e750c67e6825d"
+  digest = "1:e62657cca9badaa308d86e7716083e4c5933bb78e30a17743fc67f50be26f6f4"
   name = "github.com/gorilla/websocket"
   packages = ["."]
   pruneopts = "UT"
-  revision = "66b9c49e59c6c48f0ffce28c2d8b8a5678502c6d"
-  version = "v1.4.0"
+  revision = "c3e18be99d19e6b3e8f1559eea2c161a665c4b6b"
+  version = "v1.4.1"
 
 [[projects]]
   digest = "1:c0d19ab64b32ce9fe5cf4ddceba78d5bc9807f0016db6b1183599da3dcc24d10"
@@ -233,7 +256,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2c7f9e2e9c7729a1785f57f95e0bbfddc384f11073e8213994d11113210644a0"
+  digest = "1:a9f806e41fa14a1c88641efeecaffdb05f1728a4ed423c3233cdd4fd1f6d2801"
   name = "github.com/jmoiron/sqlx"
   packages = [
     ".",
@@ -241,10 +264,10 @@
     "types",
   ]
   pruneopts = "UT"
-  revision = "38398a30ed8516ffda617a04c822de09df8a3ec5"
+  revision = "d7d95172beb5a538ff08c50a6e98aee6e7c41f40"
 
 [[projects]]
-  digest = "1:823dc0f8e4cdad8d91e6aba4cdd985a035596a8aa02e9d2abf1bec347894c41f"
+  digest = "1:caa1da085cc12cd39d3ddb267434902f621050e1b46f7e9477b2b933df680193"
   name = "github.com/klauspost/compress"
   packages = [
     "flate",
@@ -252,8 +275,8 @@
     "zlib",
   ]
   pruneopts = "UT"
-  revision = "7a873649b01a9669308e8d58b6bcbbccc0b06b5d"
-  version = "v1.7.1"
+  revision = "9342d2c87674fc9ed5324d5d77d5f11f328bc11b"
+  version = "v1.8.3"
 
 [[projects]]
   digest = "1:923c4d7194b42e054b2eb8a6c62824ac55e23ececc1c7e48d4da69c971c55954"
@@ -273,7 +296,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2abaafc9cb59897a71c84f1daf4131d59c0dd349c671206274ace759730fc1a0"
+  digest = "1:ee780c2838219eedc4146248ddf9b82bb6a4a344425ee1aeb9f0d6eb8435614d"
   name = "github.com/lib/pq"
   packages = [
     ".",
@@ -281,7 +304,7 @@
     "scram",
   ]
   pruneopts = "UT"
-  revision = "2ff3cb3adc01768e0a552b3a02575a6df38a9bea"
+  revision = "78223426e7c66d631117c0a9da1b7f3fde4d23a5"
 
 [[projects]]
   digest = "1:5a0ef768465592efca0412f7e838cdc0826712f8447e70e6ccc52eb441e9ab13"
@@ -308,15 +331,15 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
   digest = "1:96df5bdca983e4b8c62682af5b67100b187d582ac6db0968d8af52e84138d1e6"
   name = "github.com/onrik/logrus"
   packages = ["filename"]
   pruneopts = "UT"
-  revision = "0331655e8b9ec13423e2b31914d0a2154b13474e"
+  revision = "94ad747c51752e8dfa69cfd0335b8c76bf1ae592"
+  version = "v0.4.1"
 
 [[projects]]
-  digest = "1:b013cb97ec8147b033199dfc5360d410130e1fc5d74dd6f08c4d777fe49b5c37"
+  digest = "1:0c84de0c9ef9924db2bc8ed3b18960ea4ee549c6b04d0b386c0e3043ccb11243"
   name = "github.com/onsi/ginkgo"
   packages = [
     ".",
@@ -340,8 +363,8 @@
     "types",
   ]
   pruneopts = "UT"
-  revision = "eea6ad008b96acdaa524f5b409513bf062b500ad"
-  version = "v1.8.0"
+  revision = "974566c482abc93ffd3df6f4626e79076c7ed290"
+  version = "v1.10.1"
 
 [[projects]]
   digest = "1:e42321c3ec0ff36c0644da60c2c1469886b214134286f4610199b704619e11a3"
@@ -452,31 +475,31 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:59e7dceb53b4a1e57eb1eb0bf9951ff0c25912df7660004a789b62b4e8cdca3b"
+  digest = "1:11118bd196646c6515fea3d6c43f66162833c6ae4939bfb229b9956d91c6cf17"
   name = "github.com/spf13/viper"
   packages = ["."]
   pruneopts = "UT"
-  revision = "b5e8006cbee93ec955a89ab31e0e3ce3204f3736"
-  version = "v1.0.2"
+  revision = "b5bf975e5823809fb22c7644d008757f78a4259e"
+  version = "v1.4.0"
 
 [[projects]]
-  digest = "1:5da8ce674952566deae4dbc23d07c85caafc6cfa815b0b3e03e41979cedb8750"
+  digest = "1:99d32780e5238c2621fff621123997c3e3cca96db8be13179013aea77dfab551"
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
     "require",
   ]
   pruneopts = "UT"
-  revision = "ffdc059bfe9ce6a4e144ba849dbedead332c6053"
-  version = "v1.3.0"
+  revision = "221dbe5ed46703ee255b1da0dec05086f5035f62"
+  version = "v1.4.0"
 
 [[projects]]
-  digest = "1:7df351557a6d5c30804e7d6f7ed87f2fccb0619c08fcc84869a93f22bec96c11"
+  digest = "1:46aea6ffe39c3d95c13640c2515236ed3c5cdffc3c78c6c0ed4edec2caf7a0dc"
   name = "github.com/tidwall/gjson"
   packages = ["."]
   pruneopts = "UT"
-  revision = "eee0b6226f0d1db2675a176fdfaa8419bcad4ca8"
-  version = "v1.2.1"
+  revision = "c5e72cdf74dff23857243dd662c465b810891c21"
+  version = "v1.3.2"
 
 [[projects]]
   digest = "1:8453ddbed197809ee8ca28b06bd04e127bec9912deb4ba451fea7a1eca578328"
@@ -524,11 +547,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f4e5276a3b356f4692107047fd2890f2fe534f4feeb6b1fd2f6dfbd87f1ccf54"
+  digest = "1:87fe9bca786484cef53d52adeec7d1c52bc2bfbee75734eddeb75fc5c7023871"
   name = "github.com/xeipuuv/gojsonpointer"
   packages = ["."]
   pruneopts = "UT"
-  revision = "4e3ac2762d5f479393488629ee9370b50873b3a6"
+  revision = "02993c407bfbf5f6dae44c4f4b1cf6a39b5fc5bb"
 
 [[projects]]
   branch = "master"
@@ -583,7 +606,7 @@
     "pbkdf2",
   ]
   pruneopts = "UT"
-  revision = "ea8f1a30c4438cc8b13f05538385ad8dc6049b43"
+  revision = "227b76d455e791cb042b03e633e2f7fbcfdf74a5"
 
 [[projects]]
   branch = "master"
@@ -599,7 +622,7 @@
     "publicsuffix",
   ]
   pruneopts = "UT"
-  revision = "b5b0513f8c1bb7c1e3e6f168fba117131fe2614a"
+  revision = "c8589233b77dde5edd2205ba8a4fb5c9c2472556"
 
 [[projects]]
   branch = "master"
@@ -614,11 +637,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:249fd56fb36a223aee164e2dc35e3b3a1b92dd3873dfb60216280b9fb9d4a784"
+  digest = "1:ec9d9815894f067c7878330735b9e4dfa6dc61234d2ba136b60a1436d6b5ea94"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "516e3c20635fbe39539f7ed361a15c51fec29cd8"
+  revision = "b4ddaad3f8a36719f2b8bc6486c14cc468ca2bb5"
 
 [[projects]]
   digest = "1:28deae5fe892797ff37a317b5bcda96d11d1c90dadd89f1337651df3bc4c586e"
@@ -670,8 +693,8 @@
     "urlfetch",
   ]
   pruneopts = "UT"
-  revision = "b2f4a3cf3c67576a2ee09e1fe62656a5086ce880"
-  version = "v1.6.1"
+  revision = "5f2a59506353b8d5ba8cbbcd9f3c1f41f1eaf079"
+  version = "v1.6.2"
 
 [[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
@@ -714,10 +737,10 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/Peripli/service-manager/api/configuration",
     "github.com/Peripli/service-manager/api/filters",
     "github.com/Peripli/service-manager/api/healthcheck",
     "github.com/Peripli/service-manager/api/notifications",
-    "github.com/Peripli/service-manager/api/osb",
     "github.com/Peripli/service-manager/pkg/env",
     "github.com/Peripli/service-manager/pkg/env/envfakes",
     "github.com/Peripli/service-manager/pkg/health",

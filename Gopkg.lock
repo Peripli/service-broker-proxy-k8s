@@ -2,10 +2,33 @@
 
 
 [[projects]]
-  digest = "1:c236ab1520a0bc8dab629c166332bd6155c48ec3af363f28664f45b427502520"
+  digest = "1:3320181ddabd82e4900333f419c7c39a4f0960798541bd1d0d06843e057aa9b0"
+  name = "github.com/InVisionApp/go-health"
+  packages = [
+    ".",
+    "checkers",
+  ]
+  pruneopts = ""
+  revision = "06e1878ab5a8acf6e841861c6cbfcc4d3036add0"
+  version = "v2.1.0"
+
+[[projects]]
+  digest = "1:480fc6a9a7c77adb1affa7282d79c499d535dc7af7efc3da4d7fa0f302d37997"
+  name = "github.com/InVisionApp/go-logger"
+  packages = [
+    ".",
+    "shims/logrus",
+  ]
+  pruneopts = ""
+  revision = "c377c6c3f6a48a6366517e86f77bafea18454ff1"
+  version = "v1.0.1"
+
+[[projects]]
+  branch = "get-config-api"
+  digest = "1:bf181ce5b418a3f4029d2e004d5fcad96a69b6d20ca8e6057200ff3ae0a6caa6"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
-    "pkg/filter",
+    "pkg/authn",
     "pkg/logging",
     "pkg/platform",
     "pkg/sbproxy",
@@ -15,21 +38,21 @@
     "pkg/sm",
   ]
   pruneopts = ""
-  revision = "487f7be7b3703cd74eff37c1ca1eef1b82bff3fc"
-  version = "v0.5.0"
+  revision = "0ee2dad9007f4e6659c202f11148730ac4197ca0"
 
 [[projects]]
-  digest = "1:5e382f8d1facb07e559bd4cd2870b7f165e0a49ad64d378ee99d3727a09dc8e8"
+  branch = "get-config-api"
+  digest = "1:7ad887671e0693f9780a8a6c6e9188bdc5c045dda62a6733738f519e5bc41a99"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
+    "api/configuration",
     "api/filters",
     "api/healthcheck",
     "api/info",
     "api/notifications",
     "api/osb",
     "pkg/env",
-    "pkg/filters/labels",
     "pkg/health",
     "pkg/log",
     "pkg/query",
@@ -48,8 +71,7 @@
     "storage/interceptors",
   ]
   pruneopts = ""
-  revision = "be4f5e3b360a3bba7f05c79bf5d2946b9171ee46"
-  version = "v0.4.0"
+  revision = "f07455f6961f3c55807456df81615b3e57d6da87"
 
 [[projects]]
   digest = "1:7361b225f87c640365f3b00b1b42bc2ab7b923c9f933ac8873d3ff3c08753165"
@@ -299,12 +321,12 @@
   version = "1.0.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:63d903863a5c2999b3fa269bf42eb3749632d9ef650f489b38e04fb5f038f001"
+  digest = "1:644c9abadebbbd45b31f382ab686489b88eaab2d47b85b06fbbfc7577e6343ef"
   name = "github.com/onrik/logrus"
   packages = ["filename"]
   pruneopts = ""
-  revision = "0331655e8b9ec13423e2b31914d0a2154b13474e"
+  revision = "94ad747c51752e8dfa69cfd0335b8c76bf1ae592"
+  version = "v0.4.1"
 
 [[projects]]
   digest = "1:a3735b0978a8b53fc2ac97a6f46ca1189f0712a00df86d6ec4cf26c1a25e6d77"
@@ -425,12 +447,12 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:3dab237cd3263a290d771d133fed777bb56c22e380b00ebe92e6531d5c8d3d0c"
+  digest = "1:9b483544fcf4fc0155e566f49ee669c205fba12a36eb18e7f80510796a606db4"
   name = "github.com/spf13/viper"
   packages = ["."]
   pruneopts = ""
-  revision = "b5e8006cbee93ec955a89ab31e0e3ce3204f3736"
-  version = "v1.0.2"
+  revision = "b5bf975e5823809fb22c7644d008757f78a4259e"
+  version = "v1.4.0"
 
 [[projects]]
   digest = "1:eade4ea6782f5eed4a6b3138a648f9a332900650804fd206e5daaf99cc5613ea"

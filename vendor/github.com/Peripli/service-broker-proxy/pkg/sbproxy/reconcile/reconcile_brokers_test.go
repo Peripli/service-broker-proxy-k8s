@@ -19,6 +19,7 @@ package reconcile_test
 import (
 	"context"
 	"fmt"
+
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/reconcile"
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
@@ -518,6 +519,9 @@ var _ = Describe("Reconcile brokers", func() {
 		t.stubs()
 
 		reconciler.Resyncer.Resync(context.TODO())
+
+		invocations := append([]map[string][][]interface{}{}, fakeSMClient.Invocations(), fakePlatformCatalogFetcher.Invocations(), fakePlatformBrokerClient.Invocations())
+		verifyInvocationsUseSameCorrelationID(invocations)
 
 		if err1 != nil {
 			Expect(len(fakePlatformBrokerClient.Invocations())).To(Equal(0))

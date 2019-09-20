@@ -17,9 +17,13 @@
 package reconcile_test
 
 import (
+	"context"
 	"fmt"
-	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
 	"testing"
+
+	"github.com/Peripli/service-manager/pkg/log"
+
+	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
 
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/reconcile"
 
@@ -40,4 +44,29 @@ func TestReconcile(t *testing.T) {
 
 func brokerProxyName(brokerName, brokerID string) string {
 	return fmt.Sprintf("%s%s-%s", reconcile.DefaultProxyBrokerPrefix, brokerName, brokerID)
+}
+
+func verifyInvocationsUseSameCorrelationID(invocations []map[string][][]interface{}) {
+	var expectedCorrelationID string
+	// for each client
+	for _, client := range invocations {
+		// for each method type
+		for _, methodInvocation := range client {
+			// for each time this method is used
+			for _, args := range methodInvocation {
+				// if there were args in the call
+				if len(args) != 0 {
+					// the first arg of each client method invocation is the context and it contains the correlation ID
+					ctx := args[0].(context.Context)
+					if expectedCorrelationID == "" {
+						// store the first found correlation ID in a variable
+						expectedCorrelationID = log.CorrelationIDFromContext(ctx)
+					} else {
+						// verify that every call done by every client contains the same correlation ID value in the provided context
+						Expect(log.CorrelationIDFromContext(ctx)).To(Equal(expectedCorrelationID))
+					}
+				}
+			}
+		}
+	}
 }

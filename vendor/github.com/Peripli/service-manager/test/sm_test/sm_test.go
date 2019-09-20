@@ -18,10 +18,13 @@ package sm_test
 
 import (
 	"context"
-	"github.com/Peripli/service-manager/config"
-	"github.com/Peripli/service-manager/pkg/env"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/Peripli/service-manager/pkg/env/envfakes"
+
+	"github.com/Peripli/service-manager/config"
+	"github.com/Peripli/service-manager/pkg/env"
 
 	"github.com/gavv/httpexpect"
 	. "github.com/onsi/ginkgo"
@@ -45,12 +48,13 @@ var _ = Describe("SM", func() {
 		ctx         context.Context
 		cancel      context.CancelFunc
 		oauthServer *common.OAuthServer
+		fakeEnv     *envfakes.FakeEnvironment
 	)
 
 	BeforeEach(func() {
 		ctx, cancel = context.WithCancel(context.Background())
-
 		oauthServer = common.NewOAuthServer()
+		fakeEnv = &envfakes.FakeEnvironment{}
 	})
 
 	AfterEach(func() {
@@ -61,15 +65,15 @@ var _ = Describe("SM", func() {
 	Describe("New", func() {
 		Context("when validating config fails", func() {
 			It("should return error", func() {
-				env, err := env.Default(config.AddPFlags, common.SetTestFileLocation)
+				env, err := env.Default(context.TODO(), config.AddPFlags, common.SetTestFileLocation)
 				Expect(err).ToNot(HaveOccurred())
 				env.Set("api.token_issuer_url", oauthServer.URL())
 				env.Set("log.level", "invalid")
 
-				cfg, err := config.NewForEnv(env)
+				cfg, err := config.New(env)
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = sm.New(ctx, cancel, cfg)
+				_, err = sm.New(ctx, cancel, fakeEnv, cfg)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("error validating configuration"))
 			})
@@ -77,15 +81,15 @@ var _ = Describe("SM", func() {
 
 		Context("when setting up storage with invalid uri", func() {
 			It("should throw error during migrations setup", func() {
-				env, err := env.Default(config.AddPFlags, common.SetTestFileLocation)
+				env, err := env.Default(context.TODO(), config.AddPFlags, common.SetTestFileLocation)
 				Expect(err).ToNot(HaveOccurred())
 				env.Set("api.token_issuer_url", oauthServer.URL())
 				env.Set("storage.uri", "invalid")
 
-				cfg, err := config.NewForEnv(env)
+				cfg, err := config.New(env)
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = sm.New(ctx, cancel, cfg)
+				_, err = sm.New(ctx, cancel, fakeEnv, cfg)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("error opening storage"))
 			})
@@ -93,28 +97,28 @@ var _ = Describe("SM", func() {
 
 		Context("when setting up API fails", func() {
 			It("should return error", func() {
-				env, err := env.Default(config.AddPFlags, common.SetTestFileLocation)
+				env, err := env.Default(context.TODO(), config.AddPFlags, common.SetTestFileLocation)
 				Expect(err).ToNot(HaveOccurred())
 				env.Set("api.token_issuer_url", "")
 
-				cfg, err := config.NewForEnv(env)
+				cfg, err := config.New(env)
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = sm.New(ctx, cancel, cfg)
+				_, err = sm.New(ctx, cancel, fakeEnv, cfg)
 				Expect(err).To(HaveOccurred())
 			})
 		})
 
 		Context("when no API extensions are registered", func() {
 			It("should return working service manager", func() {
-				env, err := env.Default(config.AddPFlags, common.SetTestFileLocation)
+				env, err := env.Default(context.TODO(), config.AddPFlags, common.SetTestFileLocation)
 				Expect(err).ToNot(HaveOccurred())
 				env.Set("api.token_issuer_url", oauthServer.URL())
 
-				cfg, err := config.NewForEnv(env)
+				cfg, err := config.New(env)
 				Expect(err).ToNot(HaveOccurred())
 
-				smanager, err := sm.New(ctx, cancel, cfg)
+				smanager, err := sm.New(ctx, cancel, fakeEnv, cfg)
 				Expect(err).ToNot(HaveOccurred())
 
 				verifyServiceManagerStartsSuccessFully(httptest.NewServer(smanager.Build().Server.Router))
@@ -123,14 +127,14 @@ var _ = Describe("SM", func() {
 
 		Context("when additional filter is registered", func() {
 			It("should return working service manager with a new filter", func() {
-				env, err := env.Default(config.AddPFlags, common.SetTestFileLocation)
+				env, err := env.Default(context.TODO(), config.AddPFlags, common.SetTestFileLocation)
 				Expect(err).ToNot(HaveOccurred())
 				env.Set("api.token_issuer_url", oauthServer.URL())
 
-				cfg, err := config.NewForEnv(env)
+				cfg, err := config.New(env)
 				Expect(err).ToNot(HaveOccurred())
 
-				smanager, err := sm.New(ctx, cancel, cfg)
+				smanager, err := sm.New(ctx, cancel, fakeEnv, cfg)
 				Expect(err).ToNot(HaveOccurred())
 
 				smanager.RegisterFilters(testFilter{})
@@ -145,14 +149,14 @@ var _ = Describe("SM", func() {
 
 		Context("when additional controller is registered", func() {
 			It("should return working service manager with additional controller", func() {
-				env, err := env.Default(config.AddPFlags, common.SetTestFileLocation)
+				env, err := env.Default(context.TODO(), config.AddPFlags, common.SetTestFileLocation)
 				Expect(err).ToNot(HaveOccurred())
 				env.Set("api.token_issuer_url", oauthServer.URL())
 
-				cfg, err := config.NewForEnv(env)
+				cfg, err := config.New(env)
 				Expect(err).ToNot(HaveOccurred())
 
-				smanager, err := sm.New(ctx, cancel, cfg)
+				smanager, err := sm.New(ctx, cancel, fakeEnv, cfg)
 				Expect(err).ToNot(HaveOccurred())
 
 				smanager.RegisterControllers(testController{})

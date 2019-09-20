@@ -18,6 +18,7 @@ package config_test
 
 import (
 	"fmt"
+	"github.com/Peripli/service-manager/pkg/health"
 	"testing"
 	"time"
 
@@ -44,9 +45,23 @@ var _ = Describe("config", func() {
 	)
 
 	Describe("Validate", func() {
+		var fatal bool
+		var failuresThreshold int64
+		var interval time.Duration
+
 		assertErrorDuringValidate := func() {
 			err = config.Validate()
 			Expect(err).To(HaveOccurred())
+		}
+
+		registerIndicatorSettings := func() {
+			indicatorSettings := &health.IndicatorSettings{
+				Fatal:             fatal,
+				FailuresThreshold: failuresThreshold,
+				Interval:          interval,
+			}
+
+			config.Health.Indicators["test"] = indicatorSettings
 		}
 
 		BeforeEach(func() {
@@ -54,8 +69,66 @@ var _ = Describe("config", func() {
 			config.Storage.URI = "postgres://postgres:postgres@localhost:5555/postgres?sslmode=disable"
 			config.API.TokenIssuerURL = "http://example.com"
 			config.API.ClientID = "sm"
-			config.API.SkipSSLValidation = true
 			config.Storage.EncryptionKey = "ejHjRNHbS0NaqARSRvnweVV9zcmhQEa8"
+
+			fatal = true
+			failuresThreshold = 1
+			interval = 30 * time.Second
+		})
+
+		Context("health indicator with negative threshold", func() {
+			It("should be considered invalid", func() {
+				failuresThreshold = -1
+				registerIndicatorSettings()
+				assertErrorDuringValidate()
+			})
+		})
+
+		Context("health indicator with 0 threshold", func() {
+			It("should be considered invalid if it is fatal", func() {
+				failuresThreshold = 0
+				registerIndicatorSettings()
+				assertErrorDuringValidate()
+			})
+		})
+
+		Context("health indicator with 0 threshold", func() {
+			It("should be considered valid if it is not fatal", func() {
+				fatal = false
+				failuresThreshold = 0
+				registerIndicatorSettings()
+				err := config.Validate()
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+		})
+
+		Context("health indicator with positive threshold", func() {
+			It("should be considered invalid if it is not fatal", func() {
+				fatal = false
+				failuresThreshold = 3
+				registerIndicatorSettings()
+				assertErrorDuringValidate()
+			})
+		})
+
+		Context("health indicator with interval less than 10", func() {
+			It("should be considered invalid", func() {
+				interval = 5 * time.Second
+				registerIndicatorSettings()
+				assertErrorDuringValidate()
+			})
+		})
+
+		Context("health indicator with positive threshold and interval >= 10", func() {
+			It("should be considered valid", func() {
+				interval = 30 * time.Second
+				failuresThreshold = 3
+				registerIndicatorSettings()
+
+				err := config.Validate()
+
+				Expect(err).ShouldNot(HaveOccurred())
+			})
 		})
 
 		Context("when config is valid", func() {
@@ -165,7 +238,7 @@ var _ = Describe("config", func() {
 		)
 
 		assertErrorDuringNewConfiguration := func() {
-			_, err := cfg.NewForEnv(fakeEnv)
+			_, err := cfg.New(fakeEnv)
 			Expect(err).To(HaveOccurred())
 		}
 
@@ -200,9 +273,8 @@ var _ = Describe("config", func() {
 						Level:  "debug",
 					},
 					API: &api.Settings{
-						TokenIssuerURL:    "http://example.com",
-						ClientID:          "sm",
-						SkipSSLValidation: false,
+						TokenIssuerURL: "http://example.com",
+						ClientID:       "sm",
 					},
 				}
 
@@ -227,7 +299,7 @@ var _ = Describe("config", func() {
 				})
 
 				It("uses the config values from env", func() {
-					c, err := cfg.NewForEnv(fakeEnv)
+					c, err := cfg.New(fakeEnv)
 
 					Expect(err).To(Not(HaveOccurred()))
 					Expect(fakeEnv.UnmarshalCallCount()).To(Equal(1))
@@ -244,7 +316,7 @@ var _ = Describe("config", func() {
 				})
 
 				It("returns an empty config", func() {
-					c, err := cfg.NewForEnv(fakeEnv)
+					c, err := cfg.New(fakeEnv)
 
 					Expect(err).To(Not(HaveOccurred()))
 					Expect(fakeEnv.UnmarshalCallCount()).To(Equal(1))

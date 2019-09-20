@@ -17,10 +17,12 @@
 package sbproxy
 
 import (
+	"github.com/Peripli/service-broker-proxy/pkg/authn"
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/notifications"
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/reconcile"
 	"github.com/Peripli/service-broker-proxy/pkg/sm"
 	"github.com/Peripli/service-manager/pkg/env"
+	"github.com/Peripli/service-manager/pkg/health"
 	"github.com/Peripli/service-manager/pkg/log"
 	"github.com/Peripli/service-manager/pkg/server"
 	"github.com/Peripli/service-manager/pkg/util"
@@ -29,21 +31,25 @@ import (
 
 // Settings type holds all config properties for the sbproxy
 type Settings struct {
-	Server    *server.Settings                `mapstructure:"server"`
-	Log       *log.Settings                   `mapstructure:"log"`
-	Sm        *sm.Settings                    `mapstructure:"sm"`
-	Reconcile *reconcile.Settings             `mapstructure:"app"`
-	Producer  *notifications.ProducerSettings `mapstructure:"producer"`
+	Server         *server.Settings                `mapstructure:"server"`
+	Log            *log.Settings                   `mapstructure:"log"`
+	Sm             *sm.Settings                    `mapstructure:"sm"`
+	Reconcile      *reconcile.Settings             `mapstructure:"app"`
+	Producer       *notifications.ProducerSettings `mapstructure:"producer"`
+	Health         *health.Settings                `mapstructure:"health"`
+	Authentication *authn.Settings                 `mapstructure:"authn"`
 }
 
 // DefaultSettings returns default value for the proxy settings
 func DefaultSettings() *Settings {
 	return &Settings{
-		Server:    server.DefaultSettings(),
-		Log:       log.DefaultSettings(),
-		Sm:        sm.DefaultSettings(),
-		Reconcile: reconcile.DefaultSettings(),
-		Producer:  notifications.DefaultProducerSettings(),
+		Server:         server.DefaultSettings(),
+		Log:            log.DefaultSettings(),
+		Sm:             sm.DefaultSettings(),
+		Reconcile:      reconcile.DefaultSettings(),
+		Producer:       notifications.DefaultProducerSettings(),
+		Health:         health.DefaultSettings(),
+		Authentication: authn.DefaultSettings(),
 	}
 }
 
@@ -66,7 +72,7 @@ func AddPFlags(set *pflag.FlagSet) {
 
 // Validate validates that the configuration contains all mandatory properties
 func (c *Settings) Validate() error {
-	validatable := []util.InputValidator{c.Server, c.Log, c.Sm, c.Reconcile, c.Producer}
+	validatable := []util.InputValidator{c.Server, c.Log, c.Sm, c.Reconcile, c.Producer, c.Health}
 
 	for _, item := range validatable {
 		if err := item.Validate(); err != nil {
