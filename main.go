@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Peripli/service-manager/pkg/security/filters"
-
 	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/client"
 	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/config"
 
@@ -39,8 +37,6 @@ func main() {
 	if err != nil {
 		panic(fmt.Errorf("error creating sbproxy: %s", err))
 	}
-
-	proxyBuilder.RegisterFilters(filters.NewRequiredAuthnFilter())
 
 	proxyBuilder.Build().Run()
 }
