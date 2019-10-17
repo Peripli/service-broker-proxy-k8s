@@ -41,8 +41,9 @@ func TestVisibilities(t *testing.T) {
 var _ = test.DescribeTestsFor(test.TestCase{
 	API: web.VisibilitiesURL,
 	SupportedOps: []test.Op{
-		test.Get, test.List, test.Delete, test.DeleteList,
+		test.Get, test.List, test.Delete, test.DeleteList, test.Patch,
 	},
+	DisableTenantResources:                 true,
 	ResourceBlueprint:                      blueprint(true),
 	ResourceWithoutNullableFieldsBlueprint: blueprint(false),
 	AdditionalTests: func(ctx *common.TestContext) {
@@ -65,9 +66,8 @@ var _ = test.DescribeTestsFor(test.TestCase{
 				existingPlatformID = platform.ID
 				Expect(existingPlatformID).ToNot(BeEmpty())
 
-				existingPlanIDs = ctx.SMWithOAuth.GET(web.ServicePlansURL).
-					Expect().Status(http.StatusOK).
-					JSON().Path("$.service_plans[*].id").Array().Raw()
+				existingPlanIDs = ctx.SMWithOAuth.List(web.ServicePlansURL).
+					Path("$[*].id").Array().Raw()
 				length := len(existingPlanIDs)
 				Expect(length).Should(BeNumerically(">=", 2))
 
@@ -144,8 +144,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 
 				Context("with missing platform id field", func() {
 					It("returns 201 if no visibilities for the plan exist", func() {
-						ctx.SMWithOAuth.GET(web.VisibilitiesURL).
-							Expect().Status(http.StatusOK).JSON().Path("$.visibilities[*].id").Array().NotContains(existingPlanIDs[1])
+						ctx.SMWithOAuth.List(web.VisibilitiesURL).Path("$[*].id").Array().NotContains(existingPlanIDs[1])
 
 						ctx.SMWithOAuth.POST(web.VisibilitiesURL).
 							WithJSON(common.Object{
@@ -164,8 +163,7 @@ var _ = test.DescribeTestsFor(test.TestCase{
 							}).
 							Expect().Status(http.StatusCreated)
 
-						ctx.SMWithOAuth.GET(web.VisibilitiesURL).
-							Expect().Status(http.StatusOK).JSON().Path("$.visibilities[*].service_plan_id").Array().Contains(existingPlanIDs[0])
+						ctx.SMWithOAuth.List(web.VisibilitiesURL).Path("$[*].service_plan_id").Array().Contains(existingPlanIDs[0])
 
 						ctx.SMWithOAuth.POST(web.VisibilitiesURL).
 							WithJSON(common.Object{
@@ -737,8 +735,8 @@ var _ = test.DescribeTestsFor(test.TestCase{
 	},
 })
 
-func blueprint(setNullFieldsValues bool) func(ctx *common.TestContext) common.Object {
-	return func(ctx *common.TestContext) common.Object {
+func blueprint(setNullFieldsValues bool) func(ctx *common.TestContext, auth *common.SMExpect) common.Object {
+	return func(ctx *common.TestContext, auth *common.SMExpect) common.Object {
 		visReqBody := make(common.Object, 0)
 		cPaidPlan := common.GeneratePaidTestPlan()
 		cService := common.GenerateTestServiceWithPlans(cPaidPlan)
@@ -746,23 +744,19 @@ func blueprint(setNullFieldsValues bool) func(ctx *common.TestContext) common.Ob
 		catalog.AddService(cService)
 		id, _, _ := ctx.RegisterBrokerWithCatalog(catalog)
 
-		object := ctx.SMWithOAuth.GET(web.ServiceOfferingsURL).WithQuery("fieldQuery", "broker_id = "+id).
-			Expect()
+		so := auth.ListWithQuery(web.ServiceOfferingsURL, "fieldQuery=broker_id = "+id).First()
 
-		so := object.Status(http.StatusOK).JSON().Object().Value("service_offerings").Array().First()
-
-		servicePlanID := ctx.SMWithOAuth.GET(web.ServicePlansURL).WithQuery("fieldQuery", fmt.Sprintf("service_offering_id = %s", so.Object().Value("id").String().Raw())).
-			Expect().
-			Status(http.StatusOK).JSON().Object().Value("service_plans").Array().First().Object().Value("id").String().Raw()
+		servicePlanID := auth.ListWithQuery(web.ServicePlansURL, "fieldQuery="+fmt.Sprintf("service_offering_id = %s", so.Object().Value("id").String().Raw())).
+			First().Object().Value("id").String().Raw()
 		visReqBody["service_plan_id"] = servicePlanID
 		if setNullFieldsValues {
-			platformID := ctx.SMWithOAuth.POST(web.PlatformsURL).WithJSON(common.GenerateRandomPlatform()).
+			platformID := auth.POST(web.PlatformsURL).WithJSON(common.GenerateRandomPlatform()).
 				Expect().
 				Status(http.StatusCreated).JSON().Object().Value("id").String().Raw()
 			visReqBody["platform_id"] = platformID
 		}
 
-		visibility := ctx.SMWithOAuth.POST(web.VisibilitiesURL).WithJSON(visReqBody).Expect().
+		visibility := auth.POST(web.VisibilitiesURL).WithJSON(visReqBody).Expect().
 			Status(http.StatusCreated).JSON().Object().Raw()
 		return visibility
 	}

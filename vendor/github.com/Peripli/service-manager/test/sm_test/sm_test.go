@@ -18,10 +18,11 @@ package sm_test
 
 import (
 	"context"
-	"github.com/Peripli/service-manager/config"
-	"github.com/Peripli/service-manager/pkg/env"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/Peripli/service-manager/config"
+	"github.com/Peripli/service-manager/pkg/env"
 
 	"github.com/gavv/httpexpect"
 	. "github.com/onsi/ginkgo"
@@ -61,7 +62,7 @@ var _ = Describe("SM", func() {
 	Describe("New", func() {
 		Context("when validating config fails", func() {
 			It("should return error", func() {
-				env, err := env.Default(config.AddPFlags, common.SetTestFileLocation)
+				env, err := env.Default(context.TODO(), config.AddPFlags, common.SetTestFileLocation)
 				Expect(err).ToNot(HaveOccurred())
 				env.Set("api.token_issuer_url", oauthServer.URL())
 				env.Set("log.level", "invalid")
@@ -77,7 +78,7 @@ var _ = Describe("SM", func() {
 
 		Context("when setting up storage with invalid uri", func() {
 			It("should throw error during migrations setup", func() {
-				env, err := env.Default(config.AddPFlags, common.SetTestFileLocation)
+				env, err := env.Default(context.TODO(), config.AddPFlags, common.SetTestFileLocation)
 				Expect(err).ToNot(HaveOccurred())
 				env.Set("api.token_issuer_url", oauthServer.URL())
 				env.Set("storage.uri", "invalid")
@@ -93,7 +94,7 @@ var _ = Describe("SM", func() {
 
 		Context("when setting up API fails", func() {
 			It("should return error", func() {
-				env, err := env.Default(config.AddPFlags, common.SetTestFileLocation)
+				env, err := env.Default(context.TODO(), config.AddPFlags, common.SetTestFileLocation)
 				Expect(err).ToNot(HaveOccurred())
 				env.Set("api.token_issuer_url", "")
 
@@ -107,7 +108,7 @@ var _ = Describe("SM", func() {
 
 		Context("when no API extensions are registered", func() {
 			It("should return working service manager", func() {
-				env, err := env.Default(config.AddPFlags, common.SetTestFileLocation)
+				env, err := env.Default(context.TODO(), config.AddPFlags, common.SetTestFileLocation)
 				Expect(err).ToNot(HaveOccurred())
 				env.Set("api.token_issuer_url", oauthServer.URL())
 
@@ -123,7 +124,7 @@ var _ = Describe("SM", func() {
 
 		Context("when additional filter is registered", func() {
 			It("should return working service manager with a new filter", func() {
-				env, err := env.Default(config.AddPFlags, common.SetTestFileLocation)
+				env, err := env.Default(context.TODO(), config.AddPFlags, common.SetTestFileLocation)
 				Expect(err).ToNot(HaveOccurred())
 				env.Set("api.token_issuer_url", oauthServer.URL())
 
@@ -137,7 +138,7 @@ var _ = Describe("SM", func() {
 
 				SM := verifyServiceManagerStartsSuccessFully(httptest.NewServer(smanager.Build().Server.Router))
 
-				SM.GET("/v1/info").
+				SM.GET(web.InfoURL).
 					Expect().
 					Status(http.StatusOK).JSON().Object().Value("invoked").Equal("filter")
 			})
@@ -145,7 +146,7 @@ var _ = Describe("SM", func() {
 
 		Context("when additional controller is registered", func() {
 			It("should return working service manager with additional controller", func() {
-				env, err := env.Default(config.AddPFlags, common.SetTestFileLocation)
+				env, err := env.Default(context.TODO(), config.AddPFlags, common.SetTestFileLocation)
 				Expect(err).ToNot(HaveOccurred())
 				env.Set("api.token_issuer_url", oauthServer.URL())
 
@@ -168,14 +169,14 @@ var _ = Describe("SM", func() {
 	})
 })
 
-func verifyServiceManagerStartsSuccessFully(serviceManagerServer *httptest.Server) *httpexpect.Expect {
+func verifyServiceManagerStartsSuccessFully(serviceManagerServer *httptest.Server) *common.SMExpect {
 	SM := httpexpect.New(GinkgoT(), serviceManagerServer.URL)
 	SM.GET(healthcheck.URL).
 		Expect().
 		Status(http.StatusOK).JSON().Object().ContainsMap(map[string]interface{}{
 		"status": "UP",
 	})
-	return SM
+	return &common.SMExpect{SM}
 }
 
 func testHandler(identifier string) web.HandlerFunc {
@@ -205,7 +206,7 @@ func (tf testFilter) FilterMatchers() []web.FilterMatcher {
 	return []web.FilterMatcher{
 		{
 			Matchers: []web.Matcher{
-				web.Path("/v1/info/*"),
+				web.Path(web.InfoURL + "/*"),
 			},
 		},
 	}

@@ -103,11 +103,13 @@ var _ = Describe("Notifications", func() {
 			ctx, cancelFunc = context.WithCancel(context.Background())
 			logInterceptor = &logWriter{}
 			logInterceptor.Reset()
-			producerCtx = log.Configure(ctx, &log.Settings{
+			var err error
+			producerCtx, err = log.Configure(ctx, &log.Settings{
 				Level:  "debug",
 				Format: "text",
-				Output: GinkgoWriter,
+				Output: "ginkgowriter",
 			})
+			Expect(err).ToNot(HaveOccurred())
 			log.AddHook(logInterceptor)
 			server = newWSServer()
 			server.Start()

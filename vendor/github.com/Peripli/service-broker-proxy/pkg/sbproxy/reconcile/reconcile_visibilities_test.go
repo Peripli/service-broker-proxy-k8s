@@ -792,6 +792,9 @@ var _ = Describe("Reconcile visibilities", func() {
 
 		reconciler.Resyncer.Resync(context.TODO())
 
+		invocations := append([]map[string][][]interface{}{}, fakeSMClient.Invocations(), fakePlatformClient.Invocations(), fakePlatformCatalogFetcher.Invocations(), fakePlatformBrokerClient.Invocations(), fakeVisibilityClient.Invocations())
+		verifyInvocationsUseSameCorrelationID(invocations)
+
 		Expect(fakeSMClient.GetBrokersCallCount()).To(Equal(1))
 
 		if t.enablePlanVisibilityCalledFor != nil {

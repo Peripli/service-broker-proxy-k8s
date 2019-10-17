@@ -138,33 +138,36 @@ type OpenCloser interface {
 // Pinger allows pinging the storage to check liveliness
 //go:generate counterfeiter . Pinger
 type Pinger interface {
-	// Ping verifies a connection to the database is still alive, establishing a connection if necessary.
-	Ping() error
+	// PingContext verifies a connection to the database is still alive, establishing a connection if necessary.
+	PingContext(context.Context) error
 }
 
 // PingFunc is an adapter that allows to use regular functions as Pinger
-type PingFunc func() error
+type PingFunc func(context.Context) error
 
-// Ping allows PingFunc to act as a Pinger
-func (mf PingFunc) Ping() error {
-	return mf()
+// PingContext allows PingFunc to act as a Pinger
+func (mf PingFunc) PingContext(ctx context.Context) error {
+	return mf(ctx)
 }
 
 type Repository interface {
-	// Create stores a broker in SM DB
+	// Create stores an object in SM DB
 	Create(ctx context.Context, obj types.Object) (types.Object, error)
 
-	// Get retrieves a broker using the provided id from SM DB
-	Get(ctx context.Context, objectType types.ObjectType, id string) (types.Object, error)
+	// Get retrieves an object using the provided id from SM DB
+	Get(ctx context.Context, objectType types.ObjectType, criteria ...query.Criterion) (types.Object, error)
 
-	// List retrieves all brokers from SM DB
+	// List retrieves all object from SM DB
 	List(ctx context.Context, objectType types.ObjectType, criteria ...query.Criterion) (types.ObjectList, error)
 
-	// Delete deletes a broker from SM DB
+	// Count retrieves number of objects of particular type in SM DB
+	Count(ctx context.Context, objectType types.ObjectType, criteria ...query.Criterion) (int, error)
+
+	// Delete deletes an object from SM DB
 	Delete(ctx context.Context, objectType types.ObjectType, criteria ...query.Criterion) (types.ObjectList, error)
 
-	// Update updates a broker from SM DB
-	Update(ctx context.Context, obj types.Object, labelChanges ...*query.LabelChange) (types.Object, error)
+	// Update updates an object from SM DB
+	Update(ctx context.Context, obj types.Object, labelChanges query.LabelChanges, criteria ...query.Criterion) (types.Object, error)
 }
 
 // TransactionalRepository is a storage repository that can initiate a transaction
@@ -182,8 +185,8 @@ type TransactionalRepositoryDecorator func(TransactionalRepository) (Transaction
 //go:generate counterfeiter . Storage
 type Storage interface {
 	OpenCloser
-	Pinger
 	TransactionalRepository
+	Pinger
 
 	Introduce(entity Entity)
 }

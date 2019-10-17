@@ -16,9 +16,21 @@
 package osb_test
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
+
+	"github.com/Peripli/service-manager/pkg/query"
+	"github.com/Peripli/service-manager/pkg/types"
+
+	"github.com/tidwall/gjson"
+
+	"github.com/Peripli/service-manager/pkg/web"
+
+	"github.com/spf13/pflag"
 
 	"github.com/gofrs/uuid"
 
@@ -28,6 +40,7 @@ import (
 	"testing"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 )
 
@@ -61,7 +74,7 @@ func TestOSB(t *testing.T) {
 
 func assertFailingBrokerError(req *httpexpect.Response) {
 	req.Status(http.StatusNotAcceptable).JSON().Object().
-		Value("description").String().Contains("Failing service broker error")
+		Value("description").String().Match("Service broker .* failed with: Failing service broker error")
 }
 
 func assertMissingBrokerError(req *httpexpect.Response) {
@@ -69,7 +82,7 @@ func assertMissingBrokerError(req *httpexpect.Response) {
 		Value("description").String().Contains("could not find such broker")
 }
 
-func assertStoppedBrokerError(req *httpexpect.Response) {
+func assertUnresponsiveBrokerError(req *httpexpect.Response) {
 	req.Status(http.StatusBadGateway).JSON().Object().
 		Value("description").String().Contains("could not reach service broker")
 }
@@ -126,6 +139,11 @@ func queryParameterVerificationHandler(key, value string) http.HandlerFunc {
 }
 
 var _ = Describe("Service Manager OSB API", func() {
+	const (
+		timeoutDuration             = time.Millisecond * 500
+		additionalDelayAfterTimeout = time.Second
+	)
+
 	var (
 		ctx *common.TestContext
 
@@ -146,15 +164,66 @@ var _ = Describe("Service Manager OSB API", func() {
 
 		failingBrokerServer  *common.BrokerServer
 		failingBrokerID      string
+		failingBrokerName    string
 		smUrlToFailingBroker string
 
-		smUrlToQueryVerificationBroker string
-		headerKey                      string
-		headerValue                    string
+		queryParameterVerificationServer   *common.BrokerServer
+		queryParameterVerificationServerID string
+		smUrlToQueryVerificationBroker     string
+		headerKey                          string
+		headerValue                        string
+
+		timeoutBrokerServer  *common.BrokerServer
+		timeoutBrokerID      string
+		smUrlToTimeoutBroker string
 	)
 
+	delayingHandler := func(done chan<- interface{}) func(rw http.ResponseWriter, req *http.Request) {
+		return func(rw http.ResponseWriter, req *http.Request) {
+			brokerDelay := timeoutDuration + additionalDelayAfterTimeout
+			timeoutContext, _ := context.WithTimeout(req.Context(), brokerDelay)
+			<-timeoutContext.Done()
+			common.SetResponse(rw, http.StatusTeapot, common.Object{})
+			close(done)
+		}
+	}
+
+	resetBrokersHandlers := func() {
+		validBrokerServer.ResetHandlers()
+		brokerServerWithEmptyCatalog.ResetHandlers()
+		stoppedBrokerServer.ResetHandlers()
+		failingBrokerServer.ResetHandlers()
+		queryParameterVerificationServer.ResetHandlers()
+		timeoutBrokerServer.ResetHandlers()
+
+		failingBrokerServer.ServiceInstanceHandler = failingHandler
+		failingBrokerServer.BindingHandler = failingHandler
+		failingBrokerServer.CatalogHandler = failingHandler
+		failingBrokerServer.ServiceInstanceLastOpHandler = failingHandler
+		failingBrokerServer.BindingLastOpHandler = failingHandler
+		failingBrokerServer.BindingAdaptCredentialsHandler = failingHandler
+
+		queryParameterVerificationServer.ServiceInstanceHandler = queryParameterVerificationHandler(headerKey, headerValue)
+		queryParameterVerificationServer.BindingHandler = queryParameterVerificationHandler(headerKey, headerValue)
+		queryParameterVerificationServer.CatalogHandler = queryParameterVerificationHandler(headerKey, headerValue)
+		queryParameterVerificationServer.ServiceInstanceLastOpHandler = queryParameterVerificationHandler(headerKey, headerValue)
+		queryParameterVerificationServer.BindingLastOpHandler = queryParameterVerificationHandler(headerKey, headerValue)
+
+	}
+
+	resetBrokersCallHistory := func() {
+		validBrokerServer.ResetCallHistory()
+		brokerServerWithEmptyCatalog.ResetCallHistory()
+		stoppedBrokerServer.ResetCallHistory()
+		failingBrokerServer.ResetCallHistory()
+		queryParameterVerificationServer.ResetCallHistory()
+		timeoutBrokerServer.ResetCallHistory()
+	}
+
 	BeforeSuite(func() {
-		ctx = common.DefaultTestContext()
+		ctx = common.NewTestContextBuilder().WithEnvPreExtensions(func(set *pflag.FlagSet) {
+			Expect(set.Set("httpclient.response_header_timeout", timeoutDuration.String())).ToNot(HaveOccurred())
+		}).Build()
 		validBrokerID, _, validBrokerServer = ctx.RegisterBroker()
 		smUrlToWorkingBroker = validBrokerServer.URL() + "/v1/osb/" + validBrokerID
 
@@ -163,15 +232,12 @@ var _ = Describe("Service Manager OSB API", func() {
 
 		simpleBrokerCatalogID, _, brokerServerWithSimpleCatalog := ctx.RegisterBrokerWithCatalog(simpleCatalog)
 		smUrlToSimpleBrokerCatalogBroker = brokerServerWithSimpleCatalog.URL() + "/v1/osb/" + simpleBrokerCatalogID
+		common.CreateVisibilitiesForAllBrokerPlans(ctx.SMWithOAuth, simpleBrokerCatalogID)
 
-		failingBrokerID, _, failingBrokerServer = ctx.RegisterBroker()
+		var failingBrokerObject common.Object
+		failingBrokerID, failingBrokerObject, failingBrokerServer = ctx.RegisterBroker()
+		failingBrokerName = failingBrokerObject["name"].(string)
 		smUrlToFailingBroker = failingBrokerServer.URL() + "/v1/osb/" + failingBrokerID
-		failingBrokerServer.ServiceInstanceHandler = failingHandler
-		failingBrokerServer.BindingHandler = failingHandler
-		failingBrokerServer.CatalogHandler = failingHandler
-		failingBrokerServer.ServiceInstanceLastOpHandler = failingHandler
-		failingBrokerServer.BindingLastOpHandler = failingHandler
-		failingBrokerServer.BindingAdaptCredentialsHandler = failingHandler
 
 		UUID, err := uuid.NewV4()
 		if err != nil {
@@ -185,21 +251,20 @@ var _ = Describe("Service Manager OSB API", func() {
 		smUrlToStoppedBroker = stoppedBrokerServer.URL() + "/v1/osb/" + stoppedBrokerID
 
 		headerKey, headerValue = generateRandomQueryParam()
-		queryParameterVerificationServerID, _, queryParameterVerificationServer := ctx.RegisterBroker()
-		queryParameterVerificationServer.ServiceInstanceHandler = queryParameterVerificationHandler(headerKey, headerValue)
-		queryParameterVerificationServer.BindingHandler = queryParameterVerificationHandler(headerKey, headerValue)
-		queryParameterVerificationServer.CatalogHandler = queryParameterVerificationHandler(headerKey, headerValue)
-		queryParameterVerificationServer.ServiceInstanceLastOpHandler = queryParameterVerificationHandler(headerKey, headerValue)
-		queryParameterVerificationServer.BindingLastOpHandler = queryParameterVerificationHandler(headerKey, headerValue)
+		queryParameterVerificationServerID, _, queryParameterVerificationServer = ctx.RegisterBroker()
 		smUrlToQueryVerificationBroker = queryParameterVerificationServer.URL() + "/v1/osb/" + queryParameterVerificationServerID
+
+		timeoutBrokerID, _, timeoutBrokerServer = ctx.RegisterBroker()
+		smUrlToTimeoutBroker = timeoutBrokerServer.URL() + "/v1/osb/" + timeoutBrokerID
+	})
+
+	BeforeEach(func() {
+		resetBrokersHandlers()
+		resetBrokersCallHistory()
 	})
 
 	AfterSuite(func() {
 		ctx.Cleanup()
-	})
-
-	AfterEach(func() {
-		validBrokerServer.ResetCallHistory()
 	})
 
 	Describe("Catalog", func() {
@@ -279,9 +344,122 @@ var _ = Describe("Service Manager OSB API", func() {
 				Expect(len(stoppedBrokerServer.CatalogEndpointRequests)).To(Equal(0))
 			})
 		})
+
+		Describe("filtering catalog for k8s platform based on visibilities", func() {
+			var brokerID string
+			var plan1, plan2, plan3 string
+			var plan1ID, plan1CatalogID, plan2ID, plan2CatalogID, plan3ID, plan3CatalogID string
+			var k8sPlatform *types.Platform
+			var k8sAgent *common.SMExpect
+
+			getSMPlanIDByCatalogID := func(planCatalogID string) string {
+				plans, err := ctx.SMRepository.List(context.Background(), types.ServicePlanType, query.ByField(query.EqualsOperator, "catalog_id", planCatalogID))
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(plans.Len()).To(BeNumerically("==", 1))
+				return plans.ItemAt(0).GetID()
+			}
+
+			assertBrokerPlansVisibleForPlatform := func(brokerID string, agent *common.SMExpect, plans ...interface{}) {
+				result := agent.GET(fmt.Sprintf("%s/%s/v2/catalog", web.OSBURL, brokerID)).
+					Expect().Status(http.StatusOK).JSON().Path("$.services[*].plans[*].id").Array()
+
+				result.Length().Equal(len(plans))
+				if len(plans) > 0 {
+					result.ContainsOnly(plans...)
+				}
+			}
+
+			BeforeEach(func() {
+				k8sPlatformJSON := common.MakePlatform("k8s-platform", "k8s-platform", "kubernetes", "test-platform-k8s")
+				k8sPlatform = common.RegisterPlatformInSM(k8sPlatformJSON, ctx.SMWithOAuth, map[string]string{})
+				k8sAgent = &common.SMExpect{Expect: ctx.SM.Builder(func(req *httpexpect.Request) {
+					username, password := k8sPlatform.Credentials.Basic.Username, k8sPlatform.Credentials.Basic.Password
+					req.WithBasicAuth(username, password)
+				})}
+
+				catalog := common.NewEmptySBCatalog()
+				plan1 = common.GenerateFreeTestPlan()
+				plan2 = common.GenerateTestPlan()
+				plan3 = common.GenerateTestPlan()
+				catalog.AddService(common.GenerateTestServiceWithPlans(plan1, plan2))
+				catalog.AddService(common.GenerateTestServiceWithPlans(plan3))
+				brokerID, _, _ = ctx.RegisterBrokerWithCatalog(catalog)
+
+				plan1CatalogID = gjson.Get(plan1, "id").String()
+				plan2CatalogID = gjson.Get(plan2, "id").String()
+				plan3CatalogID = gjson.Get(plan3, "id").String()
+				plan1ID = getSMPlanIDByCatalogID(plan1CatalogID)
+				plan2ID = getSMPlanIDByCatalogID(plan2CatalogID)
+				plan3ID = getSMPlanIDByCatalogID(plan3CatalogID)
+			})
+
+			AfterEach(func() {
+				ctx.CleanupBroker(brokerID)
+				ctx.SMWithOAuth.DELETE(web.PlatformsURL + "/" + k8sPlatform.ID).
+					Expect().Status(http.StatusOK)
+			})
+
+			Context("for platform with no visibilities", func() {
+				It("should return empty services catalog", func() {
+					assertBrokerPlansVisibleForPlatform(brokerID, k8sAgent)
+				})
+			})
+
+			Context("for cloud foundry platform", func() {
+				It("should return all services and plans, no matter the visibilities", func() {
+					assertBrokerPlansVisibleForPlatform(brokerID, ctx.SMWithBasic, plan1CatalogID, plan2CatalogID, plan3CatalogID)
+				})
+			})
+
+			Context("for platform with visibilities for 2 plans from 2 services", func() {
+				It("should return 2 plans", func() {
+					assertBrokerPlansVisibleForPlatform(brokerID, k8sAgent)
+
+					ctx.SMWithOAuth.POST(web.VisibilitiesURL).WithJSON(common.Object{
+						"service_plan_id": plan1ID,
+						"platform_id":     k8sPlatform.ID,
+					}).Expect().Status(http.StatusCreated)
+					ctx.SMWithOAuth.POST(web.VisibilitiesURL).WithJSON(common.Object{
+						"service_plan_id": plan3ID,
+						"platform_id":     k8sPlatform.ID,
+					}).Expect().Status(http.StatusCreated)
+
+					assertBrokerPlansVisibleForPlatform(brokerID, k8sAgent, plan3CatalogID, plan1CatalogID)
+				})
+			})
+
+			Context("for platform with non-public visibility for one plan", func() {
+				It("should return 1 plan", func() {
+					assertBrokerPlansVisibleForPlatform(brokerID, k8sAgent)
+
+					ctx.SMWithOAuth.POST(web.VisibilitiesURL).WithJSON(common.Object{
+						"service_plan_id": plan2ID,
+						"platform_id":     k8sPlatform.ID,
+					}).Expect().Status(http.StatusCreated)
+
+					assertBrokerPlansVisibleForPlatform(brokerID, k8sAgent, plan2CatalogID)
+				})
+			})
+
+			Context("for platform with public visibility for one plan", func() {
+				It("should return 1 plan", func() {
+					assertBrokerPlansVisibleForPlatform(brokerID, k8sAgent)
+
+					k8sAgent.GET(fmt.Sprintf("%s/%s/v2/catalog", web.OSBURL, brokerID)).
+						Expect().Status(http.StatusOK).JSON().Object().Value("services").Array().Empty()
+
+					ctx.SMWithOAuth.POST(web.VisibilitiesURL).WithJSON(common.Object{
+						"service_plan_id": plan1ID,
+					}).Expect().Status(http.StatusCreated)
+					assertBrokerPlansVisibleForPlatform(brokerID, k8sAgent, plan1CatalogID)
+				})
+			})
+		})
+
 	})
 
 	Describe("Provision", func() {
+
 		Context("call to working service broker", func() {
 			It("should succeed", func() {
 				assertWorkingBrokerResponse(
@@ -308,7 +486,7 @@ var _ = Describe("Service Manager OSB API", func() {
 
 		Context("when call to stopped service broker", func() {
 			It("should fail", func() {
-				assertStoppedBrokerError(
+				assertUnresponsiveBrokerError(
 					ctx.SMWithBasic.PUT(smUrlToStoppedBroker+"/v2/service_instances/12345").WithHeader("X-Broker-API-Version", "oidc_authn.13").
 						WithJSON(getDummyService()).Expect())
 			})
@@ -321,8 +499,18 @@ var _ = Describe("Service Manager OSB API", func() {
 						WithJSON(getDummyService()).WithQuery(headerKey, headerValue).Expect(), http.StatusCreated)
 			})
 		})
+
+		Context("when broker doesn't respond in a timely manner", func() {
+			It("should fail with 502", func(done chan<- interface{}) {
+				timeoutBrokerServer.ServiceInstanceHandler = delayingHandler(done)
+				assertUnresponsiveBrokerError(ctx.SMWithBasic.PUT(smUrlToTimeoutBroker+"/v2/service_instances/12345").WithHeader("X-Broker-API-Version", "oidc_authn.13").
+					WithJSON(getDummyService()).Expect())
+			})
+		})
+
 	})
 	Describe("Deprovision", func() {
+
 		Context("when trying to deprovision existing service", func() {
 			It("should be successfull", func() {
 				ctx.SMWithBasic.DELETE(smUrlToWorkingBroker+"/v2/service_instances/12345").WithHeader("X-Broker-API-Version", "oidc_authn.13").
@@ -349,7 +537,7 @@ var _ = Describe("Service Manager OSB API", func() {
 
 		Context("when call to stopped service broker", func() {
 			It("should fail", func() {
-				assertStoppedBrokerError(ctx.SMWithBasic.DELETE(smUrlToStoppedBroker+"/v2/service_instances/12345").WithHeader("X-Broker-API-Version", "oidc_authn.13").
+				assertUnresponsiveBrokerError(ctx.SMWithBasic.DELETE(smUrlToStoppedBroker+"/v2/service_instances/12345").WithHeader("X-Broker-API-Version", "oidc_authn.13").
 					WithQueryObject(getDummyService()).Expect())
 			})
 		})
@@ -361,9 +549,18 @@ var _ = Describe("Service Manager OSB API", func() {
 						WithJSON(getDummyService()).WithQuery(headerKey, headerValue).Expect(), http.StatusOK)
 			})
 		})
+
+		Context("when broker doesn't respond in a timely manner", func() {
+			It("should fail with 502", func(done chan<- interface{}) {
+				timeoutBrokerServer.ServiceInstanceHandler = delayingHandler(done)
+				assertUnresponsiveBrokerError(ctx.SMWithBasic.DELETE(smUrlToTimeoutBroker+"/v2/service_instances/12345").WithHeader("X-Broker-API-Version", "oidc_authn.13").
+					WithJSON(getDummyService()).Expect())
+			})
+		})
 	})
 
 	Describe("Bind", func() {
+
 		Context("call to working service broker", func() {
 			It("should succeed", func() {
 				assertWorkingBrokerResponse(
@@ -389,7 +586,7 @@ var _ = Describe("Service Manager OSB API", func() {
 
 		Context("when call to stopped service broker", func() {
 			It("should fail", func() {
-				assertStoppedBrokerError(ctx.SMWithBasic.PUT(smUrlToStoppedBroker+"/v2/service_instances/iid/service_bindings/bid").WithHeader("X-Broker-API-Version", "oidc_authn.13").
+				assertUnresponsiveBrokerError(ctx.SMWithBasic.PUT(smUrlToStoppedBroker+"/v2/service_instances/iid/service_bindings/bid").WithHeader("X-Broker-API-Version", "oidc_authn.13").
 					WithJSON(getDummyService()).Expect())
 			})
 		})
@@ -401,9 +598,18 @@ var _ = Describe("Service Manager OSB API", func() {
 						WithJSON(getDummyService()).WithQuery(headerKey, headerValue).Expect(), http.StatusCreated)
 			})
 		})
+
+		Context("when broker doesn't respond in a timely manner", func() {
+			It("should fail with 502", func(done chan<- interface{}) {
+				timeoutBrokerServer.BindingHandler = delayingHandler(done)
+				assertUnresponsiveBrokerError(ctx.SMWithBasic.PUT(smUrlToTimeoutBroker+"/v2/service_instances/iid/service_bindings/bid").WithHeader("X-Broker-API-Version", "oidc_authn.13").
+					WithJSON(getDummyService()).Expect())
+			})
+		})
 	})
 
 	Describe("Unbind", func() {
+
 		Context("when trying to delete binding", func() {
 			It("should be successful", func() {
 				ctx.SMWithBasic.DELETE(smUrlToWorkingBroker+"/v2/service_instances/iid/service_bindings/bid").WithHeader("X-Broker-API-Version", "oidc_authn.13").
@@ -431,7 +637,7 @@ var _ = Describe("Service Manager OSB API", func() {
 
 		Context("when call to stopped service broker", func() {
 			It("should fail", func() {
-				assertStoppedBrokerError(
+				assertUnresponsiveBrokerError(
 					ctx.SMWithBasic.DELETE(smUrlToStoppedBroker+"/v2/service_instances/iid/service_bindings/bid").WithHeader("X-Broker-API-Version", "oidc_authn.13").
 						WithQueryObject(getDummyService()).Expect())
 
@@ -445,9 +651,19 @@ var _ = Describe("Service Manager OSB API", func() {
 						WithJSON(getDummyService()).WithQuery(headerKey, headerValue).Expect(), http.StatusOK)
 			})
 		})
+
+		Context("when broker doesn't respond in a timely manner", func() {
+			It("should fail with 502", func(done chan<- interface{}) {
+				timeoutBrokerServer.BindingHandler = delayingHandler(done)
+				assertUnresponsiveBrokerError(ctx.SMWithBasic.DELETE(smUrlToTimeoutBroker+"/v2/service_instances/iid/service_bindings/bid").WithHeader("X-Broker-API-Version", "oidc_authn.13").
+					WithQueryObject(getDummyService()).
+					Expect())
+			})
+		})
 	})
 
 	Describe("Get Service Instance Last Operation", func() {
+
 		Context("when call to working service broker", func() {
 			It("should succeed", func() {
 				assertWorkingBrokerResponse(
@@ -473,7 +689,7 @@ var _ = Describe("Service Manager OSB API", func() {
 
 		Context("when call to stopped service broker", func() {
 			It("should fail", func() {
-				assertStoppedBrokerError(
+				assertUnresponsiveBrokerError(
 					ctx.SMWithBasic.GET(smUrlToStoppedBroker+"/v2/service_instances/iid/last_operation").WithHeader("X-Broker-API-Version", "oidc_authn.13").Expect())
 			})
 		})
@@ -485,9 +701,18 @@ var _ = Describe("Service Manager OSB API", func() {
 						WithJSON(getDummyService()).WithQuery(headerKey, headerValue).Expect(), http.StatusOK)
 			})
 		})
+
+		Context("when broker doesn't respond in a timely manner", func() {
+			It("should fail with 502", func(done chan<- interface{}) {
+				timeoutBrokerServer.ServiceInstanceLastOpHandler = delayingHandler(done)
+				assertUnresponsiveBrokerError(ctx.SMWithBasic.GET(smUrlToTimeoutBroker+"/v2/service_instances/iid/last_operation").WithHeader("X-Broker-API-Version", "oidc_authn.13").
+					Expect())
+			})
+		})
 	})
 
 	Describe("Get Binding Last Operation", func() {
+
 		Context("when call to working service broker", func() {
 			It("should succeed", func() {
 				assertWorkingBrokerResponse(
@@ -513,7 +738,7 @@ var _ = Describe("Service Manager OSB API", func() {
 
 		Context("when call to stopped service broker", func() {
 			It("should fail", func() {
-				assertStoppedBrokerError(
+				assertUnresponsiveBrokerError(
 					ctx.SMWithBasic.GET(smUrlToStoppedBroker+"/v2/service_instances/iid/service_bindings/bid/last_operation").WithHeader("X-Broker-API-Version", "oidc_authn.13").Expect())
 			})
 		})
@@ -523,6 +748,14 @@ var _ = Describe("Service Manager OSB API", func() {
 				assertWorkingBrokerResponse(
 					ctx.SMWithBasic.GET(smUrlToQueryVerificationBroker+"/v2/service_instances/iid/service_bindings/bid/last_operation").WithHeader("X-Broker-API-Version", "oidc_authn.13").
 						WithJSON(getDummyService()).WithQuery(headerKey, headerValue).Expect(), http.StatusOK)
+			})
+		})
+
+		Context("when broker doesn't respond in a timely manner", func() {
+			It("should fail with 502", func(done chan<- interface{}) {
+				timeoutBrokerServer.BindingLastOpHandler = delayingHandler(done)
+				assertUnresponsiveBrokerError(ctx.SMWithBasic.GET(smUrlToTimeoutBroker+"/v2/service_instances/iid/service_bindings/bid/last_operation").WithHeader("X-Broker-API-Version", "oidc_authn.13").
+					Expect())
 			})
 		})
 	})
@@ -554,7 +787,7 @@ var _ = Describe("Service Manager OSB API", func() {
 
 		Context("when call to stopped service broker", func() {
 			It("should fail", func() {
-				assertStoppedBrokerError(
+				assertUnresponsiveBrokerError(
 					ctx.SMWithBasic.POST(smUrlToStoppedBroker+"/v2/service_instances/iid/service_bindings/bid/adapt_credentials").WithHeader("X-Broker-API-Version", "oidc_authn.13").WithJSON(&common.Object{}).Expect())
 
 			})
@@ -565,6 +798,14 @@ var _ = Describe("Service Manager OSB API", func() {
 				assertWorkingBrokerResponse(
 					ctx.SMWithBasic.POST(smUrlToQueryVerificationBroker+"/v2/service_instances/iid/service_bindings/bid/adapt_credentials").WithHeader("X-Broker-API-Version", "oidc_authn.13").
 						WithJSON(getDummyService()).WithQuery(headerKey, headerValue).Expect(), http.StatusOK)
+			})
+		})
+
+		Context("when broker doesn't respond in a timely manner", func() {
+			It("should fail with 502", func(done chan<- interface{}) {
+				timeoutBrokerServer.BindingAdaptCredentialsHandler = delayingHandler(done)
+				assertUnresponsiveBrokerError(ctx.SMWithBasic.POST(smUrlToTimeoutBroker+"/v2/service_instances/iid/service_bindings/bid/adapt_credentials").WithHeader("X-Broker-API-Version", "oidc_authn.13").
+					WithJSON(getDummyService()).Expect())
 			})
 		})
 	})
@@ -612,6 +853,23 @@ var _ = Describe("Service Manager OSB API", func() {
 		})
 	})
 
+	DescribeTable("Malfunctioning broker",
+		func(statusCode int, responseBody, expectedDescriptionPattern string) {
+			failingBrokerServer.ServiceInstanceHandler = func(rw http.ResponseWriter, _ *http.Request) {
+				rw.Header().Set("Content-Type", "application/json")
+				rw.WriteHeader(statusCode)
+				rw.Write([]byte(responseBody))
+			}
+			expectedDescription := fmt.Sprintf(expectedDescriptionPattern, failingBrokerName)
+			ctx.SMWithBasic.PUT(smUrlToFailingBroker+"/v2/service_instances/12345").WithHeader("X-Broker-API-Version", "oidc_authn.13").
+				WithJSON(getDummyService()).Expect().Status(statusCode).JSON().Object().
+				Value("description").String().Equal(expectedDescription)
+		},
+		Entry("when broker response is not a valid json, should return an OSB compliant error", http.StatusCreated, "[not a json]", "Service broker %s responded with invalid JSON: [not a json]"),
+		Entry("when broker returns a valid json which is not an object, should return the broker's response", http.StatusBadRequest, "3", "Service broker %s failed with: 3"),
+		Entry("when broker returns error without description, should assing broker's response body as description", http.StatusBadRequest, `{"error": "ErrorType"}`, `Service broker %s failed with: {"error": "ErrorType"}`),
+		Entry("when broker response is JSON array, should return it in description", http.StatusBadRequest, `[1,2,3]`, `Service broker %s failed with: [1,2,3]`),
+	)
 })
 
 type prefixedBrokerHandler struct {
