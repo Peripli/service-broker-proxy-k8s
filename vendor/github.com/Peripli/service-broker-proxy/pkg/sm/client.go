@@ -19,6 +19,7 @@ package sm
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/Peripli/service-manager/pkg/types"
@@ -96,39 +97,39 @@ func NewClient(config *Settings) (*ServiceManagerClient, error) {
 func (c *ServiceManagerClient) GetBrokers(ctx context.Context) ([]*types.ServiceBroker, error) {
 	log.C(ctx).Debugf("Getting brokers for proxy from Service Manager at %s", c.host)
 
-	result := &types.ServiceBrokers{}
-	err := c.call(ctx, fmt.Sprintf(APIInternalBrokers, c.host), nil, result)
+	result := make([]*types.ServiceBroker, 0)
+	err := c.call(ctx, fmt.Sprintf(APIInternalBrokers, c.host), nil, &result)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting brokers from Service Manager")
 	}
 
-	return result.ServiceBrokers, nil
+	return result, nil
 }
 
 // GetVisibilities returns plan visibilities from Service Manager
 func (c *ServiceManagerClient) GetVisibilities(ctx context.Context) ([]*types.Visibility, error) {
 	log.C(ctx).Debugf("Getting visibilities for proxy from Service Manager at %s", c.host)
 
-	result := &types.Visibilities{}
-	err := c.call(ctx, fmt.Sprintf(APIVisibilities, c.host), nil, result)
+	result := make([]*types.Visibility, 0)
+	err := c.call(ctx, fmt.Sprintf(APIVisibilities, c.host), nil, &result)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting visibilities from Service Manager")
 	}
 
-	return result.Visibilities, nil
+	return result, nil
 }
 
 // GetPlans returns plans from Service Manager
 func (c *ServiceManagerClient) GetPlans(ctx context.Context) ([]*types.ServicePlan, error) {
 	log.C(ctx).Debugf("Getting service plans for proxy from Service Manager at %s", c.host)
 
-	result := &types.ServicePlans{}
-	err := c.call(ctx, fmt.Sprintf(APIPlans, c.host), nil, result)
+	result := make([]*types.ServicePlan, 0)
+	err := c.call(ctx, fmt.Sprintf(APIPlans, c.host), nil, &result)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting service plans from Service Manager")
 	}
 
-	return result.ServicePlans, nil
+	return result, nil
 }
 
 // GetServiceOfferingsByBrokerIDs returns plans from Service Manager
@@ -140,15 +141,13 @@ func (c *ServiceManagerClient) GetServiceOfferingsByBrokerIDs(ctx context.Contex
 		"fieldQuery": fieldQuery,
 	}
 
-	var result struct {
-		ServiceOfferings []*types.ServiceOffering `json:"service_offerings"`
-	}
+	result := make([]*types.ServiceOffering, 0)
 	err := c.call(ctx, fmt.Sprintf(APIServiceOfferings, c.host), params, &result)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting service offerings from Service Manager")
 	}
 
-	return result.ServiceOfferings, nil
+	return result, nil
 }
 
 // GetPlansByServiceOfferings returns plans from Service Manager
@@ -166,27 +165,24 @@ func (c *ServiceManagerClient) GetPlansByServiceOfferings(ctx context.Context, s
 		"fieldQuery": fieldQuery,
 	}
 
-	result := &types.ServicePlans{}
-	err := c.call(ctx, fmt.Sprintf(APIPlans, c.host), params, result)
+	result := make([]*types.ServicePlan, 0)
+	err := c.call(ctx, fmt.Sprintf(APIPlans, c.host), params, &result)
 	if err != nil {
 		return nil, errors.Wrap(err, "error getting service plans from Service Manager")
 	}
 
-	return result.ServicePlans, nil
+	return result, nil
 }
 
-func (c *ServiceManagerClient) call(ctx context.Context, url string, params map[string]string, list interface{}) error {
-	response, err := util.SendRequest(ctx, c.httpClient.Do, http.MethodGet, url, params, nil)
+func (c *ServiceManagerClient) call(ctx context.Context, smURL string, params map[string]string, list interface{}) error {
+	fullURL, err := url.Parse(smURL)
 	if err != nil {
 		return err
 	}
-
-	if response.StatusCode != http.StatusOK {
-		return errors.WithStack(util.HandleResponseError(response))
+	q := fullURL.Query()
+	for k, v := range params {
+		q.Add(k,v)
 	}
-
-	if err = util.BodyToObject(response.Body, list); err != nil {
-		return errors.Wrapf(err, "error getting content from body of response with status %s", response.Status)
-	}
-	return nil
+	fullURL.RawQuery = q.Encode()
+	return util.ListAll(ctx, c.httpClient.Do, fullURL.String(), list)
 }

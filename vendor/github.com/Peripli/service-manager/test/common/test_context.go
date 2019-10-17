@@ -21,12 +21,16 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
+	"math/rand"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"path"
 	"runtime"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gavv/httpexpect"
 	"github.com/gofrs/uuid"
@@ -36,7 +40,6 @@ import (
 
 	"github.com/Peripli/service-manager/config"
 	"github.com/Peripli/service-manager/pkg/env"
-	"github.com/Peripli/service-manager/pkg/log"
 	"github.com/Peripli/service-manager/pkg/sm"
 	"github.com/Peripli/service-manager/pkg/types"
 	"github.com/Peripli/service-manager/pkg/util"
@@ -59,25 +62,63 @@ type TestContextBuilder struct {
 
 	smExtensions       []func(ctx context.Context, smb *sm.ServiceManagerBuilder, env env.Environment) error
 	defaultTokenClaims map[string]interface{}
+	tenantTokenClaims  map[string]interface{}
 
 	shouldSkipBasicAuthClient bool
 
 	Environment func(f ...func(set *pflag.FlagSet)) env.Environment
 	Servers     map[string]FakeServer
+	HttpClient  *http.Client
 }
 
 type TestContext struct {
 	wg            *sync.WaitGroup
 	wsConnections []*websocket.Conn
 
-	SM           *httpexpect.Expect
-	SMWithOAuth  *httpexpect.Expect
-	SMWithBasic  *httpexpect.Expect
-	SMRepository storage.Repository
+	SM          *SMExpect
+	SMWithOAuth *SMExpect
+	// Requests a token the the "multitenant" oauth client - then token issued by this client contains
+	// the "multitenant" client id behind the specified token claim in the api config
+	// the token also contains a "tenant identifier" behind the configured tenant_indentifier claim that
+	// will be compared with the value of the label specified in the "label key" configuration
+	// In the end requesting brokers with this
+	SMWithOAuthForTenant *SMExpect
+	SMWithBasic          *SMExpect
+	SMRepository         storage.Repository
 
 	TestPlatform *types.Platform
 
 	Servers map[string]FakeServer
+}
+
+type SMExpect struct {
+	*httpexpect.Expect
+}
+
+func (expect *SMExpect) List(path string) *httpexpect.Array {
+	return expect.ListWithQuery(path, "")
+}
+
+func (expect *SMExpect) ListWithQuery(path string, query string) *httpexpect.Array {
+	req := expect.GET(path)
+	if query != "" {
+		req = req.WithQueryString(query)
+	}
+	page := req.Expect().Status(http.StatusOK).JSON().Object()
+	token, hasMoreItems := page.Raw()["token"]
+	items := page.Value("items").Array().Raw()
+
+	for hasMoreItems {
+		req := expect.GET(path)
+		if query != "" {
+			req = req.WithQueryString(query)
+		}
+		page = req.WithQuery("token", token).Expect().Status(http.StatusOK).JSON().Object()
+		items = append(items, page.Value("items").Array().Raw()...)
+		token, hasMoreItems = page.Raw()["token"]
+	}
+
+	return httpexpect.NewArray(ginkgo.GinkgoT(), items)
 }
 
 type testSMServer struct {
@@ -105,6 +146,7 @@ func NewTestContextBuilder() *TestContextBuilder {
 		envPreHooks: []func(set *pflag.FlagSet){
 			SetTestFileLocation,
 			SetNotificationsCleanerSettings,
+			SetLogOutput,
 		},
 		Environment: TestEnv,
 		envPostHooks: []func(env env.Environment, servers map[string]FakeServer){
@@ -123,8 +165,22 @@ func NewTestContextBuilder() *TestContextBuilder {
 		},
 		smExtensions:       []func(ctx context.Context, smb *sm.ServiceManagerBuilder, env env.Environment) error{},
 		defaultTokenClaims: make(map[string]interface{}, 0),
+		tenantTokenClaims:  make(map[string]interface{}, 0),
 		Servers: map[string]FakeServer{
 			"oauth-server": NewOAuthServer(),
+		},
+		HttpClient: &http.Client{
+			Transport: &http.Transport{
+				Proxy: http.ProxyFromEnvironment,
+				DialContext: (&net.Dialer{
+					Timeout:   20 * time.Second,
+					KeepAlive: 20 * time.Second,
+				}).DialContext,
+				MaxIdleConns:          100,
+				IdleConnTimeout:       30 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+			},
 		},
 	}
 }
@@ -149,6 +205,13 @@ func SetNotificationsCleanerSettings(set *pflag.FlagSet) {
 	}
 }
 
+func SetLogOutput(set *pflag.FlagSet) {
+	err := set.Set("log.output", "ginkgowriter")
+	if err != nil {
+		panic(err)
+	}
+}
+
 func TestEnv(additionalFlagFuncs ...func(set *pflag.FlagSet)) env.Environment {
 	// copies all sm pflags to flag so that those can be set via go test
 	f := func(set *pflag.FlagSet) {
@@ -166,7 +229,7 @@ func TestEnv(additionalFlagFuncs ...func(set *pflag.FlagSet)) env.Environment {
 
 	additionalFlagFuncs = append(additionalFlagFuncs, f)
 
-	env, _ := env.Default(append([]func(set *pflag.FlagSet){config.AddPFlags}, additionalFlagFuncs...)...)
+	env, _ := env.Default(context.TODO(), append([]func(set *pflag.FlagSet){config.AddPFlags}, additionalFlagFuncs...)...)
 	return env
 }
 
@@ -190,6 +253,12 @@ func (tcb *TestContextBuilder) WithAdditionalFakeServers(additionalFakeServers m
 	for name, server := range additionalFakeServers {
 		tcb.Servers[name] = server
 	}
+
+	return tcb
+}
+
+func (tcb *TestContextBuilder) WithTenantTokenClaims(tenantTokenClaims map[string]interface{}) *TestContextBuilder {
+	tcb.tenantTokenClaims = tenantTokenClaims
 
 	return tcb
 }
@@ -219,6 +288,10 @@ func (tcb *TestContextBuilder) WithSMExtensions(fs ...func(ctx context.Context, 
 }
 
 func (tcb *TestContextBuilder) Build() *TestContext {
+	return tcb.BuildWithListener(nil)
+}
+
+func (tcb *TestContextBuilder) BuildWithListener(listener net.Listener) *TestContext {
 	environment := tcb.Environment(tcb.envPreHooks...)
 
 	for _, envPostHook := range tcb.envPostHooks {
@@ -226,54 +299,70 @@ func (tcb *TestContextBuilder) Build() *TestContext {
 	}
 	wg := &sync.WaitGroup{}
 
-	smServer, smRepository := newSMServer(environment, wg, tcb.smExtensions)
+	smServer, smRepository := newSMServer(environment, wg, tcb.smExtensions, listener)
 	tcb.Servers[SMServer] = smServer
 
 	SM := httpexpect.New(ginkgo.GinkgoT(), smServer.URL())
 	oauthServer := tcb.Servers[OauthServer].(*OAuthServer)
 	accessToken := oauthServer.CreateToken(tcb.defaultTokenClaims)
 	SMWithOAuth := SM.Builder(func(req *httpexpect.Request) {
-		req.WithHeader("Authorization", "Bearer "+accessToken)
+		req.WithHeader("Authorization", "Bearer "+accessToken).WithClient(tcb.HttpClient)
 	})
-	RemoveAllBrokers(SMWithOAuth)
-	RemoveAllPlatforms(SMWithOAuth)
+
+	tenantAccessToken := oauthServer.CreateToken(tcb.tenantTokenClaims)
+	SMWithOAuthForTenant := SM.Builder(func(req *httpexpect.Request) {
+		req.WithHeader("Authorization", "Bearer "+tenantAccessToken).WithClient(tcb.HttpClient)
+	})
 
 	testContext := &TestContext{
-		wg:           wg,
-		SM:           SM,
-		SMWithOAuth:  SMWithOAuth,
-		Servers:      tcb.Servers,
-		SMRepository: smRepository,
+		wg:                   wg,
+		SM:                   &SMExpect{SM},
+		SMWithOAuth:          &SMExpect{SMWithOAuth},
+		SMWithOAuthForTenant: &SMExpect{SMWithOAuthForTenant},
+		Servers:              tcb.Servers,
+		SMRepository:         smRepository,
 	}
+
+	RemoveAllBrokers(testContext.SMWithOAuth)
+	RemoveAllPlatforms(testContext.SMWithOAuth)
 
 	if !tcb.shouldSkipBasicAuthClient {
 		platformJSON := MakePlatform("tcb-platform-test", "tcb-platform-test", "platform-type", "test-platform")
-		platform := RegisterPlatformInSM(platformJSON, SMWithOAuth, map[string]string{})
+		platform := RegisterPlatformInSM(platformJSON, testContext.SMWithOAuth, map[string]string{})
 		SMWithBasic := SM.Builder(func(req *httpexpect.Request) {
 			username, password := platform.Credentials.Basic.Username, platform.Credentials.Basic.Password
-			req.WithBasicAuth(username, password)
+			req.WithBasicAuth(username, password).WithClient(tcb.HttpClient)
 		})
-		testContext.SMWithBasic = SMWithBasic
+		testContext.SMWithBasic = &SMExpect{SMWithBasic}
 		testContext.TestPlatform = platform
 	}
 
 	return testContext
 }
 
-func newSMServer(smEnv env.Environment, wg *sync.WaitGroup, fs []func(ctx context.Context, smb *sm.ServiceManagerBuilder, env env.Environment) error) (*testSMServer, storage.Repository) {
+func NewSMListener() (net.Listener, error) {
+	minPort := 8100
+	maxPort := 9999
+	retries := 10
+
+	var listener net.Listener
+	var err error
+	for ; retries >= 0; retries-- {
+		rand.Seed(time.Now().UnixNano())
+		port := rand.Intn(maxPort-minPort) + minPort
+
+		smURL := "127.0.0.1:" + strconv.Itoa(port)
+		listener, err = net.Listen("tcp", smURL)
+		if err == nil {
+			return listener, nil
+		}
+	}
+
+	return nil, fmt.Errorf("unable to create sm listener: %s", err)
+}
+
+func newSMServer(smEnv env.Environment, wg *sync.WaitGroup, fs []func(ctx context.Context, smb *sm.ServiceManagerBuilder, env env.Environment) error, listener net.Listener) (*testSMServer, storage.Repository) {
 	ctx, cancel := context.WithCancel(context.Background())
-	s := struct {
-		Log *log.Settings
-	}{
-		Log: &log.Settings{
-			Output: ginkgo.GinkgoWriter,
-		},
-	}
-	err := smEnv.Unmarshal(&s)
-	if err != nil {
-		panic(err)
-	}
-	ctx = log.Configure(ctx, s.Log)
 
 	cfg, err := config.NewForEnv(smEnv)
 	if err != nil {
@@ -301,13 +390,24 @@ func newSMServer(smEnv env.Environment, wg *sync.WaitGroup, fs []func(ctx contex
 		panic(err)
 	}
 
+	testServer := httptest.NewUnstartedServer(serviceManager.Server.Router)
+	if listener != nil {
+		testServer.Listener.Close()
+		testServer.Listener = listener
+	}
+	testServer.Start()
+
 	return &testSMServer{
 		cancel: cancel,
-		Server: httptest.NewServer(serviceManager.Server.Router),
+		Server: testServer,
 	}, smb.Storage
 }
 
 func (ctx *TestContext) RegisterBrokerWithCatalogAndLabels(catalog SBCatalog, brokerData Object) (string, Object, *BrokerServer) {
+	return ctx.RegisterBrokerWithCatalogAndLabelsExpect(catalog, brokerData, ctx.SMWithOAuth)
+}
+
+func (ctx *TestContext) RegisterBrokerWithCatalogAndLabelsExpect(catalog SBCatalog, brokerData Object, expect *SMExpect) (string, Object, *BrokerServer) {
 	brokerServer := NewBrokerServerWithCatalog(catalog)
 	UUID, err := uuid.NewV4()
 	if err != nil {
@@ -331,7 +431,7 @@ func (ctx *TestContext) RegisterBrokerWithCatalogAndLabels(catalog SBCatalog, br
 
 	MergeObjects(brokerJSON, brokerData)
 
-	broker := RegisterBrokerInSM(brokerJSON, ctx.SMWithOAuth, map[string]string{})
+	broker := RegisterBrokerInSM(brokerJSON, expect, map[string]string{})
 	brokerID := broker["id"].(string)
 	brokerServer.ResetCallHistory()
 	ctx.Servers[BrokerServerPrefix+brokerID] = brokerServer
@@ -386,7 +486,7 @@ func (ctx *TestContext) RegisterPlatform() *types.Platform {
 
 func (ctx *TestContext) CleanupBroker(id string) {
 	broker := ctx.Servers[BrokerServerPrefix+id]
-	ctx.SMWithOAuth.DELETE("/v1/service_brokers/" + id).Expect()
+	ctx.SMWithOAuth.DELETE(web.ServiceBrokersURL + "/" + id).Expect()
 	broker.Close()
 	delete(ctx.Servers, BrokerServerPrefix+id)
 }
@@ -416,12 +516,12 @@ func (ctx *TestContext) CleanupAdditionalResources() {
 		panic(err)
 	}
 
-	ctx.SMWithOAuth.DELETE("/v1/service_brokers").Expect()
+	ctx.SMWithOAuth.DELETE(web.ServiceBrokersURL).Expect()
 
 	if ctx.TestPlatform != nil {
-		ctx.SMWithOAuth.DELETE("/v1/platforms").WithQuery("fieldQuery", "id != "+ctx.TestPlatform.ID).Expect()
+		ctx.SMWithOAuth.DELETE(web.PlatformsURL).WithQuery("fieldQuery", "id != "+ctx.TestPlatform.ID).Expect()
 	} else {
-		ctx.SMWithOAuth.DELETE("/v1/platforms").Expect()
+		ctx.SMWithOAuth.DELETE(web.PlatformsURL).Expect()
 	}
 	var smServer FakeServer
 	for serverName, server := range ctx.Servers {

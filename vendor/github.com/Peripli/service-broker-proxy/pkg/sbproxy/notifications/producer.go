@@ -122,9 +122,9 @@ func NewProducer(producerSettings *ProducerSettings, smSettings *sm.Settings) (*
 		return nil, err
 	}
 	return &Producer{
-		url:              notificationsURL,
-		producerSettings: *producerSettings,
-		smSettings:       *smSettings,
+		url:                      notificationsURL,
+		producerSettings:         *producerSettings,
+		smSettings:               *smSettings,
 		lastNotificationRevision: types.InvalidRevision,
 	}, nil
 }

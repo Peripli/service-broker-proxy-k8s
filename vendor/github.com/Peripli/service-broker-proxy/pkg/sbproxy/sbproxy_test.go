@@ -52,7 +52,7 @@ var _ = Describe("Sbproxy", func() {
 	Describe("New", func() {
 		Context("when validating config fails", func() {
 			It("should panic", func() {
-				env, err := DefaultEnv(func(set *pflag.FlagSet) {
+				env, err := DefaultEnv(context.TODO(), func(set *pflag.FlagSet) {
 					set.Set("app.url", "http://localhost:8080")
 					set.Set("app.legacy_url", "http://service-broker-proxy.domain.com")
 					set.Set("sm.user", "")
@@ -72,7 +72,7 @@ var _ = Describe("Sbproxy", func() {
 
 		Context("when creating sm client fails due to missing config properties", func() {
 			It("should panic", func() {
-				env, err := DefaultEnv(func(set *pflag.FlagSet) {
+				env, err := DefaultEnv(context.TODO(), func(set *pflag.FlagSet) {
 					set.Set("app.url", "http://localhost:8080")
 					set.Set("app.legacy_url", "http://service-broker-proxy.domain.com")
 					set.Set("sm.user", "")
@@ -94,7 +94,7 @@ var _ = Describe("Sbproxy", func() {
 
 			BeforeEach(func() {
 				fakeBrokerClient.GetBrokersReturns([]*platform.ServiceBroker{}, nil)
-				env, err := DefaultEnv(func(set *pflag.FlagSet) {
+				env, err := DefaultEnv(context.TODO(), func(set *pflag.FlagSet) {
 					set.Set("app.url", "http://localhost:8080")
 					set.Set("app.legacy_url", "http://service-broker-proxy.domain.com")
 					set.Set("sm.user", "admin")
