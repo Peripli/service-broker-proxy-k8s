@@ -143,7 +143,7 @@ func (c Criterion) Validate() error {
 			if err != nil {
 				return fmt.Errorf("could not cast string to int: %s", err.Error())
 			}
-			if limit < 1 {
+			if limit < 0 {
 				return &util.UnsupportedQueryError{Message: fmt.Sprintf("limit (%d) is invalid. Limit should be positive number", limit)}
 			}
 		}
@@ -160,7 +160,7 @@ func (c Criterion) Validate() error {
 		return nil
 	}
 
-	if len(c.RightOp) > 1 && c.Operator.Type() != MultivariateOperator {
+	if len(c.RightOp) > 1 && c.Operator.Type() == UnivariateOperator {
 		return &util.UnsupportedQueryError{Message: fmt.Sprintf("multiple values %s received for single value operation %s", c.RightOp, c.Operator)}
 	}
 	if c.Operator.IsNullable() && c.Type != FieldQuery {
@@ -180,11 +180,11 @@ func (c Criterion) Validate() error {
 	return nil
 }
 
-func validateCriteria(c []Criterion) error {
+func validateCriteria(criteria []Criterion) error {
 	fieldQueryLeftOperands := make(map[string]int)
 	labelQueryLeftOperands := make(map[string]int)
 
-	for _, criterion := range c {
+	for _, criterion := range criteria {
 		if criterion.Type == FieldQuery {
 			fieldQueryLeftOperands[criterion.LeftOp]++
 		}
@@ -193,21 +193,17 @@ func validateCriteria(c []Criterion) error {
 		}
 	}
 
-	for _, cc := range c {
-		leftOp := cc.LeftOp
+	for _, c := range criteria {
+		leftOp := c.LeftOp
 		// disallow duplicate label queries
-		if count, ok := labelQueryLeftOperands[leftOp]; ok && count > 1 && cc.Type == LabelQuery {
+		if count, ok := labelQueryLeftOperands[leftOp]; ok && count > 1 && c.Type == LabelQuery {
 			return &util.UnsupportedQueryError{Message: fmt.Sprintf("duplicate label query key: %s", leftOp)}
 		}
-		// disallow duplicate field query keys
-		if count, ok := fieldQueryLeftOperands[leftOp]; ok && count > 1 && cc.Type == FieldQuery {
-			return &util.UnsupportedQueryError{Message: fmt.Sprintf("duplicate field query key: %s", leftOp)}
-		}
-		if err := cc.Validate(); err != nil {
+		if err := c.Validate(); err != nil {
 			return err
 		}
 	}
-	return nil
+	return validateWholeCriteria(criteria...)
 }
 
 type criteriaCtxKey struct{}
@@ -232,8 +228,11 @@ func CriteriaForContext(ctx context.Context) []Criterion {
 }
 
 // ContextWithCriteria returns a new context with given criteria
-func ContextWithCriteria(ctx context.Context, criteria []Criterion) context.Context {
-	return context.WithValue(ctx, criteriaCtxKey{}, criteria)
+func ContextWithCriteria(ctx context.Context, criteria ...Criterion) (context.Context, error) {
+	if err := validateCriteria(criteria); err != nil {
+		return nil, err
+	}
+	return context.WithValue(ctx, criteriaCtxKey{}, criteria), nil
 }
 
 // Parse parses the query expression for and builds criteria for the provided type
@@ -246,7 +245,7 @@ func Parse(criterionType CriterionType, expression string) ([]Criterion, error) 
 	input := antlr.NewInputStream(expression)
 	lexer := parser.NewQueryLexer(input)
 	lexer.RemoveErrorListeners()
-	stream := antlr.NewCommonTokenStream(lexer, 0)
+	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 
 	p := parser.NewQueryParser(stream)
 	p.RemoveErrorListeners()
@@ -279,4 +278,17 @@ func isNumeric(str string) bool {
 func isDateTime(str string) bool {
 	_, err := time.Parse(time.RFC3339, str)
 	return err == nil
+}
+
+func validateWholeCriteria(criteria ...Criterion) error {
+	isLimited := false
+	for _, criterion := range criteria {
+		if criterion.LeftOp == Limit {
+			if isLimited {
+				return fmt.Errorf("zero/one limit criterion expected but multiple provided")
+			}
+			isLimited = true
+		}
+	}
+	return nil
 }

@@ -29,11 +29,9 @@ import (
 var _ = Describe("Selection", func() {
 
 	var ctx context.Context
-	var validCriterion Criterion
 
 	BeforeEach(func() {
 		ctx = context.TODO()
-		validCriterion = ByField(EqualsOperator, "left", "right")
 	})
 
 	Describe("Add criteria to context", func() {
@@ -62,11 +60,11 @@ new line`))
 			Specify("Left operand with query separator", func() {
 				addInvalidCriterion(ByField(EqualsOperator, "leftop and more", "value"))
 			})
-			Specify("Field query with duplicate key", func() {
+			Specify("Multiple limit criteria", func() {
 				var err error
-				ctx, err = AddCriteria(ctx, validCriterion)
-				Expect(err).ToNot(HaveOccurred())
-				addInvalidCriterion(ByField(EqualsOrNilOperator, validCriterion.LeftOp, "right op"))
+				ctx, err = AddCriteria(ctx, LimitResultBy(10))
+				Expect(err).ShouldNot(HaveOccurred())
+				addInvalidCriterion(LimitResultBy(5))
 			})
 		})
 
@@ -92,21 +90,32 @@ new line`))
 		Context("When there are no criteria in the context", func() {
 			It("Adds the new ones", func() {
 				newCriteria := []Criterion{ByField(EqualsOperator, "leftOp", "rightOp")}
-				newContext := ContextWithCriteria(ctx, newCriteria)
+				newContext, err := ContextWithCriteria(ctx, newCriteria...)
+				Expect(err).ShouldNot(HaveOccurred())
 				Expect(CriteriaForContext(newContext)).To(ConsistOf(newCriteria))
 			})
 		})
-
 		Context("When there are criteria already in the context", func() {
 			It("Overrides them", func() {
 				oldCriteria := []Criterion{ByField(EqualsOperator, "leftOp", "rightOp")}
-				oldContext := ContextWithCriteria(ctx, oldCriteria)
+				oldContext, err := ContextWithCriteria(ctx, oldCriteria...)
+				Expect(err).ShouldNot(HaveOccurred())
 
 				newCriteria := []Criterion{ByLabel(NotEqualsOperator, "leftOp1", "rightOp1")}
-				newContext := ContextWithCriteria(oldContext, newCriteria)
+				newContext, err := ContextWithCriteria(oldContext, newCriteria...)
+				Expect(err).ShouldNot(HaveOccurred())
+
 				criteriaForNewContext := CriteriaForContext(newContext)
 				Expect(criteriaForNewContext).To(ConsistOf(newCriteria))
 				Expect(criteriaForNewContext).ToNot(ContainElement(oldCriteria[0]))
+			})
+		})
+		Context("When limit is already in the context adding it again", func() {
+			It("should return error", func() {
+				ctx, err := ContextWithCriteria(ctx, LimitResultBy(10), LimitResultBy(5))
+				Expect(err).Should(HaveOccurred())
+				Expect(ctx).Should(BeNil())
+
 			})
 		})
 	})
@@ -210,30 +219,42 @@ new line`))
 				})
 			})
 
-			Context("With different operators and query type combinations", func() {
-				for _, op := range Operators {
-					for _, queryType := range []CriterionType{FieldQuery, LabelQuery} {
+			for _, op := range Operators {
+				op := op
+				for _, queryType := range []CriterionType{FieldQuery, LabelQuery} {
+					queryType := queryType
+					Context(fmt.Sprintf("With %s operator and %s query type", op.String(), queryType), func() {
 						It("Should behave as expected", func() {
+							leftOp := "leftOp"
 							rightOp := []string{"rightOp"}
-							stringParam := rightOp[0]
+							stringParam := fmt.Sprintf("'%s'", rightOp[0])
+							if op.IsNumeric() {
+								rightOp = []string{"5"}
+								stringParam = rightOp[0]
+							}
 							if op.Type() == MultivariateOperator {
 								rightOp = []string{"rightOp1", "rightOp2"}
-								stringParam = fmt.Sprintf("[%s]", strings.Join(rightOp, "||"))
+								stringParam = fmt.Sprintf("('%s')", strings.Join(rightOp, "','"))
 							}
-							criteria, err := Parse(queryType, fmt.Sprintf("leftop %s '%s'", op, stringParam))
+							query := fmt.Sprintf("%s %s %s", leftOp, op, stringParam)
+							criteria, err := Parse(queryType, query)
 							if op.IsNullable() && queryType == LabelQuery {
 								Expect(err).To(HaveOccurred())
 								Expect(criteria).To(BeNil())
 							} else {
 								Expect(err).ToNot(HaveOccurred())
 								Expect(criteria).ToNot(BeNil())
-								expectedQuery := NewCriterion("leftop1", op, rightOp, queryType)
-								Expect(criteria).To(ConsistOf(expectedQuery))
+								c := criteria[0]
+								expectedQuery := NewCriterion(leftOp, op, rightOp, queryType)
+								Expect(c.LeftOp).To(Equal(expectedQuery.LeftOp))
+								Expect(c.Operator).To(Equal(expectedQuery.Operator))
+								Expect(c.RightOp).To(ConsistOf(expectedQuery.RightOp))
+								Expect(c.Type).To(Equal(expectedQuery.Type))
 							}
 						})
-					}
+					})
 				}
-			})
+			}
 
 			Context("When separator is not properly escaped in first query value", func() {
 				It("Should return error", func() {
@@ -246,12 +267,6 @@ new line`))
 			Context("When separator is not escaped in value", func() {
 				It("Trims the value to the separator", func() {
 					criteria, err := Parse(queryType, "leftop1 eq 'not'escaped'")
-					Expect(err).To(HaveOccurred())
-					Expect(criteria).To(BeNil())
-				})
-
-				It("Should fail", func() {
-					criteria, err := Parse(queryType, "leftop1eq 'notescaped'")
 					Expect(err).To(HaveOccurred())
 					Expect(criteria).To(BeNil())
 				})
