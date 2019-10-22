@@ -136,7 +136,7 @@ func (c *ServiceManagerClient) GetPlans(ctx context.Context) ([]*types.ServicePl
 func (c *ServiceManagerClient) GetServiceOfferingsByBrokerIDs(ctx context.Context, brokerIDs []string) ([]*types.ServiceOffering, error) {
 	log.C(ctx).Debugf("Getting service offerings from Service Manager at %s", c.host)
 
-	fieldQuery := fmt.Sprintf("broker_id in [%s]", strings.Join(brokerIDs, "||"))
+	fieldQuery := fmt.Sprintf("broker_id in ('%s')", strings.Join(brokerIDs, "','"))
 	params := map[string]string{
 		"fieldQuery": fieldQuery,
 	}
@@ -156,11 +156,11 @@ func (c *ServiceManagerClient) GetPlansByServiceOfferings(ctx context.Context, s
 
 	soIDs := ""
 	for _, so := range sos {
-		soIDs += "||" + so.ID
+		soIDs += ",'" + so.ID + "'"
 	}
-	soIDs = soIDs[2:]
+	soIDs = soIDs[1:]
 
-	fieldQuery := fmt.Sprintf("service_offering_id in [%s]", soIDs)
+	fieldQuery := fmt.Sprintf("service_offering_id in (%s)", soIDs)
 	params := map[string]string{
 		"fieldQuery": fieldQuery,
 	}

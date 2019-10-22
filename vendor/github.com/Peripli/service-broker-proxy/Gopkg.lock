@@ -24,7 +24,8 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:06c32e1bc77c2a47c004d4566ae934d131784ec0eb40f3bb7531ffb4fccc4426"
+  branch = "master"
+  digest = "1:58b4d68208a4199c5672ce2f56dd0da10a45b6ed3e345d5079456f9232433073"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -42,6 +43,7 @@
     "pkg/httpclient",
     "pkg/log",
     "pkg/query",
+    "pkg/query/parser",
     "pkg/security",
     "pkg/security/authenticators",
     "pkg/security/filters",
@@ -63,8 +65,7 @@
     "test/testutil",
   ]
   pruneopts = "NT"
-  revision = "7920247e060da10cb2f8ea7dced2f99823ae9c01"
-  version = "v0.6.0"
+  revision = "c49be11e03a29c1f0f04da412d7abf88972b4504"
 
 [[projects]]
   digest = "1:f780d408067189c4c42b53f7bb24ebf8fd2a1e4510b813ed6e79dd6563e38cc5"
@@ -73,6 +74,14 @@
   pruneopts = "UT"
   revision = "5c4e22684113ffc2a77577c178189940925f9aef"
   version = "v1.5.1"
+
+[[projects]]
+  digest = "1:d04889482897652dedae6d8575b479c06fa3eb3c3abe248163b25d3df5fab43e"
+  name = "github.com/antlr/antlr4"
+  packages = ["runtime/Go/antlr"]
+  pruneopts = "UT"
+  revision = "be58ebffde8e29c154192c019608f0a5b8e6a064"
+  version = "4.7.2"
 
 [[projects]]
   digest = "1:d5fa6328bd281ac91e7b5d3f45b49f8ac36c30b6a530f633d91c6eaef50cd137"
@@ -276,8 +285,8 @@
     "zlib",
   ]
   pruneopts = "UT"
-  revision = "29f61c4f7dec01b2cc59c562f290fe1cc441eaef"
-  version = "v1.8.5"
+  revision = "da9470192e5d0ad619defde5ded583e5e907d3e8"
+  version = "v1.8.6"
 
 [[projects]]
   digest = "1:923c4d7194b42e054b2eb8a6c62824ac55e23ececc1c7e48d4da69c971c55954"
@@ -305,7 +314,7 @@
     "scram",
   ]
   pruneopts = "UT"
-  revision = "931b5ae4c24e6810c8c82ab4734904de3df1c3dc"
+  revision = "f91d3411e481ed313eeab65ebfe9076466c39d01"
 
 [[projects]]
   digest = "1:5a0ef768465592efca0412f7e838cdc0826712f8447e70e6ccc52eb441e9ab13"
@@ -563,12 +572,12 @@
   revision = "bd5ef7bd5415a7ac448318e64f11a24cd21e594b"
 
 [[projects]]
-  digest = "1:1c898ea6c30c16e8d55fdb6fe44c4bee5f9b7d68aa260cfdfc3024491dcc7bea"
+  digest = "1:a8a0ed98532819a3b0dc5cf3264a14e30aba5284b793ba2850d6f381ada5f987"
   name = "github.com/xeipuuv/gojsonschema"
   packages = ["."]
   pruneopts = "UT"
-  revision = "f971f3cd73b2899de6923801c147f075263e0c50"
-  version = "v1.1.0"
+  revision = "82fcdeb203eb6ab2a67d0a623d9c19e5e5a64927"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
@@ -607,7 +616,7 @@
     "pbkdf2",
   ]
   pruneopts = "UT"
-  revision = "34f69633bfdcf9db92f698f8487115767eebef81"
+  revision = "87dc89f01550277dc22b74ffcf4cd89fa2f40f4c"
 
 [[projects]]
   branch = "master"
@@ -623,7 +632,7 @@
     "publicsuffix",
   ]
   pruneopts = "UT"
-  revision = "72f939374954d0a1b2a1e27dcda950e2724dd5c1"
+  revision = "ec77196f6094c3492a8b61f2c11cf937f78992ae"
 
 [[projects]]
   branch = "master"
@@ -638,11 +647,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3e7ac264ca261c2d429880bfd6c3121c36a0f12b6a050d8a747aa29f6f6b2be0"
+  digest = "1:70b2bf25c4ed23c61dae668e4151d87a7edc5965bc3ccfecd1b9fe5f1752092a"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "543471e840be449c53d44b32c7adf1261ad67e37"
+  revision = "3e7259c5e7c2076bb2728047a3df75adb1bad8e5"
 
 [[projects]]
   digest = "1:28deae5fe892797ff37a317b5bcda96d11d1c90dadd89f1337651df3bc4c586e"
