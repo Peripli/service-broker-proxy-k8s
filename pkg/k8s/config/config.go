@@ -23,6 +23,14 @@ type Settings struct {
 	K8S              *ClientConfiguration `mapstructure:"k8s"`
 }
 
+// DefaultSettings returns the default settings for the k8s agent
+func DefaultSettings() *Settings {
+	return &Settings{
+		Settings: *sbproxy.DefaultSettings(),
+		K8S:      DefaultClientConfiguration(),
+	}
+}
+
 // Validate validates the application settings
 func (s *Settings) Validate() error {
 	if err := s.K8S.Validate(); err != nil {
@@ -128,15 +136,12 @@ func DefaultClientConfiguration() *ClientConfiguration {
 
 // CreatePFlagsForK8SClient adds pflags relevant to the K8S client config
 func CreatePFlagsForK8SClient(set *pflag.FlagSet) {
-	env.CreatePFlags(set, &Settings{K8S: DefaultClientConfiguration()})
+	env.CreatePFlags(set, DefaultSettings())
 }
 
 // NewConfig creates Settings from the provided environment
 func NewConfig(env env.Environment) (*Settings, error) {
-	settings := &Settings{
-		Settings: *sbproxy.DefaultSettings(),
-		K8S:      DefaultClientConfiguration(),
-	}
+	settings := DefaultSettings()
 
 	if err := env.Unmarshal(settings); err != nil {
 		return nil, err
