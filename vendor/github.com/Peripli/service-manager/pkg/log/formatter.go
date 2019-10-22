@@ -19,9 +19,8 @@ package log
 import (
 	"encoding/json"
 	"fmt"
-	"time"
-
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 type kibanaEntry struct {

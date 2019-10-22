@@ -19,20 +19,68 @@ package query
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/Peripli/service-manager/pkg/query/parser"
-	"github.com/antlr/antlr4/runtime/Go/antlr"
-
 	"github.com/Peripli/service-manager/pkg/util"
 )
 
+// Operator is a query operator
+type Operator string
+
 const (
-	// Separator is the separator between queries of different type
-	Separator string = "and"
+	// EqualsOperator takes two operands and tests if they are equal
+	EqualsOperator Operator = "="
+	// NotEqualsOperator takes two operands and tests if they are not equal
+	NotEqualsOperator Operator = "!="
+	// GreaterThanOperator takes two operands and tests if the left is greater than the right
+	GreaterThanOperator Operator = "gt"
+	// GreaterThanOrEqualOperator takes two operands and tests if the left is greater than or equal the right
+	GreaterThanOrEqualOperator Operator = "gte"
+	// LessThanOperator takes two operands and tests if the left is lesser than the right
+	LessThanOperator Operator = "lt"
+	// LessThanOrEqualOperator takes two operands and tests if the left is lesser than or equal the right
+	LessThanOrEqualOperator Operator = "lte"
+	// InOperator takes two operands and tests if the left is contained in the right
+	InOperator Operator = "in"
+	// NotInOperator takes two operands and tests if the left is not contained in the right
+	NotInOperator Operator = "notin"
+	// EqualsOrNilOperator takes two operands and tests if the left is equal to the right, or if the left is nil
+	EqualsOrNilOperator Operator = "eqornil"
+	// NoOperator signifies that this is not an operator
+	NoOperator Operator = "nop"
+)
+
+// IsMultiVariate returns true if the operator requires right operand with multiple values
+func (op Operator) IsMultiVariate() bool {
+	return op == InOperator || op == NotInOperator
+}
+
+// IsNullable returns true if the operator can check if the left operand is nil
+func (op Operator) IsNullable() bool {
+	return op == EqualsOrNilOperator
+}
+
+// IsNumeric returns true if the operator works only with numeric operands
+func (op Operator) IsNumeric() bool {
+	return op == LessThanOperator || op == GreaterThanOperator || op == LessThanOrEqualOperator || op == GreaterThanOrEqualOperator
+}
+
+var operators = []Operator{EqualsOperator, NotEqualsOperator, InOperator,
+	NotInOperator, GreaterThanOperator, GreaterThanOrEqualOperator, LessThanOperator, LessThanOrEqualOperator, EqualsOrNilOperator}
+
+const (
+	// OpenBracket is the token that denotes the beginning of a multivariate operand
+	OpenBracket rune = '['
+	// CloseBracket is the token that denotes the end of a multivariate operand
+	CloseBracket rune = ']'
+	// Separator is the separator between field and label queries
+	Separator rune = '|'
+	// OperandSeparator is the separator between the operator and the operands
+	OperandSeparator rune = ' '
 )
 
 // CriterionType is a type of criteria to be applied when querying
@@ -47,14 +95,11 @@ const (
 	ResultQuery CriterionType = "resultQuery"
 )
 
-// OperatorType represents the type of the query operator
-type OperatorType string
-
 const (
-	// UnivariateOperator denotes that the operator expects exactly one variable on the right side
-	UnivariateOperator OperatorType = "univariate"
-	// MultivariateOperator denotes that the operator expects more than one variable on the right side
-	MultivariateOperator OperatorType = "multivariate"
+	// OrderBy should be used as a left operand in Criterion
+	OrderBy string = "orderBy"
+	// Limit should be used as a left operand in Criterion to signify the
+	Limit string = "limit"
 )
 
 // OrderType is the type of the order in which result is presented
@@ -67,36 +112,7 @@ const (
 	DescOrder OrderType = "desc"
 )
 
-const (
-	// OrderBy should be used as a left operand in Criterion
-	OrderBy string = "orderBy"
-	// Limit should be used as a left operand in Criterion to signify the
-	Limit string = "limit"
-)
-
-var (
-	// Operators returns the supported query operators
-	Operators = []Operator{
-		EqualsOperator, NotEqualsOperator,
-		GreaterThanOperator, LessThanOperator,
-		GreaterThanOrEqualOperator, LessThanOrEqualOperator,
-		InOperator, NotInOperator, EqualsOrNilOperator,
-	}
-	// CriteriaTypes returns the supported query criteria types
-	CriteriaTypes = []CriterionType{FieldQuery, LabelQuery}
-)
-
-// Operator is a query operator
-type Operator interface {
-	// String returns the text representation of the operator
-	String() string
-	// Type returns the type of the operator
-	Type() OperatorType
-	// IsNullable returns true if the operator allows results with null value in the RHS
-	IsNullable() bool
-	// IsNumeric returns true if the operator works only with numbers
-	IsNumeric() bool
-}
+var supportedQueryTypes = []CriterionType{FieldQuery, LabelQuery}
 
 // Criterion is a single part of a query criteria
 type Criterion struct {
@@ -112,26 +128,26 @@ type Criterion struct {
 
 // ByField constructs a new criterion for field querying
 func ByField(operator Operator, leftOp string, rightOp ...string) Criterion {
-	return NewCriterion(leftOp, operator, rightOp, FieldQuery)
+	return newCriterion(leftOp, operator, rightOp, FieldQuery)
 }
 
 // ByLabel constructs a new criterion for label querying
 func ByLabel(operator Operator, leftOp string, rightOp ...string) Criterion {
-	return NewCriterion(leftOp, operator, rightOp, LabelQuery)
+	return newCriterion(leftOp, operator, rightOp, LabelQuery)
 }
 
 // OrderResultBy constructs a new criterion for result order
 func OrderResultBy(field string, orderType OrderType) Criterion {
-	return NewCriterion(OrderBy, NoOperator, []string{field, string(orderType)}, ResultQuery)
+	return newCriterion(OrderBy, NoOperator, []string{field, string(orderType)}, ResultQuery)
 }
 
 // LimitResultBy constructs a new criterion for limit result with
 func LimitResultBy(limit int) Criterion {
 	limitString := strconv.Itoa(limit)
-	return NewCriterion(Limit, NoOperator, []string{limitString}, ResultQuery)
+	return newCriterion(Limit, NoOperator, []string{limitString}, ResultQuery)
 }
 
-func NewCriterion(leftOp string, operator Operator, rightOp []string, criteriaType CriterionType) Criterion {
+func newCriterion(leftOp string, operator Operator, rightOp []string, criteriaType CriterionType) Criterion {
 	return Criterion{LeftOp: leftOp, Operator: operator, RightOp: rightOp, Type: criteriaType}
 }
 
@@ -160,7 +176,7 @@ func (c Criterion) Validate() error {
 		return nil
 	}
 
-	if len(c.RightOp) > 1 && c.Operator.Type() == UnivariateOperator {
+	if len(c.RightOp) > 1 && !c.Operator.IsMultiVariate() {
 		return &util.UnsupportedQueryError{Message: fmt.Sprintf("multiple values %s received for single value operation %s", c.RightOp, c.Operator)}
 	}
 	if c.Operator.IsNullable() && c.Type != FieldQuery {
@@ -169,8 +185,13 @@ func (c Criterion) Validate() error {
 	if c.Operator.IsNumeric() && !isNumeric(c.RightOp[0]) && !isDateTime(c.RightOp[0]) {
 		return &util.UnsupportedQueryError{Message: fmt.Sprintf("%s is numeric operator, but the right operand %s is not numeric or datetime", c.Operator, c.RightOp[0])}
 	}
-	if strings.Contains(c.LeftOp, Separator) {
-		return &util.UnsupportedQueryError{Message: fmt.Sprintf("separator %s is not allowed in %s with left operand \"%s\".", Separator, c.Type, c.LeftOp)}
+
+	if strings.ContainsRune(c.LeftOp, Separator) {
+		parts := strings.FieldsFunc(c.LeftOp, func(r rune) bool {
+			return r == Separator
+		})
+		possibleKey := parts[len(parts)-1]
+		return &util.UnsupportedQueryError{Message: fmt.Sprintf("separator %c is not allowed in %s with left operand \"%s\". Maybe you meant \"%s\"? Make sure if the separator is present in any right operand, that it is escaped with a backslash (\\)", Separator, c.Type, c.LeftOp, possibleKey)}
 	}
 	for _, op := range c.RightOp {
 		if strings.ContainsRune(op, '\n') {
@@ -180,11 +201,12 @@ func (c Criterion) Validate() error {
 	return nil
 }
 
-func validateCriteria(criteria []Criterion) error {
+func mergeCriteria(c1 []Criterion, c2 []Criterion) ([]Criterion, error) {
+	result := c1
 	fieldQueryLeftOperands := make(map[string]int)
 	labelQueryLeftOperands := make(map[string]int)
 
-	for _, criterion := range criteria {
+	for _, criterion := range append(c1, c2...) {
 		if criterion.Type == FieldQuery {
 			fieldQueryLeftOperands[criterion.LeftOp]++
 		}
@@ -193,17 +215,21 @@ func validateCriteria(criteria []Criterion) error {
 		}
 	}
 
-	for _, c := range criteria {
-		leftOp := c.LeftOp
+	for _, newCriterion := range c2 {
+		leftOp := newCriterion.LeftOp
 		// disallow duplicate label queries
-		if count, ok := labelQueryLeftOperands[leftOp]; ok && count > 1 && c.Type == LabelQuery {
-			return &util.UnsupportedQueryError{Message: fmt.Sprintf("duplicate label query key: %s", leftOp)}
+		if count, ok := labelQueryLeftOperands[leftOp]; ok && count > 1 && newCriterion.Type == LabelQuery {
+			return nil, &util.UnsupportedQueryError{Message: fmt.Sprintf("duplicate label query key: %s", newCriterion.LeftOp)}
 		}
-		if err := c.Validate(); err != nil {
-			return err
+		if err := newCriterion.Validate(); err != nil {
+			return nil, err
 		}
 	}
-	return validateWholeCriteria(criteria...)
+	result = append(result, c2...)
+	if err := validateWholeCriteria(result...); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 type criteriaCtxKey struct{}
@@ -211,8 +237,8 @@ type criteriaCtxKey struct{}
 // AddCriteria adds the given criteria to the context and returns an error if any of the criteria is not valid
 func AddCriteria(ctx context.Context, newCriteria ...Criterion) (context.Context, error) {
 	currentCriteria := CriteriaForContext(ctx)
-	criteria := append(currentCriteria, newCriteria...)
-	if err := validateCriteria(criteria); err != nil {
+	criteria, err := mergeCriteria(currentCriteria, newCriteria)
+	if err != nil {
 		return nil, err
 	}
 	return context.WithValue(ctx, criteriaCtxKey{}, criteria), nil
@@ -229,41 +255,139 @@ func CriteriaForContext(ctx context.Context) []Criterion {
 
 // ContextWithCriteria returns a new context with given criteria
 func ContextWithCriteria(ctx context.Context, criteria ...Criterion) (context.Context, error) {
-	if err := validateCriteria(criteria); err != nil {
+	if err := validateWholeCriteria(criteria...); err != nil {
 		return nil, err
 	}
 	return context.WithValue(ctx, criteriaCtxKey{}, criteria), nil
 }
 
-// Parse parses the query expression for and builds criteria for the provided type
-func Parse(criterionType CriterionType, expression string) ([]Criterion, error) {
-	if expression == "" {
-		return []Criterion{}, nil
+// BuildCriteriaFromRequest builds criteria for the given request's query params and returns an error if the query is not valid
+func BuildCriteriaFromRequest(request *http.Request) ([]Criterion, error) {
+	var criteria []Criterion
+	for _, queryType := range supportedQueryTypes {
+		queryValues := request.URL.Query().Get(string(queryType))
+		querySegments, err := process(queryValues, queryType)
+		if err != nil {
+			return nil, err
+		}
+		if criteria, err = mergeCriteria(criteria, querySegments); err != nil {
+			return nil, err
+		}
 	}
-	parsingListener := &queryListener{criteriaType: criterionType}
+	sort.Sort(ByLeftOp(criteria))
+	return criteria, nil
+}
 
-	input := antlr.NewInputStream(expression)
-	lexer := parser.NewQueryLexer(input)
-	lexer.RemoveErrorListeners()
-	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
+type ByLeftOp []Criterion
 
-	p := parser.NewQueryParser(stream)
-	p.RemoveErrorListeners()
-	p.AddErrorListener(parsingListener)
+func (c ByLeftOp) Len() int {
+	return len(c)
+}
 
-	antlr.ParseTreeWalkerDefault.Walk(parsingListener, p.Expression())
-	if parsingListener.err != nil {
-		return nil, parsingListener.err
+func (c ByLeftOp) Less(i, j int) bool {
+	return c[i].LeftOp < c[j].LeftOp
+}
+
+func (c ByLeftOp) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
+func process(input string, criteriaType CriterionType) ([]Criterion, error) {
+	var c []Criterion
+	if input == "" {
+		return c, nil
 	}
-
-	criteria := parsingListener.result
-	if err := validateCriteria(criteria); err != nil {
+	var leftOp string
+	var operator Operator
+	j := 0
+	for i := 0; i < len(input); i++ {
+		if leftOp != "" && operator != "" {
+			remaining := input[i+len(operator)+1:]
+			rightOp, offset, err := findRightOp(remaining, leftOp, operator, criteriaType)
+			if err != nil {
+				return nil, err
+			}
+			criterion := newCriterion(leftOp, operator, rightOp, criteriaType)
+			if err := criterion.Validate(); err != nil {
+				return nil, err
+			}
+			c = append(c, criterion)
+			i += offset + len(operator) + len(string(Separator))
+			j = i + 1
+			leftOp = ""
+			operator = ""
+		} else {
+			remaining := input[i:]
+			for _, op := range operators {
+				if strings.HasPrefix(remaining, fmt.Sprintf("%c%s%c", OperandSeparator, op, OperandSeparator)) {
+					leftOp = input[j:i]
+					operator = op
+					break
+				}
+			}
+		}
+	}
+	if len(c) == 0 {
+		return nil, &util.UnsupportedQueryError{
+			Message: fmt.Sprintf("%s is not a valid %s", input, criteriaType),
+		}
+	}
+	if err := validateWholeCriteria(c...); err != nil {
 		return nil, err
 	}
-	sort.Slice(criteria, func(i, j int) bool {
-		return criteria[i].LeftOp < criteria[j].LeftOp
-	})
-	return criteria, nil
+	return c, nil
+}
+
+func findRightOp(remaining string, leftOp string, operator Operator, criteriaType CriterionType) (rightOp []string, offset int, err error) {
+	rightOpBuffer := strings.Builder{}
+	for _, ch := range remaining {
+		if ch == Separator {
+			if offset+1 < len(remaining) && rune(remaining[offset+1]) == Separator && remaining[offset-1] != '\\' {
+				arg := rightOpBuffer.String()
+				rightOp = append(rightOp, arg)
+				rightOpBuffer.Reset()
+			} else if rune(remaining[offset-1]) == Separator {
+				offset++
+				continue
+			} else {
+				if remaining[offset-1] != '\\' { // delimiter is not escaped - treat as separator
+					arg := rightOpBuffer.String()
+					rightOp = append(rightOp, arg)
+					rightOpBuffer.Reset()
+					break
+				} else { // remove escaping symbol
+					tmp := rightOpBuffer.String()[:offset-1]
+					rightOpBuffer.Reset()
+					rightOpBuffer.WriteString(tmp)
+					rightOpBuffer.WriteRune(ch)
+				}
+			}
+		} else {
+			rightOpBuffer.WriteRune(ch)
+		}
+		offset++
+	}
+	if rightOpBuffer.Len() > 0 {
+		rightOp = append(rightOp, rightOpBuffer.String())
+	}
+	if len(rightOp) > 0 && operator.IsMultiVariate() {
+		firstElement := rightOp[0]
+		if strings.IndexRune(firstElement, OpenBracket) == 0 {
+			rightOp[0] = firstElement[1:]
+		} else {
+			return nil, -1, &util.UnsupportedQueryError{Message: fmt.Sprintf("operator %s for %s %s requires right operand to be surrounded in %c%c", operator, criteriaType, leftOp, OpenBracket, CloseBracket)}
+		}
+		lastElement := rightOp[len(rightOp)-1]
+		if rune(lastElement[len(lastElement)-1]) == CloseBracket {
+			rightOp[len(rightOp)-1] = lastElement[:len(lastElement)-1]
+		} else {
+			return nil, -1, &util.UnsupportedQueryError{Message: fmt.Sprintf("operator %s for %s %s requires right operand to be surrounded in %c%c", operator, criteriaType, leftOp, OpenBracket, CloseBracket)}
+		}
+	}
+	if len(rightOp) == 0 {
+		rightOp = append(rightOp, "")
+	}
+	return
 }
 
 func isNumeric(str string) bool {

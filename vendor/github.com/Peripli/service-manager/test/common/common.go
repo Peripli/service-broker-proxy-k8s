@@ -17,9 +17,8 @@
 package common
 
 import (
-	"time"
-
 	"github.com/Peripli/service-manager/pkg/web"
+	"time"
 
 	"github.com/onsi/ginkgo"
 	"github.com/spf13/pflag"
@@ -231,12 +230,12 @@ func RegisterVisibilityForPlanAndPlatform(SM *SMExpect, planID, platformID strin
 }
 
 func CreateVisibilitiesForAllBrokerPlans(SM *SMExpect, brokerID string) {
-	offerings := SM.ListWithQuery(web.ServiceOfferingsURL, fmt.Sprintf("fieldQuery=broker_id eq '%s'", brokerID)).Iter()
+	offerings := SM.ListWithQuery(web.ServiceOfferingsURL, "fieldQuery=broker_id = "+brokerID).Iter()
 	offeringIDs := make([]string, 0, len(offerings))
 	for _, offering := range offerings {
 		offeringIDs = append(offeringIDs, offering.Object().Value("id").String().Raw())
 	}
-	plans := SM.ListWithQuery(web.ServicePlansURL, "fieldQuery="+fmt.Sprintf("service_offering_id in ('%s')", strings.Join(offeringIDs, "','"))).Iter()
+	plans := SM.ListWithQuery(web.ServicePlansURL, "fieldQuery="+fmt.Sprintf("service_offering_id in [%s]", strings.Join(offeringIDs, "||"))).Iter()
 	for _, p := range plans {
 		SM.POST(web.VisibilitiesURL).WithJSON(Object{
 			"service_plan_id": p.Object().Value("id").String().Raw(),
@@ -251,11 +250,11 @@ func RegisterPlatformInSM(platformJSON Object, SM *SMExpect, headers map[string]
 		Expect().Status(http.StatusCreated).JSON().Object().Raw()
 	createdAtString := reply["created_at"].(string)
 	updatedAtString := reply["updated_at"].(string)
-	createdAt, err := time.Parse(time.RFC3339Nano, createdAtString)
+	createdAt, err := time.Parse(time.RFC3339, createdAtString)
 	if err != nil {
 		panic(err)
 	}
-	updatedAt, err := time.Parse(time.RFC3339Nano, updatedAtString)
+	updatedAt, err := time.Parse(time.RFC3339, updatedAtString)
 	if err != nil {
 		panic(err)
 	}

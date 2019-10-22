@@ -32,17 +32,12 @@ type notificationConnectionCreator interface {
 
 type notificationConnectionCreatorImpl struct {
 	storageURI           string
-	skipSSLValidation    bool
 	minReconnectInterval time.Duration
 	maxReconnectInterval time.Duration
 }
 
 func (ncci *notificationConnectionCreatorImpl) NewConnection(eventCallback func(isRunning bool, err error)) notificationConnection.NotificationConnection {
-	sslModeParam := ""
-	if ncci.skipSSLValidation {
-		sslModeParam = "?sslmode=disable"
-	}
-	return pq.NewListener(ncci.storageURI+sslModeParam, ncci.minReconnectInterval, ncci.maxReconnectInterval, func(event pq.ListenerEventType, err error) {
+	return pq.NewListener(ncci.storageURI, ncci.minReconnectInterval, ncci.maxReconnectInterval, func(event pq.ListenerEventType, err error) {
 		switch event {
 		case pq.ListenerEventConnected, pq.ListenerEventReconnected:
 			eventCallback(true, err)

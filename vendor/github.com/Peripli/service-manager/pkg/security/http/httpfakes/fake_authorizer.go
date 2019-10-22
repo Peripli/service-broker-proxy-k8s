@@ -9,26 +9,24 @@ import (
 )
 
 type FakeAuthorizer struct {
-	AuthorizeStub        func(*web.Request) (http.Decision, web.AccessLevel, error)
+	AuthorizeStub        func(*web.Request) (http.Decision, error)
 	authorizeMutex       sync.RWMutex
 	authorizeArgsForCall []struct {
 		arg1 *web.Request
 	}
 	authorizeReturns struct {
 		result1 http.Decision
-		result2 web.AccessLevel
-		result3 error
+		result2 error
 	}
 	authorizeReturnsOnCall map[int]struct {
 		result1 http.Decision
-		result2 web.AccessLevel
-		result3 error
+		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeAuthorizer) Authorize(arg1 *web.Request) (http.Decision, web.AccessLevel, error) {
+func (fake *FakeAuthorizer) Authorize(arg1 *web.Request) (http.Decision, error) {
 	fake.authorizeMutex.Lock()
 	ret, specificReturn := fake.authorizeReturnsOnCall[len(fake.authorizeArgsForCall)]
 	fake.authorizeArgsForCall = append(fake.authorizeArgsForCall, struct {
@@ -40,10 +38,10 @@ func (fake *FakeAuthorizer) Authorize(arg1 *web.Request) (http.Decision, web.Acc
 		return fake.AuthorizeStub(arg1)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2, ret.result3
+		return ret.result1, ret.result2
 	}
 	fakeReturns := fake.authorizeReturns
-	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *FakeAuthorizer) AuthorizeCallCount() int {
@@ -52,7 +50,7 @@ func (fake *FakeAuthorizer) AuthorizeCallCount() int {
 	return len(fake.authorizeArgsForCall)
 }
 
-func (fake *FakeAuthorizer) AuthorizeCalls(stub func(*web.Request) (http.Decision, web.AccessLevel, error)) {
+func (fake *FakeAuthorizer) AuthorizeCalls(stub func(*web.Request) (http.Decision, error)) {
 	fake.authorizeMutex.Lock()
 	defer fake.authorizeMutex.Unlock()
 	fake.AuthorizeStub = stub
@@ -65,33 +63,30 @@ func (fake *FakeAuthorizer) AuthorizeArgsForCall(i int) *web.Request {
 	return argsForCall.arg1
 }
 
-func (fake *FakeAuthorizer) AuthorizeReturns(result1 http.Decision, result2 web.AccessLevel, result3 error) {
+func (fake *FakeAuthorizer) AuthorizeReturns(result1 http.Decision, result2 error) {
 	fake.authorizeMutex.Lock()
 	defer fake.authorizeMutex.Unlock()
 	fake.AuthorizeStub = nil
 	fake.authorizeReturns = struct {
 		result1 http.Decision
-		result2 web.AccessLevel
-		result3 error
-	}{result1, result2, result3}
+		result2 error
+	}{result1, result2}
 }
 
-func (fake *FakeAuthorizer) AuthorizeReturnsOnCall(i int, result1 http.Decision, result2 web.AccessLevel, result3 error) {
+func (fake *FakeAuthorizer) AuthorizeReturnsOnCall(i int, result1 http.Decision, result2 error) {
 	fake.authorizeMutex.Lock()
 	defer fake.authorizeMutex.Unlock()
 	fake.AuthorizeStub = nil
 	if fake.authorizeReturnsOnCall == nil {
 		fake.authorizeReturnsOnCall = make(map[int]struct {
 			result1 http.Decision
-			result2 web.AccessLevel
-			result3 error
+			result2 error
 		})
 	}
 	fake.authorizeReturnsOnCall[i] = struct {
 		result1 http.Decision
-		result2 web.AccessLevel
-		result3 error
-	}{result1, result2, result3}
+		result2 error
+	}{result1, result2}
 }
 
 func (fake *FakeAuthorizer) Invocations() map[string][][]interface{} {

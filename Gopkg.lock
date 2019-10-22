@@ -24,8 +24,7 @@
   version = "v1.0.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:29098acc223f9ce8f6e37b56bc163fe05b1ecbd0c6c858ec495e0afeb619ffe9"
+  digest = "1:5bf1e2267bf06dece37b31ca0b9dd3973ce7c385d657811c398b7ec1f33a2501"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
     "pkg/logging",
@@ -37,11 +36,11 @@
     "pkg/sm",
   ]
   pruneopts = ""
-  revision = "69c4bd049ed00b18a8fdf186adc52a7ec68de320"
+  revision = "24fe832379c509e70e1319c60f29fa512086fdef"
+  version = "v0.6.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:4a2c0b59e8765a69cfbec68cf0cd84f304c889bb408701ef953de350b2181b1d"
+  digest = "1:23b07f44f21da19da52a6d0cfba640e4a10c84d8e0f5c8edc50cd3f5067a4bb9"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -55,7 +54,6 @@
     "pkg/health",
     "pkg/log",
     "pkg/query",
-    "pkg/query/parser",
     "pkg/security",
     "pkg/security/authenticators",
     "pkg/security/filters",
@@ -71,15 +69,8 @@
     "storage/interceptors",
   ]
   pruneopts = ""
-  revision = "c49be11e03a29c1f0f04da412d7abf88972b4504"
-
-[[projects]]
-  digest = "1:d006584293547a5a28116ac4e02e250a07911e59b3db7fb1b7ab93c25721cdcb"
-  name = "github.com/antlr/antlr4"
-  packages = ["runtime/Go/antlr"]
-  pruneopts = ""
-  revision = "be58ebffde8e29c154192c019608f0a5b8e6a064"
-  version = "4.7.2"
+  revision = "7920247e060da10cb2f8ea7dced2f99823ae9c01"
+  version = "v0.6.0"
 
 [[projects]]
   digest = "1:7361b225f87c640365f3b00b1b42bc2ab7b923c9f933ac8873d3ff3c08753165"

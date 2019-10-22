@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package query_test
+package query
 
 import (
 	"fmt"
 
-	. "github.com/Peripli/service-manager/pkg/query"
 	. "github.com/onsi/ginkgo/extensions/table"
 
 	"github.com/Peripli/service-manager/pkg/types"

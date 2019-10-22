@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Peripli/service-manager/pkg/util"
-
 	"github.com/Peripli/service-manager/pkg/query"
 
 	"github.com/Peripli/service-manager/pkg/types"
@@ -61,35 +59,35 @@ var _ = Describe("Service Manager Query", func() {
 		})
 
 		It("notifications older than the provided time should not be found", func() {
-			operand := util.ToRFCNanoFormat(now.Add(-time.Hour))
+			operand := now.Add(-time.Hour).Format(time.RFC3339)
 			criteria := query.ByField(query.LessThanOperator, "created_at", operand)
 			list := queryNotification(repository, criteria)
 			expectNotifications(list)
 		})
 
 		It("only 1 should be older than the provided time", func() {
-			operand := util.ToRFCNanoFormat(now.Add(-20 * time.Minute))
+			operand := now.Add(-20 * time.Minute).Format(time.RFC3339)
 			criteria := query.ByField(query.LessThanOperator, "created_at", operand)
 			list := queryNotification(repository, criteria)
 			expectNotifications(list, id2)
 		})
 
 		It("2 notifications should be found newer than the provided time", func() {
-			operand := util.ToRFCNanoFormat(now.Add(-time.Hour))
+			operand := now.Add(-time.Hour).Format(time.RFC3339)
 			criteria := query.ByField(query.GreaterThanOperator, "created_at", operand)
 			list := queryNotification(repository, criteria)
 			expectNotifications(list, id1, id2)
 		})
 
 		It("only 1 notifications should be found newer than the provided time", func() {
-			operand := util.ToRFCNanoFormat(now.Add(-10 * time.Minute))
+			operand := now.Add(-10 * time.Minute).Format(time.RFC3339)
 			criteria := query.ByField(query.GreaterThanOperator, "created_at", operand)
 			list := queryNotification(repository, criteria)
 			expectNotifications(list, id1)
 		})
 
 		It("no notifications should be found newer than the last one created", func() {
-			operand := util.ToRFCNanoFormat(now.Add(10 * time.Minute))
+			operand := now.Add(10 * time.Minute).Format(time.RFC3339)
 			criteria := query.ByField(query.GreaterThanOperator, "created_at", operand)
 			list := queryNotification(repository, criteria)
 			expectNotifications(list)

@@ -20,18 +20,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"net/url"
-	"strconv"
-	"strings"
-
 	"github.com/Peripli/service-manager/pkg/query"
+	"strings"
 
 	. "github.com/onsi/ginkgo/extensions/table"
 
 	"net/http"
 
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 
 	"github.com/Peripli/service-manager/test/common"
 )
@@ -100,7 +96,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 200",
 			listOpEntry{
 				resourcesToExpectBeforeOp: []common.Object{r[0]},
-				queryTemplate:             "%s eq '%v'",
+				queryTemplate:             "%s = %v",
 				queryArgs:                 r[0],
 				resourcesToExpectAfterOp:  []common.Object{r[0]},
 				expectedStatusCode:        http.StatusOK,
@@ -109,7 +105,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 200",
 			listOpEntry{
 				resourcesToExpectBeforeOp:   []common.Object{r[0], r[1], r[2], r[3]},
-				queryTemplate:               "%s ne '%v'",
+				queryTemplate:               "%s != %v",
 				queryArgs:                   r[0],
 				resourcesNotToExpectAfterOp: []common.Object{r[0]},
 				expectedStatusCode:          http.StatusOK,
@@ -119,7 +115,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 200",
 			listOpEntry{
 				resourcesToExpectBeforeOp: []common.Object{r[0], r[1], r[2], r[3]},
-				queryTemplate:             "%[1]s in ('%[2]v','%[2]v','%[2]v')",
+				queryTemplate:             "%[1]s in [%[2]v||%[2]v||%[2]v]",
 				queryArgs:                 r[0],
 				resourcesToExpectAfterOp:  []common.Object{r[0]},
 				expectedStatusCode:        http.StatusOK,
@@ -129,7 +125,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 200",
 			listOpEntry{
 				resourcesToExpectBeforeOp: []common.Object{r[0], r[1], r[2], r[3]},
-				queryTemplate:             "%s in ('%v')",
+				queryTemplate:             "%s in [%v]",
 				queryArgs:                 r[0],
 				resourcesToExpectAfterOp:  []common.Object{r[0]},
 				expectedStatusCode:        http.StatusOK,
@@ -138,7 +134,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 200",
 			listOpEntry{
 				resourcesToExpectBeforeOp:   []common.Object{r[0], r[1], r[2], r[3]},
-				queryTemplate:               "%[1]s notin ('%[2]v','%[2]v','%[2]v')",
+				queryTemplate:               "%[1]s notin [%[2]v||%[2]v||%[2]v]",
 				queryArgs:                   r[0],
 				resourcesNotToExpectAfterOp: []common.Object{r[0]},
 				expectedStatusCode:          http.StatusOK,
@@ -147,7 +143,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 200",
 			listOpEntry{
 				resourcesToExpectBeforeOp:   []common.Object{r[0], r[1], r[2], r[3]},
-				queryTemplate:               "%s notin ('%v')",
+				queryTemplate:               "%s notin [%v]",
 				queryArgs:                   r[0],
 				resourcesNotToExpectAfterOp: []common.Object{r[0]},
 				expectedStatusCode:          http.StatusOK,
@@ -156,7 +152,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 200",
 			listOpEntry{
 				resourcesToExpectBeforeOp:   []common.Object{r[0], r[1], r[2], r[3]},
-				queryTemplate:               "%s gt '%v'",
+				queryTemplate:               "%s gt %v",
 				queryArgs:                   common.RemoveNonNumericArgs(r[0]),
 				resourcesNotToExpectAfterOp: []common.Object{r[0]},
 				expectedStatusCode:          http.StatusOK,
@@ -165,7 +161,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 200 for greater than or equal queries",
 			listOpEntry{
 				resourcesToExpectBeforeOp: []common.Object{r[0], r[1], r[2], r[3]},
-				queryTemplate:             "%s ge %v",
+				queryTemplate:             "%s gte %v",
 				queryArgs:                 common.RemoveNonNumericArgs(r[0]),
 				resourcesToExpectAfterOp:  []common.Object{r[0], r[1], r[2], r[3]},
 				expectedStatusCode:        http.StatusOK,
@@ -174,7 +170,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 400 for greater than or equal queries when query args are non numeric",
 			listOpEntry{
 				resourcesToExpectBeforeOp: []common.Object{r[0], r[1], r[2], r[3]},
-				queryTemplate:             "%s ge %v",
+				queryTemplate:             "%s gte %v",
 				queryArgs:                 common.RemoveNumericArgs(r[0]),
 				resourcesToExpectAfterOp:  []common.Object{r[0], r[1], r[2], r[3]},
 				expectedStatusCode:        http.StatusBadRequest,
@@ -183,7 +179,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 200 for less than or equal queries",
 			listOpEntry{
 				resourcesToExpectBeforeOp: []common.Object{r[0], r[1], r[2], r[3]},
-				queryTemplate:             "%s le %v",
+				queryTemplate:             "%s lte %v",
 				queryArgs:                 common.RemoveNonNumericArgs(r[0]),
 				resourcesToExpectAfterOp:  []common.Object{r[0], r[1], r[2], r[3]},
 				expectedStatusCode:        http.StatusOK,
@@ -192,7 +188,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 400 for less than or equal queries when query args are non numeric",
 			listOpEntry{
 				resourcesToExpectBeforeOp: []common.Object{r[0], r[1], r[2], r[3]},
-				queryTemplate:             "%s le %v",
+				queryTemplate:             "%s lte %v",
 				queryArgs:                 common.RemoveNumericArgs(r[0]),
 				resourcesToExpectAfterOp:  []common.Object{r[0], r[1], r[2], r[3]},
 				expectedStatusCode:        http.StatusBadRequest,
@@ -201,7 +197,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 200",
 			listOpEntry{
 				resourcesToExpectBeforeOp:   []common.Object{r[0], r[1], r[2], r[3]},
-				queryTemplate:               "%s lt '%v'",
+				queryTemplate:               "%s lt %v",
 				queryArgs:                   common.RemoveNonNumericArgs(r[0]),
 				resourcesNotToExpectAfterOp: []common.Object{r[0]},
 				expectedStatusCode:          http.StatusOK,
@@ -210,15 +206,15 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 200 for field queries",
 			listOpEntry{
 				resourcesToExpectBeforeOp: []common.Object{r[0], rWithMandatoryFields},
-				queryTemplate:             "%s en '%v'",
+				queryTemplate:             "%s eqornil %v",
 				queryArgs:                 common.RemoveNotNullableFieldAndLabels(r[0], rWithMandatoryFields),
 				resourcesToExpectAfterOp:  []common.Object{r[0], rWithMandatoryFields},
 				expectedStatusCode:        http.StatusOK,
 			},
 		),
-		Entry("returns 400 for label queries with operator en",
+		Entry("returns 400 for label queries with operator eqornil",
 			listOpEntry{
-				queryTemplate: "%s en '%v'",
+				queryTemplate: "%s eqornil %v",
 				queryArgs: common.Object{
 					"labels": map[string]interface{}{
 						"labelKey1": []interface{}{
@@ -231,7 +227,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 200 for JSON fields with stripped new lines",
 			listOpEntry{
 				resourcesToExpectBeforeOp: []common.Object{r[0]},
-				queryTemplate:             "%s eq '%v'",
+				queryTemplate:             "%s = %v",
 				queryArgs:                 common.RemoveNonJSONArgs(r[0]),
 				resourcesToExpectAfterOp:  []common.Object{r[0]},
 				expectedStatusCode:        http.StatusOK,
@@ -239,37 +235,37 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		),
 		Entry("returns 400 when query operator is invalid",
 			listOpEntry{
-				queryTemplate:      "%s @@ '%v'",
+				queryTemplate:      "%s @@ %v",
+				queryArgs:          r[0],
+				expectedStatusCode: http.StatusBadRequest,
+			},
+		),
+		Entry("returns 400 when operator is not properly separated with right space from operands",
+			listOpEntry{
+				queryTemplate:      "%s =%v",
 				queryArgs:          r[0],
 				expectedStatusCode: http.StatusBadRequest,
 			},
 		),
 		Entry("returns 400 when label query is duplicated",
 			listOpEntry{
-				queryTemplate: "%[1]s eq '%[2]v' and %[1]s and '%[2]v'",
+				queryTemplate: "%[1]s = %[2]v|%[1]s = %[2]v",
 				queryArgs: common.Object{
 					"labels": common.CopyLabels(r[0]),
 				},
 				expectedStatusCode: http.StatusBadRequest,
 			},
 		),
-		Entry("returns 400 when operator is not properly separated with right space from operands",
-			listOpEntry{
-				queryTemplate:      "%s eq'%v'",
-				queryArgs:          r[0],
-				expectedStatusCode: http.StatusBadRequest,
-			},
-		),
 		Entry("returns 200 when field query is duplicated",
 			listOpEntry{
-				queryTemplate:      "%[1]s eq '%[2]v' and %[1]s eq '%[2]v'",
+				queryTemplate:      "%[1]s = %[2]v|%[1]s = %[2]v",
 				queryArgs:          common.CopyFields(r[0]),
 				expectedStatusCode: http.StatusOK,
 			},
 		),
 		Entry("returns 400 when operator is not properly separated with left space from operands",
 			listOpEntry{
-				queryTemplate:      "%seq '%v'",
+				queryTemplate:      "%s= %v",
 				queryArgs:          r[0],
 				expectedStatusCode: http.StatusBadRequest,
 			},
@@ -277,7 +273,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 
 		Entry("returns 400 when field query left operands are unknown",
 			listOpEntry{
-				queryTemplate:      "%[1]s in ('%[2]v', '%[2]v')",
+				queryTemplate:      "%[1]s in [%[2]v||%[2]v]",
 				queryArgs:          common.Object{"unknownkey": "unknownvalue"},
 				expectedStatusCode: http.StatusBadRequest,
 			},
@@ -285,7 +281,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		Entry("returns 200 when label query left operands are unknown",
 			listOpEntry{
 				resourcesToExpectBeforeOp: []common.Object{r[0], r[1], r[2], r[3]},
-				queryTemplate:             "%[1]s in ('%[2]v','%[2]v')",
+				queryTemplate:             "%[1]s in [%[2]v||%[2]v]",
 				queryArgs: common.Object{
 					"labels": map[string]interface{}{
 						"unknown": []interface{}{
@@ -298,7 +294,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		),
 		Entry("returns 400 when single value operator is used with multiple right value arguments",
 			listOpEntry{
-				queryTemplate:      "%[1]s ne ('%[2]v','%[2]v','%[2]v')",
+				queryTemplate:      "%[1]s != [%[2]v||%[2]v||%[2]v]",
 				queryArgs:          r[0],
 				expectedStatusCode: http.StatusBadRequest,
 			},
@@ -306,7 +302,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 
 		Entry("returns 400 when numeric operator is used with non-numeric operands",
 			listOpEntry{
-				queryTemplate:      "%s < '%v'",
+				queryTemplate:      "%s < %v",
 				queryArgs:          common.RemoveNumericArgs(r[0]),
 				expectedStatusCode: http.StatusBadRequest,
 			},
@@ -337,7 +333,7 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 		By("[TEST]: ======= Expectations Summary =======")
 
 		By(fmt.Sprintf("[TEST]: Listing %s with %s", t.API, query))
-		By(fmt.Sprintf("[TEST]: Currently present resources: '%v'", r))
+		By(fmt.Sprintf("[TEST]: Currently present resources: %v", r))
 		By(fmt.Sprintf("[TEST]: Expected %s ids after operations: %s", t.API, expectedAfterOpIDs))
 		By(fmt.Sprintf("[TEST]: Unexpected %s ids after operations: %s", t.API, unexpectedAfterOpIDs))
 		By(fmt.Sprintf("[TEST]: Expected status code %d", listOpEntry.expectedStatusCode))
@@ -392,52 +388,6 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 				ctx.SMWithBasic.GET(t.API).
 					Expect().
 					Status(http.StatusOK)
-			})
-		})
-
-		Context("by date", func() {
-			It("returns 200 when date is properly formatted", func() {
-				createdAtValue := ctx.SMWithOAuth.GET(t.API + "/" + r[0]["id"].(string)).Expect().Status(http.StatusOK).
-					JSON().Object().Value("created_at").String().Raw()
-				createdAtHour := createdAtValue[11:13]
-				originalHour, err := strconv.ParseInt(createdAtHour, 10, 64)
-				Expect(err).ToNot(HaveOccurred())
-				createdAtValue = createdAtValue[:11] + "01" + createdAtValue[13:]
-				newHour := originalHour - 1
-				hourPattern := fmt.Sprintf("-%d:00", newHour)
-				if newHour < 10 {
-					hourPattern = fmt.Sprintf("-0%d:00", newHour)
-				}
-				escapedCreatedAtValue := url.QueryEscape(createdAtValue[:len(createdAtValue)-1] + hourPattern)
-				ctx.SMWithOAuth.ListWithQuery(t.API, fmt.Sprintf("fieldQuery=%s eq %s", "created_at", escapedCreatedAtValue)).
-					Element(0).Object().Value("id").Equal(r[0]["id"])
-			})
-		})
-
-		Context("when query contains special symbols", func() {
-			var obj common.Object
-			labelKey := "labelKey1"
-			labelValue := "symbols!that@are#url$encoded%when^making a*request("
-			BeforeEach(func() {
-				obj = t.ResourceBlueprint(ctx, ctx.SMWithOAuth)
-				patchLabelsBody := make(map[string]interface{})
-				patchLabels := []query.LabelChange{
-					{
-						Operation: query.AddLabelOperation,
-						Key:       labelKey,
-						Values:    []string{labelValue},
-					},
-				}
-				patchLabelsBody["labels"] = patchLabels
-
-				ctx.SMWithOAuth.PATCH(t.API + "/" + obj["id"].(string)).WithJSON(patchLabelsBody).
-					Expect().
-					Status(http.StatusOK)
-			})
-
-			It("returns 200", func() {
-				ctx.SMWithOAuth.ListWithQuery(t.API, fmt.Sprintf("labelQuery=%s eq '%s'", labelKey, url.QueryEscape(labelValue))).
-					Path("$[*].id").Array().Contains(obj["id"])
 			})
 		})
 
@@ -665,7 +615,7 @@ func expandFieldQuery(fieldQueryArgs common.Object, queryTemplate string) (strin
 		expandedQueries = append(expandedQueries, fmt.Sprintf(queryTemplate, k, v))
 	}
 
-	expandedMultiQuery = strings.Join(expandedQueries, " and ")
+	expandedMultiQuery = strings.Join(expandedQueries, "|")
 	return expandedMultiQuery, expandedQueries
 }
 
@@ -679,6 +629,6 @@ func expandLabelQuery(labelQueryArgs map[string]interface{}, queryTemplate strin
 		}
 	}
 
-	expandedMultiQuery = strings.Join(expandedQueries, " and ")
+	expandedMultiQuery = strings.Join(expandedQueries, "|")
 	return expandedMultiQuery, expandedQueries
 }

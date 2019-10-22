@@ -67,9 +67,7 @@ type LabelChanges []*LabelChange
 
 func (lc *LabelChanges) Validate() error {
 	for _, labelChange := range *lc {
-		if err := labelChange.Validate(); err != nil {
-			return err
-		}
+		return labelChange.Validate()
 	}
 	return nil
 }
