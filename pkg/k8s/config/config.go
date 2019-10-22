@@ -60,6 +60,7 @@ func (c *ClientConfiguration) Validate() error {
 
 // LibraryConfig configurations for the k8s library
 type LibraryConfig struct {
+	Host             string                       `mapstructure:"host"`
 	Timeout          time.Duration                `mapstructure:"timeout"`
 	NewClusterConfig func() (*rest.Config, error) `mapstructure:"-"`
 }
@@ -96,6 +97,9 @@ func NewSvcatSDK(libraryConfig *LibraryConfig) (*servicecatalog.SDK, error) {
 		return nil, fmt.Errorf("failed to load cluster config: %s", err.Error())
 	}
 
+	if len(libraryConfig.Host) > 0 {
+		config.Host = libraryConfig.Host
+	}
 	config.Timeout = libraryConfig.Timeout
 
 	svcatClient, err := svcatclient.NewForConfig(config)
