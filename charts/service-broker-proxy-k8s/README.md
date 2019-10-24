@@ -34,7 +34,7 @@ helm install charts/service-broker-proxy-k8s \
 ```
 
 **Note:** Make sure you substitute &lt;SM_URL&gt; with the Service Manager url, &lt;USER&gt; and &lt;PASSWORD&gt; with the credentials for the Service Manager.
-Substitute \<VERSION> with the required version as listed on [Releases](https://github.com/Peripli/service-broker-proxy-k8s/releases). It is recommended to use the latest version.
+Substitute \<VERSION> with the required version as listed on [Releases](https://github.com/Peripli/service-broker-proxy-k8s/releases). It is recommended to use the latest release.
 
 To use your own images you can set `image.repository`, `image.tag` and `image.pullPolicy` to the helm install command. In case your image is pulled from a private repository, you can use
 `image.pullsecret` to name a secret containing the credentials.
