@@ -15,16 +15,26 @@ This helm chart bootstraps the Service Broker Proxy for Kubernetes.
 
 ### Installation
 
-From the root folder of this repository, execute:
-```bash
-helm install charts/service-broker-proxy-k8s --name service-broker-proxy --namespace service-broker-proxy --set config.sm.url=<SM_URL> --set sm.user=<USER> --set sm.password=<PASSWORD>
-```
-
-**Note:** Make sure you substitute &lt;SM_URL&gt; with the Service Manager url, &lt;USER&gt; and &lt;PASSWORD&gt; with the credentials for the Service Manager. Registering the cluster in Service Manager as a platform resource will generate and return credentials. For example:
-
+Register the cluster in Service Manager as a platform resource.
+This will generate and return credentials. For example:
 ```sh
 smctl register-platform my-cluster kubernetes
 ```
+**Note:** Store the returned credentials in a safe place as you will not be able to fetch them again from Service Manager.
+
+From the root folder of this repository, execute:
+```bash
+helm install charts/service-broker-proxy-k8s \
+  --name service-broker-proxy \
+  --namespace service-broker-proxy \
+  --set image.tag=<VERSION> \
+  --set config.sm.url=<SM_URL> \
+  --set sm.user=<USER> \
+  --set sm.password=<PASSWORD>
+```
+
+**Note:** Make sure you substitute &lt;SM_URL&gt; with the Service Manager url, &lt;USER&gt; and &lt;PASSWORD&gt; with the credentials for the Service Manager.
+Substitute \<VERSION> with the required version as listed on [Releases](https://github.com/Peripli/service-broker-proxy-k8s/releases). It is recommended to use the latest version.
 
 To use your own images you can set `image.repository`, `image.tag` and `image.pullPolicy` to the helm install command. In case your image is pulled from a private repository, you can use
 `image.pullsecret` to name a secret containing the credentials.
@@ -35,7 +45,7 @@ The following table lists some of the configurable parameters of the service bro
 Parameter | Description | Default
 --------- | ----------- | -------
 `image.repository`| image repository |`quay.io/service-manager/sb-proxy-k8s`
-`image.tag`| tag of image  |`master`
+`image.tag`| tag of image | `master`
 `image.pullsecret` | name of the secret containing pull secrets |
 `config.sm.url` | service manager url | `http://service-manager.dev.cfdev.sh`
 `sm.user` | username for service manager | `admin`
