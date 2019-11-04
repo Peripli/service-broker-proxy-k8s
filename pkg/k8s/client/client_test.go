@@ -50,7 +50,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 	BeforeEach(func() {
 		clientConfig = config.DefaultClientConfiguration()
-		clientConfig.ClientSettings.NewClusterConfig = func(kubeConfigPath string) (*rest.Config, error) {
+		clientConfig.ClientSettings.NewClusterConfig = func(_ string) (*rest.Config, error) {
 			return &rest.Config{
 				Host:            "https://fakeme",
 				BearerToken:     string("faketoken"),
