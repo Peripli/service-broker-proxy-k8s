@@ -139,8 +139,9 @@ func (r *resyncJob) getVisibilitiesFromSM(ctx context.Context, smPlansMap map[br
 
 func (r *resyncJob) convertSMVisibility(visibility *types.Visibility, smPlan *types.ServicePlan, broker *platform.ServiceBroker) []*platform.Visibility {
 	scopeLabelKey := r.platformClient.Visibility().VisibilityScopeLabelKey()
+	shouldBePublic := visibility.PlatformID == "" || len(visibility.Labels[scopeLabelKey]) == 0
 
-	if visibility.PlatformID == "" || scopeLabelKey == "" {
+	if shouldBePublic {
 		return []*platform.Visibility{
 			{
 				Public:             true,

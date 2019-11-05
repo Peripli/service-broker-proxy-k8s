@@ -2,15 +2,15 @@
 
 
 [[projects]]
-  digest = "1:12156f9d8523585d9d875a03c4b5c6c6374f7370716cd814aa6781732ac942c5"
+  digest = "1:43ac38976d1da4ea8bbb37da4e6baca6127b1c19860104b7e84c28d112f3134c"
   name = "github.com/InVisionApp/go-health"
   packages = [
     ".",
     "checkers",
   ]
   pruneopts = "UT"
-  revision = "06e1878ab5a8acf6e841861c6cbfcc4d3036add0"
-  version = "v2.1.0"
+  revision = "a4a89dc763c320ee165018886368a202bdcffb87"
+  version = "v2.1.2"
 
 [[projects]]
   digest = "1:be2deb3cba3d2526b3692d80483f59df6462aabc875aace2db263f2664f30670"
@@ -25,7 +25,7 @@
 
 [[projects]]
   branch = "get-config-api"
-  digest = "1:8871104c25cf2ed77b3fc449a5d2683dccb070ef4184816a6f0e83aa53d2b569"
+  digest = "1:96e3eb1e1a6f1bdeaeabdb4d2f0de101817a98d97aacdf3197f06beaf294602e"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -35,6 +35,7 @@
     "api/info",
     "api/notifications",
     "api/osb",
+    "api/plugins",
     "config",
     "pkg/env",
     "pkg/env/envfakes",
@@ -42,6 +43,7 @@
     "pkg/httpclient",
     "pkg/log",
     "pkg/query",
+    "pkg/query/parser",
     "pkg/security",
     "pkg/security/authenticators",
     "pkg/security/filters",
@@ -63,7 +65,7 @@
     "test/testutil",
   ]
   pruneopts = "NT"
-  revision = "f07455f6961f3c55807456df81615b3e57d6da87"
+  revision = "727a684cd8b8dcf75e05271b29b360b53e56fd4c"
 
 [[projects]]
   digest = "1:f780d408067189c4c42b53f7bb24ebf8fd2a1e4510b813ed6e79dd6563e38cc5"
@@ -72,6 +74,14 @@
   pruneopts = "UT"
   revision = "5c4e22684113ffc2a77577c178189940925f9aef"
   version = "v1.5.1"
+
+[[projects]]
+  digest = "1:d04889482897652dedae6d8575b479c06fa3eb3c3abe248163b25d3df5fab43e"
+  name = "github.com/antlr/antlr4"
+  packages = ["runtime/Go/antlr"]
+  pruneopts = "UT"
+  revision = "be58ebffde8e29c154192c019608f0a5b8e6a064"
+  version = "4.7.2"
 
 [[projects]]
   digest = "1:d5fa6328bd281ac91e7b5d3f45b49f8ac36c30b6a530f633d91c6eaef50cd137"
@@ -267,7 +277,7 @@
   revision = "d7d95172beb5a538ff08c50a6e98aee6e7c41f40"
 
 [[projects]]
-  digest = "1:caa1da085cc12cd39d3ddb267434902f621050e1b46f7e9477b2b933df680193"
+  digest = "1:acfc228fb5fbfb82645c121e3224bd546ed68aef6dfc87f63e2d8de099a3822b"
   name = "github.com/klauspost/compress"
   packages = [
     "flate",
@@ -275,16 +285,8 @@
     "zlib",
   ]
   pruneopts = "UT"
-  revision = "9342d2c87674fc9ed5324d5d77d5f11f328bc11b"
-  version = "v1.8.3"
-
-[[projects]]
-  digest = "1:923c4d7194b42e054b2eb8a6c62824ac55e23ececc1c7e48d4da69c971c55954"
-  name = "github.com/klauspost/cpuid"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "05a8198c0f5a27739aec358908d7e12c64ce6eb7"
-  version = "v1.2.1"
+  revision = "16a4d3d7137cdefd94d420f22b5c20260674b95c"
+  version = "v1.9.1"
 
 [[projects]]
   digest = "1:31e761d97c76151dde79e9d28964a812c46efc5baee4085b86f68f0c654450de"
@@ -304,7 +306,7 @@
     "scram",
   ]
   pruneopts = "UT"
-  revision = "78223426e7c66d631117c0a9da1b7f3fde4d23a5"
+  revision = "f91d3411e481ed313eeab65ebfe9076466c39d01"
 
 [[projects]]
   digest = "1:5a0ef768465592efca0412f7e838cdc0826712f8447e70e6ccc52eb441e9ab13"
@@ -339,7 +341,7 @@
   version = "v0.4.1"
 
 [[projects]]
-  digest = "1:0c84de0c9ef9924db2bc8ed3b18960ea4ee549c6b04d0b386c0e3043ccb11243"
+  digest = "1:e8b90ccda83af6f29b677f8b01a0be6721ab974c9f57d2f13b6149e478dfb4ec"
   name = "github.com/onsi/ginkgo"
   packages = [
     ".",
@@ -363,8 +365,8 @@
     "types",
   ]
   pruneopts = "UT"
-  revision = "974566c482abc93ffd3df6f4626e79076c7ed290"
-  version = "v1.10.1"
+  revision = "ce5d301e555bb672c693c099ba6ca5087b06c0b4"
+  version = "v1.10.3"
 
 [[projects]]
   digest = "1:e42321c3ec0ff36c0644da60c2c1469886b214134286f4610199b704619e11a3"
@@ -389,12 +391,12 @@
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:93131d8002d7025da13582877c32d1fc302486775a1b06f62241741006428c5e"
+  digest = "1:6eea828983c70075ca297bb915ffbcfd3e34c5a50affd94428a65df955c0ff9c"
   name = "github.com/pelletier/go-toml"
   packages = ["."]
   pruneopts = "UT"
-  revision = "728039f679cbcd4f6a54e080d2219a4c4928c546"
-  version = "v1.4.0"
+  revision = "903d9455db9ff1d7ac1ab199062eca7266dd11a3"
+  version = "v1.6.0"
 
 [[projects]]
   digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
@@ -494,12 +496,12 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:46aea6ffe39c3d95c13640c2515236ed3c5cdffc3c78c6c0ed4edec2caf7a0dc"
+  digest = "1:5a68167017eaa32aa408397806b9d69815244238ed774439a8863ef4bc329eeb"
   name = "github.com/tidwall/gjson"
   packages = ["."]
   pruneopts = "UT"
-  revision = "c5e72cdf74dff23857243dd662c465b810891c21"
-  version = "v1.3.2"
+  revision = "c34bf81952c067718854115564f8e55978be5e1d"
+  version = "v1.3.4"
 
 [[projects]]
   digest = "1:8453ddbed197809ee8ca28b06bd04e127bec9912deb4ba451fea7a1eca578328"
@@ -562,12 +564,12 @@
   revision = "bd5ef7bd5415a7ac448318e64f11a24cd21e594b"
 
 [[projects]]
-  digest = "1:1c898ea6c30c16e8d55fdb6fe44c4bee5f9b7d68aa260cfdfc3024491dcc7bea"
+  digest = "1:a8a0ed98532819a3b0dc5cf3264a14e30aba5284b793ba2850d6f381ada5f987"
   name = "github.com/xeipuuv/gojsonschema"
   packages = ["."]
   pruneopts = "UT"
-  revision = "f971f3cd73b2899de6923801c147f075263e0c50"
-  version = "v1.1.0"
+  revision = "82fcdeb203eb6ab2a67d0a623d9c19e5e5a64927"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
@@ -606,11 +608,11 @@
     "pbkdf2",
   ]
   pruneopts = "UT"
-  revision = "227b76d455e791cb042b03e633e2f7fbcfdf74a5"
+  revision = "8986dd9e96cf0a6f74da406c005ba3df38527c04"
 
 [[projects]]
   branch = "master"
-  digest = "1:f6e2a855d736113a66b672f84d411ec89f4d2a870faa37cf50d20f1a62278624"
+  digest = "1:3aa9292b292fe7d4c7063eacdb8e68e6b4fb74b0ebd090ae1fdc6f4418432755"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -622,7 +624,7 @@
     "publicsuffix",
   ]
   pruneopts = "UT"
-  revision = "c8589233b77dde5edd2205ba8a4fb5c9c2472556"
+  revision = "0deb6923b6d97481cb43bc1043fe5b72a0143032"
 
 [[projects]]
   branch = "master"
@@ -637,11 +639,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ec9d9815894f067c7878330735b9e4dfa6dc61234d2ba136b60a1436d6b5ea94"
+  digest = "1:999c8e6b10ddb08bc4ea3a56d4e838194c4884eac6ecf90a9aa98ed8475fdf37"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "b4ddaad3f8a36719f2b8bc6486c14cc468ca2bb5"
+  revision = "f43be2a4598cf3a47be9f94f0c28197ed9eae611"
 
 [[projects]]
   digest = "1:28deae5fe892797ff37a317b5bcda96d11d1c90dadd89f1337651df3bc4c586e"
@@ -681,7 +683,7 @@
   version = "v0.3.2"
 
 [[projects]]
-  digest = "1:6eb6e3b6d9fffb62958cf7f7d88dbbe1dd6839436b0802e194c590667a40412a"
+  digest = "1:e0a1881f9e0564bebdeac98c75e59f07acdde6ed3a5396e0e613eaad31194866"
   name = "google.golang.org/appengine"
   packages = [
     "internal",
@@ -693,8 +695,8 @@
     "urlfetch",
   ]
   pruneopts = "UT"
-  revision = "5f2a59506353b8d5ba8cbbcd9f3c1f41f1eaf079"
-  version = "v1.6.2"
+  revision = "971852bfffca25b069c31162ae8f247a3dba083b"
+  version = "v1.6.5"
 
 [[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
@@ -706,7 +708,7 @@
   version = "v1.4.7"
 
 [[projects]]
-  digest = "1:8c05919580be8a5be668709d7e5a69d5cd19b8ee9f23d62ce5b10d3457bf6a13"
+  digest = "1:8ebd7bc4892e673e8d3c6377c71e8c691b92c5e51cd3159efb8343b580213b70"
   name = "gopkg.in/square/go-jose.v2"
   packages = [
     ".",
@@ -714,8 +716,8 @@
     "json",
   ]
   pruneopts = "UT"
-  revision = "730df5f748271903322feb182be83b43ebbbe27d"
-  version = "v2.3.1"
+  revision = "8fd82ff1d52a5162ff23c0a48e2c64a1fa4a3f8f"
+  version = "v2.4.0"
 
 [[projects]]
   branch = "v1"
@@ -726,12 +728,12 @@
   revision = "dd632973f1e7218eb1089048e0798ec9ae7dceb8"
 
 [[projects]]
-  digest = "1:4d2e5a73dc1500038e504a8d78b986630e3626dc027bc030ba5c75da257cdb96"
+  digest = "1:59f10c1537d2199d9115d946927fe31165959a95190849c82ff11e05803528b0"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   pruneopts = "UT"
-  revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
-  version = "v2.2.2"
+  revision = "f221b8435cfb71e54062f6c6e99e9ade30b124d5"
+  version = "v2.2.4"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -751,6 +753,7 @@
     "github.com/Peripli/service-manager/pkg/server",
     "github.com/Peripli/service-manager/pkg/types",
     "github.com/Peripli/service-manager/pkg/util",
+    "github.com/Peripli/service-manager/pkg/util/slice",
     "github.com/Peripli/service-manager/pkg/web",
     "github.com/Peripli/service-manager/storage/interceptors",
     "github.com/Peripli/service-manager/test/common",

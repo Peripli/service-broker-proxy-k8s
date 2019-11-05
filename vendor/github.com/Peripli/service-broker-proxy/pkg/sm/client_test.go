@@ -152,7 +152,7 @@ var _ = Describe("Client", func() {
 	}
 
 	const okBrokerResponse = `{
-		"service_brokers": [
+		"items": [
 		{
 			"id": "brokerID",
 			"name": "brokerName",
@@ -221,7 +221,7 @@ var _ = Describe("Client", func() {
 				Err:    nil,
 			},
 			expectedResponse: nil,
-			expectedErr:      fmt.Errorf("Failed to decode request body"),
+			expectedErr:      fmt.Errorf("error parsing response body"),
 		}),
 
 		Entry("Returns error when API returns error", testCase{
@@ -249,7 +249,7 @@ var _ = Describe("Client", func() {
 	}, brokerEntries...)
 
 	const okPlanResponse = `{
-		"service_plans": [
+		"items": [
 			 {
 				  "created_at": "2018-12-27T09:14:54Z",
 				  "updated_at": "2018-12-27T09:14:54Z",
@@ -267,15 +267,14 @@ var _ = Describe("Client", func() {
 	}`
 
 	servicePlans := func(servicePlans string) []*types.ServicePlan {
-		c := make(map[string][]*types.ServicePlan)
+		c := struct {
+			Plans []*types.ServicePlan `json:"items"`
+		}{}
 		err := json.Unmarshal([]byte(servicePlans), &c)
 		if err != nil {
 			panic(err)
 		}
-		if c["service_plans"] == nil {
-			panic("could not unmarshal service plans")
-		}
-		return c["service_plans"]
+		return c.Plans
 	}
 
 	planEntries := []TableEntry{
@@ -321,7 +320,7 @@ var _ = Describe("Client", func() {
 	}, planEntries...)
 
 	const okVisibilityResponse = `{
-		"visibilities": [
+		"items": [
 			 {
 				  "id": "127b5b3a-c0bc-45be-bcaf-f1083566214f",
 				  "platform_id": "bf092091-76ba-4398-a301-40472b794aea",
@@ -340,7 +339,9 @@ var _ = Describe("Client", func() {
    }`
 
 	serviceVisibilities := func(serviceVisibilities string) []*types.Visibility {
-		c := types.Visibilities{}
+		c := struct {
+			Visibilities []*types.Visibility `json:"items"`
+		}{}
 		err := json.Unmarshal([]byte(serviceVisibilities), &c)
 		if err != nil {
 			panic(err)
