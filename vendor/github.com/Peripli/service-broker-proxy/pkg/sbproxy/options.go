@@ -17,7 +17,6 @@
 package sbproxy
 
 import (
-	"github.com/Peripli/service-broker-proxy/pkg/authn"
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/notifications"
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/reconcile"
 	"github.com/Peripli/service-broker-proxy/pkg/sm"
@@ -31,25 +30,23 @@ import (
 
 // Settings type holds all config properties for the sbproxy
 type Settings struct {
-	Server         *server.Settings                `mapstructure:"server"`
-	Log            *log.Settings                   `mapstructure:"log"`
-	Sm             *sm.Settings                    `mapstructure:"sm"`
-	Reconcile      *reconcile.Settings             `mapstructure:"app"`
-	Producer       *notifications.ProducerSettings `mapstructure:"producer"`
-	Health         *health.Settings                `mapstructure:"health"`
-	Authentication *authn.Settings                 `mapstructure:"authn"`
+	Server    *server.Settings                `mapstructure:"server"`
+	Log       *log.Settings                   `mapstructure:"log"`
+	Sm        *sm.Settings                    `mapstructure:"sm"`
+	Reconcile *reconcile.Settings             `mapstructure:"app"`
+	Producer  *notifications.ProducerSettings `mapstructure:"producer"`
+	Health    *health.Settings                `mapstructure:"health"`
 }
 
 // DefaultSettings returns default value for the proxy settings
 func DefaultSettings() *Settings {
 	return &Settings{
-		Server:         server.DefaultSettings(),
-		Log:            log.DefaultSettings(),
-		Sm:             sm.DefaultSettings(),
-		Reconcile:      reconcile.DefaultSettings(),
-		Producer:       notifications.DefaultProducerSettings(),
-		Health:         health.DefaultSettings(),
-		Authentication: authn.DefaultSettings(),
+		Server:    server.DefaultSettings(),
+		Log:       log.DefaultSettings(),
+		Sm:        sm.DefaultSettings(),
+		Reconcile: reconcile.DefaultSettings(),
+		Producer:  notifications.DefaultProducerSettings(),
+		Health:    health.DefaultSettings(),
 	}
 }
 

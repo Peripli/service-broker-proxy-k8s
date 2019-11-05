@@ -18,7 +18,6 @@ package query
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -63,9 +62,9 @@ type OrderType string
 
 const (
 	// AscOrder orders result in ascending order
-	AscOrder OrderType = "ASC"
+	AscOrder OrderType = "asc"
 	// DescOrder orders result in descending order
-	DescOrder OrderType = "DESC"
+	DescOrder OrderType = "desc"
 )
 
 const (
@@ -138,15 +137,11 @@ func NewCriterion(leftOp string, operator Operator, rightOp []string, criteriaTy
 
 // Validate the criterion fields
 func (c Criterion) Validate() error {
-	if len(c.RightOp) == 0 {
-		return errors.New("missing right operand")
-	}
-
 	if c.Type == ResultQuery {
 		if c.LeftOp == Limit {
 			limit, err := strconv.Atoi(c.RightOp[0])
 			if err != nil {
-				return fmt.Errorf("could not convert string to int: %s", err.Error())
+				return fmt.Errorf("could not cast string to int: %s", err.Error())
 			}
 			if limit < 0 {
 				return &util.UnsupportedQueryError{Message: fmt.Sprintf("limit (%d) is invalid. Limit should be positive number", limit)}
@@ -154,8 +149,11 @@ func (c Criterion) Validate() error {
 		}
 
 		if c.LeftOp == OrderBy {
+			if len(c.RightOp) < 1 {
+				return &util.UnsupportedQueryError{Message: "order by result expects field and order type, but has none"}
+			}
 			if len(c.RightOp) < 2 {
-				return &util.UnsupportedQueryError{Message: "order by result expects field name and order type"}
+				return &util.UnsupportedQueryError{Message: fmt.Sprintf(`order by result for field "%s" expects order type, but has none`, c.RightOp[0])}
 			}
 		}
 

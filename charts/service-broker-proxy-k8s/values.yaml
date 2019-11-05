@@ -7,7 +7,7 @@ replicaCount: 1
 image:
   repository: quay.io/service-manager/sb-proxy-k8s
   tag: master
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
   pullsecret:
 
 service:
@@ -22,7 +22,7 @@ file:
 sm:
   user: admin
   password: admin
-  
+
 ##
 # Security context
 securityContext: {}

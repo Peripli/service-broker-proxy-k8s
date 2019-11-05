@@ -25,11 +25,6 @@ import (
 // RequiredAuthenticationFilterName is the name of RequiredAuthenticationFilter
 const RequiredAuthenticationFilterName = "RequiredAuthenticationFilter"
 
-// NewRequiredAuthnFilter returns web.Filter
-func NewRequiredAuthnFilter() web.Filter {
-	return &requiredAuthnFilter{}
-}
-
 // requiredAuthnFilter type verifies that authentication has been performed for APIs that are secured
 type requiredAuthnFilter struct{}
 
@@ -63,9 +58,14 @@ func (raf *requiredAuthnFilter) FilterMatchers() []web.FilterMatcher {
 					web.ServicePlansURL+"/**",
 					web.VisibilitiesURL+"/**",
 					web.NotificationsURL+"/**",
-					web.ConfigURL+"/**",
+					web.LoggingConfigURL+"/**",
 				),
 			},
 		},
 	}
+}
+
+// NewRequiredAuthnFilter returns web.Filter
+func NewRequiredAuthnFilter() web.Filter {
+	return &requiredAuthnFilter{}
 }

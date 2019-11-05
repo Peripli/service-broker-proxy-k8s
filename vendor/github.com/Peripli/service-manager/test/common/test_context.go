@@ -84,7 +84,7 @@ type TestContext struct {
 	// In the end requesting brokers with this
 	SMWithOAuthForTenant *SMExpect
 	SMWithBasic          *SMExpect
-	SMRepository         storage.TransactionalRepository
+	SMRepository         storage.Repository
 
 	TestPlatform *types.Platform
 
@@ -361,15 +361,15 @@ func NewSMListener() (net.Listener, error) {
 	return nil, fmt.Errorf("unable to create sm listener: %s", err)
 }
 
-func newSMServer(smEnv env.Environment, wg *sync.WaitGroup, fs []func(ctx context.Context, smb *sm.ServiceManagerBuilder, env env.Environment) error, listener net.Listener) (*testSMServer, storage.TransactionalRepository) {
+func newSMServer(smEnv env.Environment, wg *sync.WaitGroup, fs []func(ctx context.Context, smb *sm.ServiceManagerBuilder, env env.Environment) error, listener net.Listener) (*testSMServer, storage.Repository) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	cfg, err := config.New(smEnv)
+	cfg, err := config.NewForEnv(smEnv)
 	if err != nil {
 		panic(err)
 	}
 
-	smb, err := sm.New(ctx, cancel, smEnv, cfg)
+	smb, err := sm.New(ctx, cancel, cfg)
 	if err != nil {
 		panic(err)
 	}

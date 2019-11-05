@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"k8s.io/client-go/tools/clientcmd"
 	"time"
 
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
@@ -21,6 +22,14 @@ import (
 type Settings struct {
 	sbproxy.Settings `mapstructure:",squash"`
 	K8S              *ClientConfiguration `mapstructure:"k8s"`
+}
+
+// DefaultSettings returns the default settings for the k8s agent
+func DefaultSettings() *Settings {
+	return &Settings{
+		Settings: *sbproxy.DefaultSettings(),
+		K8S:      DefaultClientConfiguration(),
+	}
 }
 
 // Validate validates the application settings
@@ -60,8 +69,10 @@ func (c *ClientConfiguration) Validate() error {
 
 // LibraryConfig configurations for the k8s library
 type LibraryConfig struct {
-	Timeout          time.Duration                `mapstructure:"timeout"`
-	NewClusterConfig func() (*rest.Config, error) `mapstructure:"-"`
+	Host             string                             `mapstructure:"host"`
+	Timeout          time.Duration                      `mapstructure:"timeout"`
+	KubeConfigPath   string                             `mapstructure:"kube_config_path"`
+	NewClusterConfig func(string) (*rest.Config, error) `mapstructure:"-"`
 }
 
 // Validate validates the library configurations and returns appropriate errors in case it is invalid
@@ -91,11 +102,14 @@ func (r *SecretRef) Validate() error {
 
 // NewSvcatSDK creates a service-catalog client from configuration
 func NewSvcatSDK(libraryConfig *LibraryConfig) (*servicecatalog.SDK, error) {
-	config, err := libraryConfig.NewClusterConfig()
+	config, err := libraryConfig.NewClusterConfig(libraryConfig.KubeConfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load cluster config: %s", err.Error())
 	}
 
+	if len(libraryConfig.Host) > 0 {
+		config.Host = libraryConfig.Host
+	}
 	config.Timeout = libraryConfig.Timeout
 
 	svcatClient, err := svcatclient.NewForConfig(config)
@@ -118,8 +132,10 @@ func NewSvcatSDK(libraryConfig *LibraryConfig) (*servicecatalog.SDK, error) {
 func DefaultClientConfiguration() *ClientConfiguration {
 	return &ClientConfiguration{
 		ClientSettings: &LibraryConfig{
-			Timeout:          time.Second * 10,
-			NewClusterConfig: rest.InClusterConfig,
+			Timeout: time.Second * 10,
+			NewClusterConfig: func(kubeConfigPath string) (config *rest.Config, e error) {
+				return clientcmd.BuildConfigFromFlags("", kubeConfigPath) // if kubeConfigPath is empty fallbacks to InClusterConfig
+			},
 		},
 		Secret:              &SecretRef{},
 		K8sClientCreateFunc: NewSvcatSDK,
@@ -128,15 +144,12 @@ func DefaultClientConfiguration() *ClientConfiguration {
 
 // CreatePFlagsForK8SClient adds pflags relevant to the K8S client config
 func CreatePFlagsForK8SClient(set *pflag.FlagSet) {
-	env.CreatePFlags(set, &Settings{K8S: DefaultClientConfiguration()})
+	env.CreatePFlags(set, DefaultSettings())
 }
 
 // NewConfig creates Settings from the provided environment
 func NewConfig(env env.Environment) (*Settings, error) {
-	settings := &Settings{
-		Settings: *sbproxy.DefaultSettings(),
-		K8S:      DefaultClientConfiguration(),
-	}
+	settings := DefaultSettings()
 
 	if err := env.Unmarshal(settings); err != nil {
 		return nil, err

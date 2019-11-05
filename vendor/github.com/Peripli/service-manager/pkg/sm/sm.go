@@ -25,8 +25,6 @@ import (
 
 	"github.com/Peripli/service-manager/api/plugins"
 
-	"github.com/Peripli/service-manager/pkg/env"
-
 	"github.com/Peripli/service-manager/pkg/health"
 
 	"github.com/Peripli/service-manager/pkg/httpclient"
@@ -76,7 +74,7 @@ type ServiceManager struct {
 }
 
 // New returns service-manager Server with default setup
-func New(ctx context.Context, cancel context.CancelFunc, e env.Environment, cfg *config.Settings) (*ServiceManagerBuilder, error) {
+func New(ctx context.Context, cancel context.CancelFunc, cfg *config.Settings) (*ServiceManagerBuilder, error) {
 	var err error
 	if err = cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("error validating configuration: %s", err)
@@ -127,7 +125,7 @@ func New(ctx context.Context, cancel context.CancelFunc, e env.Environment, cfg 
 		WSSettings:  cfg.WebSocket,
 		Notificator: pgNotificator,
 	}
-	API, err := api.New(ctx, e, apiOptions)
+	API, err := api.New(ctx, apiOptions)
 	if err != nil {
 		return nil, fmt.Errorf("error creating core api: %s", err)
 	}
@@ -169,13 +167,13 @@ func New(ctx context.Context, cancel context.CancelFunc, e env.Environment, cfg 
 		WithDeleteInterceptorProvider(types.ServiceBrokerType, &interceptors.BrokerDeleteCatalogInterceptorProvider{
 			CatalogLoader: catalog.Load,
 		}).Register().
-		WithCreateAroundTxInterceptorProvider(types.PlatformType, &interceptors.GenerateCredentialsInterceptorProvider{}).Register().
-		WithCreateOnTxInterceptorProvider(types.VisibilityType, &interceptors.VisibilityCreateNotificationsInterceptorProvider{}).Register().
-		WithUpdateOnTxInterceptorProvider(types.VisibilityType, &interceptors.VisibilityUpdateNotificationsInterceptorProvider{}).Register().
-		WithDeleteOnTxInterceptorProvider(types.VisibilityType, &interceptors.VisibilityDeleteNotificationsInterceptorProvider{}).Register().
-		WithCreateOnTxInterceptorProvider(types.ServiceBrokerType, &interceptors.BrokerNotificationsCreateInterceptorProvider{}).Before(interceptors.BrokerCreateCatalogInterceptorName).Register().
-		WithUpdateOnTxInterceptorProvider(types.ServiceBrokerType, &interceptors.BrokerNotificationsUpdateInterceptorProvider{}).Before(interceptors.BrokerUpdateCatalogInterceptorName).Register().
-		WithDeleteOnTxInterceptorProvider(types.ServiceBrokerType, &interceptors.BrokerNotificationsDeleteInterceptorProvider{}).After(interceptors.BrokerDeleteCatalogInterceptorName).Register()
+		WithCreateInterceptorProvider(types.PlatformType, &interceptors.GenerateCredentialsInterceptorProvider{}).Register().
+		WithCreateInterceptorProvider(types.VisibilityType, &interceptors.VisibilityCreateNotificationsInterceptorProvider{}).Register().
+		WithUpdateInterceptorProvider(types.VisibilityType, &interceptors.VisibilityUpdateNotificationsInterceptorProvider{}).Register().
+		WithDeleteInterceptorProvider(types.VisibilityType, &interceptors.VisibilityDeleteNotificationsInterceptorProvider{}).Register().
+		WithCreateInterceptorProvider(types.ServiceBrokerType, &interceptors.BrokerNotificationsCreateInterceptorProvider{}).Before(interceptors.BrokerCreateCatalogInterceptorName).Register().
+		WithUpdateInterceptorProvider(types.ServiceBrokerType, &interceptors.BrokerNotificationsUpdateInterceptorProvider{}).Before(interceptors.BrokerUpdateCatalogInterceptorName).Register().
+		WithDeleteInterceptorProvider(types.ServiceBrokerType, &interceptors.BrokerNotificationsDeleteInterceptorProvider{}).After(interceptors.BrokerDeleteCatalogInterceptorName).Register()
 
 	return smb, nil
 }
@@ -242,40 +240,6 @@ func (smb *ServiceManagerBuilder) RegisterNotificationReceiversFilter(filterFunc
 	smb.Notificator.RegisterFilter(filterFunc)
 }
 
-func (smb *ServiceManagerBuilder) WithCreateAroundTxInterceptorProvider(objectType types.ObjectType, provider storage.CreateAroundTxInterceptorProvider) *interceptorRegistrationBuilder {
-	return &interceptorRegistrationBuilder{
-		order: storage.InterceptorOrder{
-			OnTxPosition: storage.InterceptorPosition{
-				PositionType: storage.PositionNone,
-			},
-			AroundTxPosition: storage.InterceptorPosition{
-				PositionType: storage.PositionNone,
-			},
-		},
-		registrationFunc: func(order storage.InterceptorOrder) *ServiceManagerBuilder {
-			smb.Storage.AddCreateAroundTxInterceptorProvider(objectType, provider, order)
-			return smb
-		},
-	}
-}
-
-func (smb *ServiceManagerBuilder) WithCreateOnTxInterceptorProvider(objectType types.ObjectType, provider storage.CreateOnTxInterceptorProvider) *interceptorRegistrationBuilder {
-	return &interceptorRegistrationBuilder{
-		order: storage.InterceptorOrder{
-			OnTxPosition: storage.InterceptorPosition{
-				PositionType: storage.PositionNone,
-			},
-			AroundTxPosition: storage.InterceptorPosition{
-				PositionType: storage.PositionNone,
-			},
-		},
-		registrationFunc: func(order storage.InterceptorOrder) *ServiceManagerBuilder {
-			smb.Storage.AddCreateOnTxInterceptorProvider(objectType, provider, order)
-			return smb
-		},
-	}
-}
-
 func (smb *ServiceManagerBuilder) WithCreateInterceptorProvider(objectType types.ObjectType, provider storage.CreateInterceptorProvider) *interceptorRegistrationBuilder {
 	return &interceptorRegistrationBuilder{
 		order: storage.InterceptorOrder{
@@ -287,41 +251,10 @@ func (smb *ServiceManagerBuilder) WithCreateInterceptorProvider(objectType types
 			},
 		},
 		registrationFunc: func(order storage.InterceptorOrder) *ServiceManagerBuilder {
-			smb.Storage.AddCreateInterceptorProvider(objectType, provider, order)
-			return smb
-		},
-	}
-}
-
-func (smb *ServiceManagerBuilder) WithUpdateAroundTxInterceptorProvider(objectType types.ObjectType, provider storage.UpdateAroundTxInterceptorProvider) *interceptorRegistrationBuilder {
-	return &interceptorRegistrationBuilder{
-		order: storage.InterceptorOrder{
-			OnTxPosition: storage.InterceptorPosition{
-				PositionType: storage.PositionNone,
-			},
-			AroundTxPosition: storage.InterceptorPosition{
-				PositionType: storage.PositionNone,
-			},
-		},
-		registrationFunc: func(order storage.InterceptorOrder) *ServiceManagerBuilder {
-			smb.Storage.AddUpdateAroundTxInterceptorProvider(objectType, provider, order)
-			return smb
-		},
-	}
-}
-
-func (smb *ServiceManagerBuilder) WithUpdateOnTxInterceptorProvider(objectType types.ObjectType, provider storage.UpdateOnTxInterceptorProvider) *interceptorRegistrationBuilder {
-	return &interceptorRegistrationBuilder{
-		order: storage.InterceptorOrder{
-			OnTxPosition: storage.InterceptorPosition{
-				PositionType: storage.PositionNone,
-			},
-			AroundTxPosition: storage.InterceptorPosition{
-				PositionType: storage.PositionNone,
-			},
-		},
-		registrationFunc: func(order storage.InterceptorOrder) *ServiceManagerBuilder {
-			smb.Storage.AddUpdateOnTxInterceptorProvider(objectType, provider, order)
+			smb.Storage.AddCreateInterceptorProvider(objectType, storage.OrderedCreateInterceptorProvider{
+				CreateInterceptorProvider: provider,
+				InterceptorOrder:          order,
+			})
 			return smb
 		},
 	}
@@ -338,41 +271,10 @@ func (smb *ServiceManagerBuilder) WithUpdateInterceptorProvider(objectType types
 			},
 		},
 		registrationFunc: func(order storage.InterceptorOrder) *ServiceManagerBuilder {
-			smb.Storage.AddUpdateInterceptorProvider(objectType, provider, order)
-			return smb
-		},
-	}
-}
-
-func (smb *ServiceManagerBuilder) WithDeleteAroundTxInterceptorProvider(objectType types.ObjectType, provider storage.DeleteAroundTxInterceptorProvider) *interceptorRegistrationBuilder {
-	return &interceptorRegistrationBuilder{
-		order: storage.InterceptorOrder{
-			OnTxPosition: storage.InterceptorPosition{
-				PositionType: storage.PositionNone,
-			},
-			AroundTxPosition: storage.InterceptorPosition{
-				PositionType: storage.PositionNone,
-			},
-		},
-		registrationFunc: func(order storage.InterceptorOrder) *ServiceManagerBuilder {
-			smb.Storage.AddDeleteAroundTxInterceptorProvider(objectType, provider, order)
-			return smb
-		},
-	}
-}
-
-func (smb *ServiceManagerBuilder) WithDeleteOnTxInterceptorProvider(objectType types.ObjectType, provider storage.DeleteOnTxInterceptorProvider) *interceptorRegistrationBuilder {
-	return &interceptorRegistrationBuilder{
-		order: storage.InterceptorOrder{
-			OnTxPosition: storage.InterceptorPosition{
-				PositionType: storage.PositionNone,
-			},
-			AroundTxPosition: storage.InterceptorPosition{
-				PositionType: storage.PositionNone,
-			},
-		},
-		registrationFunc: func(order storage.InterceptorOrder) *ServiceManagerBuilder {
-			smb.Storage.AddDeleteOnTxInterceptorProvider(objectType, provider, order)
+			smb.Storage.AddUpdateInterceptorProvider(objectType, storage.OrderedUpdateInterceptorProvider{
+				UpdateInterceptorProvider: provider,
+				InterceptorOrder:          order,
+			})
 			return smb
 		},
 	}
@@ -389,7 +291,10 @@ func (smb *ServiceManagerBuilder) WithDeleteInterceptorProvider(objectType types
 			},
 		},
 		registrationFunc: func(order storage.InterceptorOrder) *ServiceManagerBuilder {
-			smb.Storage.AddDeleteInterceptorProvider(objectType, provider, order)
+			smb.Storage.AddDeleteInterceptorProvider(objectType, storage.OrderedDeleteInterceptorProvider{
+				DeleteInterceptorProvider: provider,
+				InterceptorOrder:          order,
+			})
 			return smb
 		},
 	}

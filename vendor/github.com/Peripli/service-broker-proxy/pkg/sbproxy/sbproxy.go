@@ -19,14 +19,10 @@ package sbproxy
 import (
 	"sync"
 
-	filters2 "github.com/Peripli/service-manager/pkg/security/filters"
-
-	"github.com/Peripli/service-broker-proxy/pkg/authn"
+	"github.com/Peripli/service-manager/api/configuration"
+	"github.com/Peripli/service-manager/pkg/types"
 
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/notifications/handlers"
-	"github.com/Peripli/service-manager/api/configuration"
-	secfilters "github.com/Peripli/service-manager/api/filters"
-	"github.com/Peripli/service-manager/pkg/types"
 
 	"fmt"
 
@@ -96,7 +92,7 @@ func DefaultEnv(ctx context.Context, additionalPFlags ...func(set *pflag.FlagSet
 }
 
 // New creates service broker proxy that is configured from the provided environment and platform client.
-func New(ctx context.Context, cancel context.CancelFunc, environment env.Environment, settings *Settings, platformClient platform.Client) (*SMProxyBuilder, error) {
+func New(ctx context.Context, cancel context.CancelFunc, settings *Settings, platformClient platform.Client) (*SMProxyBuilder, error) {
 	if err := settings.Validate(); err != nil {
 		return nil, fmt.Errorf("error validating settings: %s", err)
 	}
@@ -110,29 +106,14 @@ func New(ctx context.Context, cancel context.CancelFunc, environment env.Environ
 	log.AddHook(&logging.ErrorLocationHook{})
 
 	util.HandleInterrupts(ctx, cancel)
-	filters := []web.Filter{
-		&filters.Logging{},
-	}
-	authnSettings := settings.Authentication
-	if len(authnSettings.User) != 0 && len(authnSettings.Password) != 0 {
-		filters = append(filters, authn.NewBasicAuthnFilter(authnSettings.User, authnSettings.Password))
-	}
-	if len(authnSettings.TokenIssuerURL) != 0 {
-		bearerAuthnFilter, err := secfilters.NewOIDCAuthnFilter(ctx, settings.Authentication.TokenIssuerURL, settings.Authentication.ClientID)
-		if err != nil {
-			return nil, err
-		}
-		filters = append(filters, bearerAuthnFilter)
-	}
-	filters = append(filters, filters2.NewRequiredAuthnFilter())
 
 	api := &web.API{
 		Controllers: []web.Controller{
-			&configuration.Controller{
-				Environment: environment,
-			},
+			&configuration.Controller{},
 		},
-		Filters:  filters,
+		Filters: []web.Filter{
+			&filters.Logging{},
+		},
 		Registry: health.NewDefaultRegistry(),
 	}
 
