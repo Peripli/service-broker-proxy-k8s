@@ -33,6 +33,9 @@ script:
   # - gas ./...
 
 before_deploy:
+  # Change branch
+  - git checkout -b ${TRAVIS_TAG:-master}
+
   # Download and install helm
   - wget ${HELM_URL} -O helm.tar.gz
   - tar -xzf helm.tar.gz
@@ -45,6 +48,10 @@ before_deploy:
   # Create helm-chart
   - mkdir out
   - helm package --app-version ${TRAVIS_TAG:-"master"} -d ./out charts/service-broker-proxy-k8s --save=false
+
+  # Commit version change before deploy
+  - git add charts/service-broker-proxy-k8s
+  - git commit -m "version ${TRAVIS_TAG:-master}"
 
 deploy:
   provider: releases
