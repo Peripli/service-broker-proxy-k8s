@@ -24,9 +24,21 @@ You can get `smctl` tool from https://github.com/Peripli/service-manager-cli.
 ## Installation
 
 From the root folder of this repository, execute:
+
 ```bash
+# using helm v2.x.x
 helm install charts/service-broker-proxy-k8s \
   --name service-broker-proxy \
+  --namespace service-broker-proxy \
+  --set image.tag=<VERSION> \
+  --set config.sm.url=<SM_URL> \
+  --set sm.user=<USER> \
+  --set sm.password=<PASSWORD>
+```
+
+```bash
+# using helm v3.x.x
+helm install service-broker-proxy charts/service-broker-proxy-k8s \
   --namespace service-broker-proxy \
   --set image.tag=<VERSION> \
   --set config.sm.url=<SM_URL> \
