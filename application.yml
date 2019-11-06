@@ -34,3 +34,6 @@ k8s:
   secret:
     name: service-broker-proxy-regsecret
     namespace: service-broker-proxy
+authn:
+  user: admin
+  password: admin
