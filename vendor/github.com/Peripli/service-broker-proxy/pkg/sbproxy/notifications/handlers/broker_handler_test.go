@@ -71,10 +71,12 @@ var _ = Describe("Broker Handler", func() {
 		fakeBrokerClient = &platformfakes.FakeBrokerClient{}
 
 		brokerHandler = &handlers.BrokerResourceNotificationsHandler{
-			BrokerClient:   fakeBrokerClient,
-			CatalogFetcher: fakeCatalogFetcher,
-			ProxyPrefix:    "proxyPrefix",
-			SMPath:         "proxyPath",
+			BrokerClient:    fakeBrokerClient,
+			CatalogFetcher:  fakeCatalogFetcher,
+			ProxyPrefix:     "proxyPrefix",
+			SMPath:          "proxyPath",
+			BrokerBlacklist: []string{},
+			TakeoverEnabled: true,
 		}
 	})
 
@@ -228,16 +230,40 @@ var _ = Describe("Broker Handler", func() {
 				fakeBrokerClient.UpdateBrokerReturns(nil, fmt.Errorf("error"))
 			})
 
-			It("invokes update broker with the correct arguments", func() {
-				Expect(fakeBrokerClient.UpdateBrokerCallCount()).To(Equal(0))
-				brokerHandler.OnCreate(ctx, json.RawMessage(brokerNotificationPayload))
+			When("broker is not in broker blacklist", func() {
+				It("invokes update broker with the correct arguments", func() {
+					Expect(fakeBrokerClient.UpdateBrokerCallCount()).To(Equal(0))
+					brokerHandler.OnCreate(ctx, json.RawMessage(brokerNotificationPayload))
 
-				Expect(fakeBrokerClient.UpdateBrokerCallCount()).To(Equal(1))
+					Expect(fakeBrokerClient.UpdateBrokerCallCount()).To(Equal(1))
 
-				callCtx, callRequest := fakeBrokerClient.UpdateBrokerArgsForCall(0)
+					callCtx, callRequest := fakeBrokerClient.UpdateBrokerArgsForCall(0)
 
-				Expect(callCtx).To(Equal(ctx))
-				Expect(callRequest).To(Equal(expectedUpdateBrokerRequest))
+					Expect(callCtx).To(Equal(ctx))
+					Expect(callRequest).To(Equal(expectedUpdateBrokerRequest))
+				})
+			})
+
+			When("broker is in broker blacklist", func() {
+				It("doesn't invoke update broker", func() {
+					brokerHandler.BrokerBlacklist = []string{brokerName}
+
+					Expect(fakeBrokerClient.UpdateBrokerCallCount()).To(Equal(0))
+					brokerHandler.OnCreate(ctx, json.RawMessage(brokerNotificationPayload))
+
+					Expect(fakeBrokerClient.UpdateBrokerCallCount()).To(Equal(0))
+				})
+			})
+
+			When("broker takeover is disabled", func() {
+				It("invokes update broker with the correct arguments", func() {
+					brokerHandler.TakeoverEnabled = false
+
+					Expect(fakeBrokerClient.UpdateBrokerCallCount()).To(Equal(0))
+					brokerHandler.OnCreate(ctx, json.RawMessage(brokerNotificationPayload))
+
+					Expect(fakeBrokerClient.UpdateBrokerCallCount()).To(Equal(0))
+				})
 			})
 		})
 
@@ -417,13 +443,27 @@ var _ = Describe("Broker Handler", func() {
 				}, nil)
 			})
 
-			It("does not try to create, update or delete broker", func() {
-				brokerHandler.OnUpdate(ctx, json.RawMessage(brokerNotificationPayload))
+			When("broker is not in broker blacklist", func() {
+				It("does not try to create, update or delete broker", func() {
+					brokerHandler.OnUpdate(ctx, json.RawMessage(brokerNotificationPayload))
 
-				Expect(fakeCatalogFetcher.FetchCallCount()).To(Equal(0))
-				Expect(fakeBrokerClient.CreateBrokerCallCount()).To(Equal(0))
-				Expect(fakeBrokerClient.UpdateBrokerCallCount()).To(Equal(0))
-				Expect(fakeBrokerClient.DeleteBrokerCallCount()).To(Equal(0))
+					Expect(fakeCatalogFetcher.FetchCallCount()).To(Equal(0))
+					Expect(fakeBrokerClient.CreateBrokerCallCount()).To(Equal(0))
+					Expect(fakeBrokerClient.UpdateBrokerCallCount()).To(Equal(0))
+					Expect(fakeBrokerClient.DeleteBrokerCallCount()).To(Equal(0))
+				})
+			})
+
+			When("broker is in broker blacklist", func() {
+				It("does not try to create, update or delete broker", func() {
+					brokerHandler.BrokerBlacklist = []string{brokerName}
+					brokerHandler.OnUpdate(ctx, json.RawMessage(brokerNotificationPayload))
+
+					Expect(fakeCatalogFetcher.FetchCallCount()).To(Equal(0))
+					Expect(fakeBrokerClient.CreateBrokerCallCount()).To(Equal(0))
+					Expect(fakeBrokerClient.UpdateBrokerCallCount()).To(Equal(0))
+					Expect(fakeBrokerClient.DeleteBrokerCallCount()).To(Equal(0))
+				})
 			})
 		})
 
@@ -626,13 +666,27 @@ var _ = Describe("Broker Handler", func() {
 				}, nil)
 			})
 
-			It("does not try to create, update or delete broker", func() {
-				brokerHandler.OnDelete(ctx, json.RawMessage(brokerNotificationPayload))
+			When("broker is not in broker blacklist", func() {
+				It("does not try to create, update or delete broker", func() {
+					brokerHandler.OnDelete(ctx, json.RawMessage(brokerNotificationPayload))
 
-				Expect(fakeCatalogFetcher.FetchCallCount()).To(Equal(0))
-				Expect(fakeBrokerClient.CreateBrokerCallCount()).To(Equal(0))
-				Expect(fakeBrokerClient.UpdateBrokerCallCount()).To(Equal(0))
-				Expect(fakeBrokerClient.DeleteBrokerCallCount()).To(Equal(0))
+					Expect(fakeCatalogFetcher.FetchCallCount()).To(Equal(0))
+					Expect(fakeBrokerClient.CreateBrokerCallCount()).To(Equal(0))
+					Expect(fakeBrokerClient.UpdateBrokerCallCount()).To(Equal(0))
+					Expect(fakeBrokerClient.DeleteBrokerCallCount()).To(Equal(0))
+				})
+			})
+
+			When("broker is in broker blacklist", func() {
+				It("does not try to create, update or delete broker", func() {
+					brokerHandler.BrokerBlacklist = []string{brokerName}
+					brokerHandler.OnDelete(ctx, json.RawMessage(brokerNotificationPayload))
+
+					Expect(fakeCatalogFetcher.FetchCallCount()).To(Equal(0))
+					Expect(fakeBrokerClient.CreateBrokerCallCount()).To(Equal(0))
+					Expect(fakeBrokerClient.UpdateBrokerCallCount()).To(Equal(0))
+					Expect(fakeBrokerClient.DeleteBrokerCallCount()).To(Equal(0))
+				})
 			})
 		})
 

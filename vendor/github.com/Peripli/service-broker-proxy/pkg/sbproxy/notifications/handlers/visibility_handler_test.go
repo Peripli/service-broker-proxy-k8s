@@ -237,6 +237,16 @@ var _ = Describe("Visibility Handler", func() {
 			})
 		})
 
+		Context("when the visibility notification is for a broker which is in the broker blacklist", func() {
+			It("does not try to enable or disable access", func() {
+				visibilityHandler.BrokerBlacklist = []string{smBrokerName}
+				visibilityHandler.OnCreate(ctx, json.RawMessage(visibilityNotificationPayload))
+
+				Expect(fakeVisibilityClient.EnableAccessForPlanCallCount()).To(Equal(0))
+				Expect(fakeVisibilityClient.DisableAccessForPlanCallCount()).To(Equal(0))
+			})
+		})
+
 		Context("when the notification payload is valid", func() {
 			Context("when an error occurs while enabling access", func() {
 				BeforeEach(func() {
@@ -377,6 +387,16 @@ var _ = Describe("Visibility Handler", func() {
 			})
 
 			It("does not try to enable or disable access", func() {
+				visibilityHandler.OnUpdate(ctx, json.RawMessage(visibilityNotificationPayload))
+
+				Expect(fakeVisibilityClient.EnableAccessForPlanCallCount()).To(Equal(0))
+				Expect(fakeVisibilityClient.DisableAccessForPlanCallCount()).To(Equal(0))
+			})
+		})
+
+		Context("when the visibility notification is for a broker which is in the broker blacklist", func() {
+			It("does not try to enable or disable access", func() {
+				visibilityHandler.BrokerBlacklist = []string{smBrokerName}
 				visibilityHandler.OnUpdate(ctx, json.RawMessage(visibilityNotificationPayload))
 
 				Expect(fakeVisibilityClient.EnableAccessForPlanCallCount()).To(Equal(0))
@@ -620,6 +640,16 @@ var _ = Describe("Visibility Handler", func() {
 					Expect(fakeVisibilityClient.EnableAccessForPlanCallCount()).To(Equal(0))
 					Expect(fakeVisibilityClient.DisableAccessForPlanCallCount()).To(Equal(0))
 				})
+			})
+		})
+
+		Context("when the visibility notification is for a broker which is in the broker blacklist", func() {
+			It("does not try to enable or disable access", func() {
+				visibilityHandler.BrokerBlacklist = []string{smBrokerName}
+				visibilityHandler.OnDelete(ctx, json.RawMessage(visibilityNotificationPayload))
+
+				Expect(fakeVisibilityClient.EnableAccessForPlanCallCount()).To(Equal(0))
+				Expect(fakeVisibilityClient.DisableAccessForPlanCallCount()).To(Equal(0))
 			})
 		})
 

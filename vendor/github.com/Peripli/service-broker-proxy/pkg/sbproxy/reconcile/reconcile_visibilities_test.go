@@ -515,7 +515,7 @@ var _ = Describe("Reconcile visibilities", func() {
 			},
 		}),
 
-		Entry("When visibility from SM doesn't have scope label and scope is enabled - should not enable visibility", testCase{
+		Entry("When visibility from SM doesn't have scope label and scope is enabled - should enable visibility", testCase{
 			platformVisibilities: func() []*platform.Visibility {
 				return []*platform.Visibility{}
 			},
@@ -533,7 +533,14 @@ var _ = Describe("Reconcile visibilities", func() {
 				}
 			},
 			enablePlanVisibilityCalledFor: func() []*platform.Visibility {
-				return []*platform.Visibility{}
+				return []*platform.Visibility{
+					{
+						Public:             true,
+						CatalogPlanID:      smBrokers[0].Services[0].Plans[0].CatalogID,
+						Labels:             map[string]string{},
+						PlatformBrokerName: brokerProxyName(smBrokers[0].Name, smBrokers[0].ID),
+					},
+				}
 			},
 			disablePlanVisibilityCalledFor: func() []*platform.Visibility {
 				return []*platform.Visibility{}
@@ -800,7 +807,7 @@ var _ = Describe("Reconcile visibilities", func() {
 		if t.enablePlanVisibilityCalledFor != nil {
 			visibilities := t.enablePlanVisibilityCalledFor()
 			Expect(fakeVisibilityClient.EnableAccessForPlanCallCount()).To(Equal(len(visibilities)))
-			for index := range t.enablePlanVisibilityCalledFor() {
+			for index := range visibilities {
 				_, request := fakeVisibilityClient.EnableAccessForPlanArgsForCall(index)
 				checkAccessArguments(request.Labels, request.CatalogPlanID, request.BrokerName, visibilities)
 			}

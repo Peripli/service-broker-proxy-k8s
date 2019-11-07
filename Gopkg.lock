@@ -25,9 +25,10 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:29098acc223f9ce8f6e37b56bc163fe05b1ecbd0c6c858ec495e0afeb619ffe9"
+  digest = "1:682072e6396f09678bea214458d4cb84161dfb4bafe5fc9d79cd1728da1a06d6"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
+    "pkg/authn",
     "pkg/logging",
     "pkg/platform",
     "pkg/sbproxy",
@@ -37,11 +38,11 @@
     "pkg/sm",
   ]
   pruneopts = ""
-  revision = "69c4bd049ed00b18a8fdf186adc52a7ec68de320"
+  revision = "21d359fc5e392cf7066e42c9f2d05f5362ed1ec7"
 
 [[projects]]
   branch = "master"
-  digest = "1:4a2c0b59e8765a69cfbec68cf0cd84f304c889bb408701ef953de350b2181b1d"
+  digest = "1:952c8dba848a2c55347ed54808dab2eda36f8913500c564eb0b223f00bdf6611"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -71,7 +72,7 @@
     "storage/interceptors",
   ]
   pruneopts = ""
-  revision = "c49be11e03a29c1f0f04da412d7abf88972b4504"
+  revision = "6d5a626a84921e4ed1219c1b2e8633200f46ebf4"
 
 [[projects]]
   digest = "1:d006584293547a5a28116ac4e02e250a07911e59b3db7fb1b7ab93c25721cdcb"

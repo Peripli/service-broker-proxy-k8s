@@ -21,8 +21,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Peripli/service-manager/pkg/query"
 
@@ -399,16 +399,13 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 			It("returns 200 when date is properly formatted", func() {
 				createdAtValue := ctx.SMWithOAuth.GET(t.API + "/" + r[0]["id"].(string)).Expect().Status(http.StatusOK).
 					JSON().Object().Value("created_at").String().Raw()
-				createdAtHour := createdAtValue[11:13]
-				originalHour, err := strconv.ParseInt(createdAtHour, 10, 64)
+				parsed, err := time.Parse(time.RFC3339Nano, createdAtValue)
 				Expect(err).ToNot(HaveOccurred())
-				createdAtValue = createdAtValue[:11] + "01" + createdAtValue[13:]
-				newHour := originalHour - 1
-				hourPattern := fmt.Sprintf("-%d:00", newHour)
-				if newHour < 10 {
-					hourPattern = fmt.Sprintf("-0%d:00", newHour)
-				}
-				escapedCreatedAtValue := url.QueryEscape(createdAtValue[:len(createdAtValue)-1] + hourPattern)
+				location, err := time.LoadLocation("America/New_York")
+				Expect(err).ToNot(HaveOccurred())
+				timeInZone := parsed.In(location)
+				offsetCreatedAtValue := timeInZone.Format(time.RFC3339Nano)
+				escapedCreatedAtValue := url.QueryEscape(offsetCreatedAtValue)
 				ctx.SMWithOAuth.ListWithQuery(t.API, fmt.Sprintf("fieldQuery=%s eq %s", "created_at", escapedCreatedAtValue)).
 					Element(0).Object().Value("id").Equal(r[0]["id"])
 			})
@@ -482,6 +479,42 @@ func DescribeListTestsFor(ctx *common.TestContext, t TestCase) bool {
 						resp.JSON().Path("$.token").NotNull()
 					})
 				})
+
+				Context("with max items query and label query", func() {
+					const labelKey = "pagingLabel"
+					var pageSize int
+					var objID string
+					BeforeEach(func() {
+						objID = r[len(r)-1]["id"].(string)
+						pageSize = len(r) / 2
+						patchLabelsBody := make(map[string]interface{})
+						patchLabels := []query.LabelChange{
+							{
+								Operation: query.AddLabelOperation,
+								Key:       labelKey,
+								Values:    []string{objID},
+							},
+						}
+						patchLabelsBody["labels"] = patchLabels
+
+						By(fmt.Sprintf("Attempting add one additional %s label with value %v to resoucre of type %s with id %s", labelKey, []string{objID}, t.API, objID))
+						ctx.SMWithOAuth.PATCH(t.API + "/" + objID).WithJSON(patchLabelsBody).
+							Expect().
+							Status(http.StatusOK)
+
+						object := ctx.SMWithOAuth.GET(t.API + "/" + objID).
+							Expect().
+							Status(http.StatusOK).JSON().Object()
+						object.Path(fmt.Sprintf("$.labels[%s][*]", labelKey)).Array().Contains(objID)
+					})
+
+					It("successfully returns the item", func() {
+						array := ctx.SMWithOAuth.ListWithQuery(t.API, fmt.Sprintf("max_items=%d&labelQuery=%s eq '%s'", pageSize, labelKey, objID))
+						array.Length().Equal(1)
+						array.Path(fmt.Sprintf("$[0].labels[%s][*]", labelKey)).Array().Contains(objID)
+					})
+				})
+
 				Context("with negative max items query", func() {
 					It("returns 400", func() {
 						ctx.SMWithOAuth.GET(t.API).WithQuery("max_items", -1).Expect().Status(http.StatusBadRequest)

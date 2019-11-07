@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package filter
+package authn
 
 import (
 	"testing"

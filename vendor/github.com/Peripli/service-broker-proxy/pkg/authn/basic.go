@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package filter
+package authn
 
 import (
 	"fmt"
@@ -61,7 +61,7 @@ func basicAuthnMatchers() []web.FilterMatcher {
 	return []web.FilterMatcher{
 		{
 			Matchers: []web.Matcher{
-				web.Path(web.OSBURL + "/**"),
+				web.Path(web.ConfigURL + "/**"),
 			},
 		},
 	}

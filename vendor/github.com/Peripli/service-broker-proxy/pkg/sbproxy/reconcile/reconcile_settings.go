@@ -25,10 +25,12 @@ const DefaultProxyBrokerPrefix = "sm-"
 
 // Settings type represents the sbproxy settings
 type Settings struct {
-	LegacyURL           string `mapstructure:"legacy_url"`
-	MaxParallelRequests int    `mapstructure:"max_parallel_requests"`
-	URL                 string `mapstructure:"url"`
-	BrokerPrefix        string `mapstructure:"broker_prefix"`
+	LegacyURL           string   `mapstructure:"legacy_url"`
+	MaxParallelRequests int      `mapstructure:"max_parallel_requests"`
+	URL                 string   `mapstructure:"url"`
+	BrokerPrefix        string   `mapstructure:"broker_prefix"`
+	BrokerBlacklist     []string `mapstructure:"broker_blacklist"`
+	TakeoverEnabled     bool     `mapstructure:"takeover_enabled"`
 }
 
 // DefaultSettings creates default proxy settings
@@ -38,6 +40,8 @@ func DefaultSettings() *Settings {
 		MaxParallelRequests: 5,
 		URL:                 "",
 		BrokerPrefix:        DefaultProxyBrokerPrefix,
+		BrokerBlacklist:     []string{},
+		TakeoverEnabled:     true,
 	}
 }
 

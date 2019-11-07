@@ -48,3 +48,8 @@ config:
   k8s:
     client:
       timeout: 30000ms
+  authn:
+    user: admin
+    password: admin
+    token_issuer_url:
+    client_id:

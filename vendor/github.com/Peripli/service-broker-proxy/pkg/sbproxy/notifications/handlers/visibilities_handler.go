@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Peripli/service-manager/pkg/util/slice"
 
 	"github.com/Peripli/service-manager/storage/interceptors"
 
@@ -71,7 +72,8 @@ func (vwad visibilityWithAdditionalDetails) Validate() error {
 type VisibilityResourceNotificationsHandler struct {
 	VisibilityClient platform.VisibilityClient
 
-	ProxyPrefix string
+	ProxyPrefix     string
+	BrokerBlacklist []string
 }
 
 // OnCreate creates visibilities from the specified notification payload by invoking the proper platform clients
@@ -95,6 +97,12 @@ func (vnh *VisibilityResourceNotificationsHandler) OnCreate(ctx context.Context,
 	}
 
 	v := visPayload.New
+
+	if slice.StringsAnyEquals(vnh.BrokerBlacklist, v.Additional.BrokerName) {
+		log.C(ctx).Infof("Broker name %s for the visibility create notification is part of broker blacklist. Skipping notification...", v.Additional.BrokerName)
+		return
+	}
+
 	platformBrokerName := vnh.brokerProxyName(v.Additional.BrokerName, v.Additional.BrokerID)
 
 	log.C(ctx).Infof("Attempting to enable access for plan with catalog ID %s for platform broker with name %s and labels %v...", v.Additional.ServicePlan.CatalogID, platformBrokerName, v.Resource.GetLabels())
@@ -132,6 +140,11 @@ func (vnh *VisibilityResourceNotificationsHandler) OnUpdate(ctx context.Context,
 
 	oldVisibilityPayload := visibilityPayload.Old
 	newVisibilityPayload := visibilityPayload.New
+
+	if slice.StringsAnyEquals(vnh.BrokerBlacklist, oldVisibilityPayload.Additional.BrokerName) {
+		log.C(ctx).Infof("Broker name %s for the visibility update notification is part of broker blacklist. Skipping notification...", oldVisibilityPayload.Additional.BrokerName)
+		return
+	}
 
 	platformBrokerName := vnh.brokerProxyName(oldVisibilityPayload.Additional.BrokerName, oldVisibilityPayload.Additional.BrokerID)
 
@@ -227,6 +240,12 @@ func (vnh *VisibilityResourceNotificationsHandler) OnDelete(ctx context.Context,
 	}
 
 	v := visibilityPayload.Old
+
+	if slice.StringsAnyEquals(vnh.BrokerBlacklist, v.Additional.BrokerName) {
+		log.C(ctx).Infof("Broker name %s for the visibility create notification is part of broker blacklist. Skipping notification...", v.Additional.BrokerName)
+		return
+	}
+
 	platformBrokerName := vnh.brokerProxyName(v.Additional.BrokerName, v.Additional.BrokerID)
 
 	log.C(ctx).Infof("Attempting to disable access for plan with catalog ID %s for platform broker with name %s and labels %v...", v.Additional.ServicePlan.CatalogID, platformBrokerName, v.Resource.GetLabels())

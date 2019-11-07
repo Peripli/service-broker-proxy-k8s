@@ -17,6 +17,7 @@
 package sbproxy
 
 import (
+	"github.com/Peripli/service-manager/pkg/env/envfakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -36,6 +37,7 @@ var _ = Describe("Sbproxy", func() {
 	var cancel context.CancelFunc
 	var fakePlatformClient *platformfakes.FakeClient
 	var fakeBrokerClient *platformfakes.FakeBrokerClient
+	var fakeEnvironment *envfakes.FakeEnvironment
 
 	BeforeEach(func() {
 		ctx = context.TODO()
@@ -47,6 +49,8 @@ var _ = Describe("Sbproxy", func() {
 		fakePlatformClient.BrokerReturns(fakeBrokerClient)
 		fakePlatformClient.VisibilityReturns(&platformfakes.FakeVisibilityClient{})
 		fakePlatformClient.CatalogFetcherReturns(&platformfakes.FakeCatalogFetcher{})
+
+		fakeEnvironment = &envfakes.FakeEnvironment{}
 	})
 
 	Describe("New", func() {
@@ -64,7 +68,7 @@ var _ = Describe("Sbproxy", func() {
 				Expect(err).ToNot(HaveOccurred())
 				settings, err := NewSettings(env)
 				Expect(err).ToNot(HaveOccurred())
-				smProxyBuilder, err := New(ctx, cancel, settings, fakePlatformClient)
+				smProxyBuilder, err := New(ctx, cancel, fakeEnvironment, settings, fakePlatformClient)
 				Expect(err).To(HaveOccurred())
 				Expect(smProxyBuilder).To(BeNil())
 			})
@@ -83,7 +87,7 @@ var _ = Describe("Sbproxy", func() {
 				Expect(err).ToNot(HaveOccurred())
 				settings, err := NewSettings(env)
 				Expect(err).ToNot(HaveOccurred())
-				smProxyBuilder, err := New(ctx, cancel, settings, fakePlatformClient)
+				smProxyBuilder, err := New(ctx, cancel, fakeEnvironment, settings, fakePlatformClient)
 				Expect(err).To(HaveOccurred())
 				Expect(smProxyBuilder).To(BeNil())
 			})
@@ -105,7 +109,7 @@ var _ = Describe("Sbproxy", func() {
 				Expect(err).ToNot(HaveOccurred())
 				settings, err := NewSettings(env)
 				Expect(err).ToNot(HaveOccurred())
-				proxy, err := New(ctx, cancel, settings, fakePlatformClient)
+				proxy, err := New(ctx, cancel, fakeEnvironment, settings, fakePlatformClient)
 				Expect(err).ToNot(HaveOccurred())
 				proxy.RegisterControllers(testController{})
 				SMProxy = httpexpect.New(GinkgoT(), httptest.NewServer(proxy.Build().Server.Router).URL)

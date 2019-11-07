@@ -33,7 +33,7 @@ func main() {
 		panic(fmt.Errorf("error creating K8S client: %s", err))
 	}
 
-	proxyBuilder, err := sbproxy.New(ctx, cancel, &proxySettings.Settings, platformClient)
+	proxyBuilder, err := sbproxy.New(ctx, cancel, env, &proxySettings.Settings, platformClient)
 	if err != nil {
 		panic(fmt.Errorf("error creating sbproxy: %s", err))
 	}

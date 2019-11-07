@@ -19,6 +19,7 @@ package reconcile
 import (
 	"context"
 	"fmt"
+	"github.com/Peripli/service-manager/pkg/util/slice"
 	"strings"
 
 	"github.com/Peripli/service-manager/pkg/log"
@@ -48,20 +49,22 @@ func (r *resyncJob) reconcileBrokers(ctx context.Context, existingBrokers, desir
 
 	for _, desiredBroker := range desiredBrokers {
 		desiredBroker := desiredBroker
-		existingBroker, alreadyProxified := proxyBrokerIDMap[desiredBroker.GUID]
+		existingBroker, alreadyTakenOver := proxyBrokerIDMap[desiredBroker.GUID]
 		delete(proxyBrokerIDMap, desiredBroker.GUID)
 
-		if alreadyProxified {
+		if alreadyTakenOver {
 			if existingBroker.Name != r.brokerProxyName(desiredBroker) || !strings.HasPrefix(existingBroker.BrokerURL, r.smPath) { // broker name has been changed in the platform or broker proxy URL should be updated
 				r.updateBrokerRegistration(ctx, existingBroker.GUID, desiredBroker)
 				continue
 			}
 			r.fetchBrokerCatalog(ctx, existingBroker)
 		} else {
-			platformBroker, shouldBeProxified := brokerKeyMap[getBrokerKey(desiredBroker)]
+			platformBroker, shouldBeTakenOver := brokerKeyMap[getBrokerKey(desiredBroker)]
 
-			if shouldBeProxified {
-				r.updateBrokerRegistration(ctx, platformBroker.GUID, desiredBroker)
+			if shouldBeTakenOver {
+				if r.options.TakeoverEnabled {
+					r.updateBrokerRegistration(ctx, platformBroker.GUID, desiredBroker)
+				}
 			} else {
 				r.createBrokerRegistration(ctx, desiredBroker)
 			}
@@ -84,6 +87,10 @@ func (r *resyncJob) getBrokersFromSM(ctx context.Context) ([]*platform.ServiceBr
 
 	brokersFromSM := make([]*platform.ServiceBroker, 0, len(proxyBrokers))
 	for _, broker := range proxyBrokers {
+		if slice.StringsAnyEquals(r.options.BrokerBlacklist, broker.Name) {
+			continue
+		}
+
 		brokerReg := &platform.ServiceBroker{
 			GUID:      broker.ID,
 			Name:      broker.Name,
