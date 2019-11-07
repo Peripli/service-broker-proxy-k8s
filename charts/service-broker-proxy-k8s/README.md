@@ -38,6 +38,7 @@ helm install charts/service-broker-proxy-k8s \
 
 ```bash
 # using helm v3.x.x
+kubectl create namespace service-broker-proxy
 helm install service-broker-proxy charts/service-broker-proxy-k8s \
   --namespace service-broker-proxy \
   --set image.tag=<VERSION> \
