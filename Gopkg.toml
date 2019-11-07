@@ -31,7 +31,7 @@
 
 [[constraint]]
   name = "github.com/Peripli/service-broker-proxy"
-  branch = "get-config-api"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/onsi/ginkgo"

@@ -30,6 +30,7 @@ type Settings struct {
 	URL                 string   `mapstructure:"url"`
 	BrokerPrefix        string   `mapstructure:"broker_prefix"`
 	BrokerBlacklist     []string `mapstructure:"broker_blacklist"`
+	TakeoverEnabled     bool     `mapstructure:"takeover_enabled"`
 }
 
 // DefaultSettings creates default proxy settings
@@ -40,6 +41,7 @@ func DefaultSettings() *Settings {
 		URL:                 "",
 		BrokerPrefix:        DefaultProxyBrokerPrefix,
 		BrokerBlacklist:     []string{},
+		TakeoverEnabled:     true,
 	}
 }
 
