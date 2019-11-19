@@ -23,11 +23,16 @@ You can get `smctl` tool from https://github.com/Peripli/service-manager-cli.
 
 ## Installation
 
-From the root folder of this repository, execute:
+### Add Peripli helm repo
+```bash
+helm repo add peripli 'https://peripli.github.io'
+```
+
+### Instal Service Manager agent
 
 ```bash
 # using helm v2.x.x
-helm install charts/service-broker-proxy-k8s \
+helm install peripli/service-broker-proxy-k8s \
   --name service-broker-proxy \
   --namespace service-broker-proxy \
   --set image.tag=<VERSION> \
@@ -39,7 +44,7 @@ helm install charts/service-broker-proxy-k8s \
 ```bash
 # using helm v3.x.x
 kubectl create namespace service-broker-proxy
-helm install service-broker-proxy charts/service-broker-proxy-k8s \
+helm install service-broker-proxy peripli/service-broker-proxy-k8s \
   --namespace service-broker-proxy \
   --set image.tag=<VERSION> \
   --set config.sm.url=<SM_URL> \
