@@ -28,7 +28,7 @@ type brokerWithAdditionalDetails struct {
 }
 
 // Validate validates the broker payload
-func (bp brokerPayload) Validate(op types.OperationType) error {
+func (bp brokerPayload) Validate(op types.NotificationOperation) error {
 	switch op {
 	case types.CREATED:
 		if err := bp.New.Validate(); err != nil {
@@ -264,7 +264,7 @@ func (bnh *BrokerResourceNotificationsHandler) OnDelete(ctx context.Context, pay
 	log.C(ctx).Infof("Successfully deleted platform broker with platform ID %s and name %s", existingBroker.GUID, existingBroker.Name)
 }
 
-func (bnh *BrokerResourceNotificationsHandler) unmarshalPayload(operationType types.OperationType, payload json.RawMessage) (brokerPayload, error) {
+func (bnh *BrokerResourceNotificationsHandler) unmarshalPayload(operationType types.NotificationOperation, payload json.RawMessage) (brokerPayload, error) {
 	result := brokerPayload{}
 	if err := json.Unmarshal(payload, &result); err != nil {
 		return brokerPayload{}, errors.Wrap(err, "error unmarshaling broker create notification payload")
