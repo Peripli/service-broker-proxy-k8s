@@ -20,19 +20,19 @@ import (
 	"fmt"
 	"time"
 
-	"k8s.io/klog"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/klog"
 
+	osb "github.com/kubernetes-sigs/go-open-service-broker-client/v2"
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
 	"github.com/kubernetes-sigs/service-catalog/pkg/metrics"
 	"github.com/kubernetes-sigs/service-catalog/pkg/pretty"
-	osb "github.com/pmorie/go-open-service-broker-client/v2"
+	"github.com/kubernetes-sigs/service-catalog/pkg/util"
 )
 
 // the Message strings have a terminating period and space so they can
@@ -127,7 +127,7 @@ func (c *controller) serviceBrokerClient(broker *v1beta1.ServiceBroker) (osb.Cli
 		return nil, err
 	}
 
-	clientConfig := NewClientConfigurationForBroker(broker.ObjectMeta, &broker.Spec.CommonServiceBrokerSpec, authConfig)
+	clientConfig := NewClientConfigurationForBroker(broker.ObjectMeta, &broker.Spec.CommonServiceBrokerSpec, authConfig, c.OSBAPITimeOut)
 
 	brokerClient, err := c.brokerClientManager.UpdateBrokerClient(NewServiceBrokerKey(broker.Namespace, broker.Name), clientConfig)
 	if err != nil {
@@ -179,10 +179,12 @@ func (c *controller) reconcileServiceBroker(broker *v1beta1.ServiceBroker) error
 			if broker.Status.OperationStartTime == nil {
 				toUpdate := broker.DeepCopy()
 				toUpdate.Status.OperationStartTime = &now
-				if _, err := c.serviceCatalogClient.ServiceBrokers(broker.Namespace).UpdateStatus(toUpdate); err != nil {
+				updated, err := c.serviceCatalogClient.ServiceBrokers(broker.Namespace).UpdateStatus(toUpdate)
+				if err != nil {
 					klog.Error(pcb.Messagef("Error updating operation start time: %v", err))
 					return err
 				}
+				broker = updated
 			} else if !time.Now().Before(broker.Status.OperationStartTime.Time.Add(c.reconciliationRetryDuration)) {
 				s := "Stopping reconciliation retries because too much time has elapsed"
 				klog.Info(pcb.Message(s))
@@ -658,6 +660,8 @@ func (c *controller) updateServiceBrokerCondition(broker *v1beta1.ServiceBroker,
 	pcb := pretty.NewServiceBrokerContextBuilder(toUpdate)
 	updateCommonStatusCondition(pcb, toUpdate.ObjectMeta, &toUpdate.Status.CommonServiceBrokerStatus, conditionType, status, reason, message)
 
+	toUpdate.RecalculatePrinterColumnStatusFields()
+
 	klog.V(4).Info(pcb.Messagef("Updating ready condition to %v", status))
 	_, err := c.serviceCatalogClient.ServiceBrokers(broker.Namespace).UpdateStatus(toUpdate)
 	if err != nil {
@@ -689,7 +693,7 @@ func (c *controller) updateServiceBrokerFinalizers(
 	logContext := fmt.Sprint(pcb.Messagef("Updating finalizers to %v", finalizers))
 
 	klog.V(4).Info(pcb.Messagef("Updating %v", logContext))
-	_, err = c.serviceCatalogClient.ServiceBrokers(broker.Namespace).UpdateStatus(toUpdate)
+	_, err = c.serviceCatalogClient.ServiceBrokers(broker.Namespace).Update(toUpdate)
 	if err != nil {
 		klog.Error(pcb.Messagef("Error updating %v: %v", logContext, err))
 	}
@@ -697,12 +701,14 @@ func (c *controller) updateServiceBrokerFinalizers(
 }
 
 func (c *controller) getCurrentServiceClassesAndPlansForNamespacedBroker(broker *v1beta1.ServiceBroker) ([]v1beta1.ServiceClass, []v1beta1.ServicePlan, error) {
-	fieldSet := fields.Set{
-		v1beta1.FilterSpecServiceBrokerName: broker.Name,
-	}
-	fieldSelector := fields.SelectorFromSet(fieldSet).String()
-	listOpts := metav1.ListOptions{FieldSelector: fieldSelector}
+	pcb := pretty.NewServiceBrokerContextBuilder(broker)
+	labelSelector := labels.SelectorFromSet(labels.Set{
+		v1beta1.GroupName + "/" + v1beta1.FilterSpecServiceBrokerName: util.GenerateSHA(broker.Name),
+	}).String()
 
+	listOpts := metav1.ListOptions{
+		LabelSelector: labelSelector,
+	}
 	existingServiceClasses, err := c.serviceCatalogClient.ServiceClasses(broker.Namespace).List(listOpts)
 	if err != nil {
 		c.recorder.Eventf(broker, corev1.EventTypeWarning, errorListingServiceClassesReason, "%v %v", errorListingServiceClassesMessage, err)
@@ -718,6 +724,7 @@ func (c *controller) getCurrentServiceClassesAndPlansForNamespacedBroker(broker 
 
 		return nil, nil, err
 	}
+	klog.Info(pcb.Messagef("Found %d ServiceClasses", len(existingServiceClasses.Items)))
 
 	existingServicePlans, err := c.serviceCatalogClient.ServicePlans(broker.Namespace).List(listOpts)
 	if err != nil {
@@ -734,6 +741,7 @@ func (c *controller) getCurrentServiceClassesAndPlansForNamespacedBroker(broker 
 
 		return nil, nil, err
 	}
+	klog.Info(pcb.Messagef("Found %d ServicePlans", len(existingServicePlans.Items)))
 
 	return existingServiceClasses.Items, existingServicePlans.Items, nil
 }
@@ -756,4 +764,15 @@ func convertServicePlanListToMap(list []v1beta1.ServicePlan) map[string]*v1beta1
 	}
 
 	return ret
+}
+
+func getServiceBrokerLastConditionState(status v1beta1.CommonServiceBrokerStatus) string {
+	if len(status.Conditions) > 0 {
+		condition := status.Conditions[len(status.Conditions)-1]
+		if condition.Status == v1beta1.ConditionTrue {
+			return string(condition.Type)
+		}
+		return condition.Reason
+	}
+	return ""
 }

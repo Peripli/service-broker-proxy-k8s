@@ -39,9 +39,9 @@ import (
 	// avoid error `servicecatalog/v1beta1 is not enabled`
 	_ "github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/install"
 
-	osb "github.com/pmorie/go-open-service-broker-client/v2"
-	fakeosb "github.com/pmorie/go-open-service-broker-client/v2/fake"
-	generator "github.com/pmorie/go-open-service-broker-client/v2/generator"
+	osb "github.com/kubernetes-sigs/go-open-service-broker-client/v2"
+	fakeosb "github.com/kubernetes-sigs/go-open-service-broker-client/v2/fake"
+	generator "github.com/kubernetes-sigs/go-open-service-broker-client/v2/generator"
 
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog"
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
@@ -748,6 +748,7 @@ func newControllerTestTestController(ct *controllerTest) (
 	// create a fake kube client
 	fakeKubeClient := &fake.Clientset{}
 	fakeKubeClient.Lock()
+	prependGetNamespaceReaction(fakeKubeClient, testNamespace)
 	prependGetSecretNotFoundReaction(fakeKubeClient)
 	fakeKubeClient.Unlock()
 
@@ -791,6 +792,7 @@ func newControllerTestTestController(ct *controllerTest) (
 		7*24*time.Hour,
 		controller.DefaultClusterIDConfigMapName,
 		controller.DefaultClusterIDConfigMapNamespace,
+		60*time.Second,
 	)
 	t.Log("controller start")
 	if err != nil {
@@ -957,6 +959,7 @@ func newTestController(t *testing.T) (
 		7*24*time.Hour,
 		controller.DefaultClusterIDConfigMapName,
 		controller.DefaultClusterIDConfigMapNamespace,
+		60*time.Second,
 	)
 	t.Log("controller start")
 	if err != nil {
@@ -1020,6 +1023,26 @@ func prependGetSecretReaction(fakeKubeClient *fake.Clientset, secretName string,
 			Data: secretData,
 		}
 		return true, secret, nil
+	})
+}
+
+func prependGetNamespaceReaction(fakeKubeClient *fake.Clientset, namespace string) {
+	fakeKubeClient.PrependReactor("get", "namespaces", func(action clientgotesting.Action) (bool, runtime.Object, error) {
+		getAction, ok := action.(clientgotesting.GetAction)
+		if !ok {
+			return true, nil, apierrors.NewInternalError(fmt.Errorf("could not convert get namespace action to a GetAction: %T", action))
+		}
+		if getAction.GetName() != namespace {
+			return false, nil, nil
+		}
+		ns := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      namespace,
+				Namespace: namespace,
+				UID:       "testnamespace1234",
+			},
+		}
+		return true, ns, nil
 	})
 }
 

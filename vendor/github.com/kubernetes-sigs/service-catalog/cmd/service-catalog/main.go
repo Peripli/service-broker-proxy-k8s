@@ -32,8 +32,10 @@ func main() {
 		Long: "This is an all-in-one binary that can run any of the various Kubernetes service-catalog servers.",
 	}
 
-	hk.AddServer(server.NewAPIServer())
+	hk.AddServer(server.NewWebhookServer())
 	hk.AddServer(server.NewControllerManager())
+	hk.AddServer(server.NewCleaner())
+	hk.AddServer(server.NewMigration())
 
 	hk.RunToExit(os.Args)
 }

@@ -27,6 +27,7 @@ import (
 	clientgotesting "k8s.io/client-go/testing"
 
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
+	"github.com/kubernetes-sigs/service-catalog/pkg/util"
 	"github.com/kubernetes-sigs/service-catalog/test/fake"
 )
 
@@ -58,8 +59,10 @@ func TestReconcileClusterServiceClassRemovedFromCatalog(t *testing.T) {
 			shouldError:  false,
 			catalogActionsCheckFunc: func(t *testing.T, actions []clientgotesting.Action) {
 				listRestrictions := clientgotesting.ListRestrictions{
-					Labels: labels.Everything(),
-					Fields: fields.OneTermEqualSelector("spec.clusterServiceClassRef.name", "cscguid"),
+					Labels: labels.SelectorFromSet(labels.Set{
+						v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: util.GenerateSHA("cscguid"),
+					}),
+					Fields: fields.Everything(),
 				}
 
 				assertNumberOfActions(t, actions, 1)
@@ -73,8 +76,10 @@ func TestReconcileClusterServiceClassRemovedFromCatalog(t *testing.T) {
 			shouldError:  false,
 			catalogActionsCheckFunc: func(t *testing.T, actions []clientgotesting.Action) {
 				listRestrictions := clientgotesting.ListRestrictions{
-					Labels: labels.Everything(),
-					Fields: fields.OneTermEqualSelector("spec.clusterServiceClassRef.name", "cscguid"),
+					Labels: labels.SelectorFromSet(labels.Set{
+						v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: util.GenerateSHA("cscguid"),
+					}),
+					Fields: fields.Everything(),
 				}
 
 				assertNumberOfActions(t, actions, 2)
@@ -95,8 +100,10 @@ func TestReconcileClusterServiceClassRemovedFromCatalog(t *testing.T) {
 			errText: strPtr("oops"),
 			catalogActionsCheckFunc: func(t *testing.T, actions []clientgotesting.Action) {
 				listRestrictions := clientgotesting.ListRestrictions{
-					Labels: labels.Everything(),
-					Fields: fields.OneTermEqualSelector("spec.clusterServiceClassRef.name", "cscguid"),
+					Labels: labels.SelectorFromSet(labels.Set{
+						v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: util.GenerateSHA("cscguid"),
+					}),
+					Fields: fields.Everything(),
 				}
 
 				assertNumberOfActions(t, actions, 2)

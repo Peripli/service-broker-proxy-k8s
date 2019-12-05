@@ -21,16 +21,19 @@ import (
 	"time"
 
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
+	"github.com/kubernetes-sigs/service-catalog/pkg/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
-	testServiceClassGUID  = "scguid"
-	testServicePlanGUID   = "spguid"
-	testServiceBrokerName = "test-servicebroker"
-	testServiceClassName  = "test-serviceclass"
-	testServicePlanName   = "test-serviceplan"
+	testServiceClassGUID           = "scguid"
+	testServicePlanGUID            = "spguid"
+	testServiceBrokerName          = "test-servicebroker"
+	testServiceClassName           = "test-serviceclass"
+	testServicePlanName            = "test-serviceplan"
+	testNonbindableServicePlanName = "test-unbindable-serviceplan"
+	testNonbindableServicePlanGUID = "unbindable-serviceplan"
 )
 
 func getTestCommonServiceBrokerSpec() v1beta1.CommonServiceBrokerSpec {
@@ -79,6 +82,10 @@ func assertServiceBrokerReadyFalse(t *testing.T, obj runtime.Object) {
 	assertServiceBrokerCondition(t, obj, v1beta1.ServiceBrokerConditionReady, v1beta1.ConditionFalse)
 }
 
+func assertServiceBrokerReadyTrue(t *testing.T, obj runtime.Object) {
+	assertServiceBrokerCondition(t, obj, v1beta1.ServiceBrokerConditionReady, v1beta1.ConditionTrue)
+}
+
 func assertServiceBrokerCondition(t *testing.T, obj runtime.Object, conditionType v1beta1.ServiceBrokerConditionType, status v1beta1.ConditionStatus) {
 	broker, ok := obj.(*v1beta1.ServiceBroker)
 	if !ok {
@@ -106,6 +113,11 @@ func getTestServiceClass() *v1beta1.ServiceClass {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testServiceClassGUID,
 			Namespace: testNamespace,
+			Labels: map[string]string{
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecServiceClassRefName: util.GenerateSHA(testServiceClassGUID),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName:        util.GenerateSHA(testServiceClassName),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecServiceBrokerName:   util.GenerateSHA(testServiceBrokerName),
+			},
 		},
 		Spec: v1beta1.ServiceClassSpec{
 			ServiceBrokerName:      testServiceBrokerName,
@@ -127,6 +139,12 @@ func getTestServicePlan() *v1beta1.ServicePlan {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testServicePlanGUID,
 			Namespace: testNamespace,
+			Labels: map[string]string{
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecServicePlanRefName:  util.GenerateSHA(testServicePlanGUID),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName:        util.GenerateSHA(testServicePlanName),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecServiceBrokerName:   util.GenerateSHA(testServiceBrokerName),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecServiceClassRefName: util.GenerateSHA(testServiceClassGUID),
+			},
 		},
 		Spec: v1beta1.ServicePlanSpec{
 			ServiceBrokerName:     testServiceBrokerName,

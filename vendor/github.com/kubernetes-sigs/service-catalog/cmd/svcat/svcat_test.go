@@ -40,6 +40,7 @@ import (
 	svcatfake "github.com/kubernetes-sigs/service-catalog/pkg/client/clientset_generated/clientset/fake"
 	"github.com/kubernetes-sigs/service-catalog/pkg/svcat"
 	"github.com/kubernetes-sigs/service-catalog/pkg/svcat/service-catalog"
+	"github.com/kubernetes-sigs/service-catalog/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -90,6 +91,9 @@ func TestGetSvcatWithNamespacedBrokerFeatureDisabled(t *testing.T) {
 				&v1beta1.ClusterServiceClass{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "my-cluster-class",
+						Labels: map[string]string{
+							v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName: util.GenerateSHA("my-cluster-class"),
+						},
 					},
 					Spec: v1beta1.ClusterServiceClassSpec{
 						CommonServiceClassSpec: v1beta1.CommonServiceClassSpec{
@@ -100,6 +104,9 @@ func TestGetSvcatWithNamespacedBrokerFeatureDisabled(t *testing.T) {
 				&v1beta1.ClusterServicePlan{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "my-cluster-plan",
+						Labels: map[string]string{
+							v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName: util.GenerateSHA("my-cluster-plan"),
+						},
 					},
 					Spec: v1beta1.ClusterServicePlanSpec{
 						CommonServicePlanSpec: v1beta1.CommonServicePlanSpec{
@@ -663,7 +670,9 @@ func apihandler(w http.ResponseWriter, r *http.Request) {
 		match = filepath.Join("core", coreMatch[1])
 	}
 
-	match = strings.Replace(match, "?", "_", -1) // windows doesn't allow '?' in filenames
+	match = strings.Replace(match, "?", "_", -1)   // windows doesn't allow '?' in filenames
+	match = strings.Replace(match, "%2F", "_", -1) // "/" is not allowed in filenames
+
 	relpath, err := url.PathUnescape(match)
 	if err != nil {
 		w.WriteHeader(500)

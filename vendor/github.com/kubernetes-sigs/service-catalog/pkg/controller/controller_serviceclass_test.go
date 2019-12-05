@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
+	"github.com/kubernetes-sigs/service-catalog/pkg/util"
 	"github.com/kubernetes-sigs/service-catalog/test/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -59,10 +60,11 @@ func TestReconcileServiceClassRemovedFromCatalog(t *testing.T) {
 			shouldError:  false,
 			catalogActionsCheckFunc: func(t *testing.T, actions []clientgotesting.Action) {
 				listRestrictions := clientgotesting.ListRestrictions{
-					Labels: labels.Everything(),
-					Fields: fields.OneTermEqualSelector("spec.serviceClassRef.name", "scguid"),
+					Labels: labels.SelectorFromSet(labels.Set{
+						v1beta1.GroupName + "/" + v1beta1.FilterSpecServiceClassRefName: util.GenerateSHA("scguid"),
+					}),
+					Fields: fields.Everything(),
 				}
-
 				assertNumberOfActions(t, actions, 1)
 				assertList(t, actions[0], &v1beta1.ServiceInstance{}, listRestrictions)
 			},
@@ -74,8 +76,10 @@ func TestReconcileServiceClassRemovedFromCatalog(t *testing.T) {
 			shouldError:  false,
 			catalogActionsCheckFunc: func(t *testing.T, actions []clientgotesting.Action) {
 				listRestrictions := clientgotesting.ListRestrictions{
-					Labels: labels.Everything(),
-					Fields: fields.OneTermEqualSelector("spec.serviceClassRef.name", "scguid"),
+					Labels: labels.SelectorFromSet(labels.Set{
+						v1beta1.GroupName + "/" + v1beta1.FilterSpecServiceClassRefName: util.GenerateSHA("scguid"),
+					}),
+					Fields: fields.Everything(),
 				}
 
 				assertNumberOfActions(t, actions, 2)
@@ -96,8 +100,10 @@ func TestReconcileServiceClassRemovedFromCatalog(t *testing.T) {
 			errText: strPtr("oops"),
 			catalogActionsCheckFunc: func(t *testing.T, actions []clientgotesting.Action) {
 				listRestrictions := clientgotesting.ListRestrictions{
-					Labels: labels.Everything(),
-					Fields: fields.OneTermEqualSelector("spec.serviceClassRef.name", "scguid"),
+					Labels: labels.SelectorFromSet(labels.Set{
+						v1beta1.GroupName + "/" + v1beta1.FilterSpecServiceClassRefName: util.GenerateSHA("scguid"),
+					}),
+					Fields: fields.Everything(),
 				}
 
 				assertNumberOfActions(t, actions, 2)

@@ -18,9 +18,8 @@ package reconcile_test
 
 import (
 	"context"
-	"sync"
-
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/reconcile"
+	"sync"
 
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy/notifications"
 	"github.com/Peripli/service-manager/pkg/types"
@@ -31,6 +30,7 @@ import (
 
 var _ = Describe("Reconciler", func() {
 	Describe("Process", func() {
+		const timeout = 1
 		var (
 			wg         *sync.WaitGroup
 			reconciler *reconcile.Reconciler
@@ -60,7 +60,7 @@ var _ = Describe("Reconciler", func() {
 				cancel()
 				wg.Wait()
 				close(done)
-			}, 0.1)
+			}, timeout)
 		})
 
 		Context("when the messages channel is closed", func() {
@@ -69,7 +69,7 @@ var _ = Describe("Reconciler", func() {
 				close(messages)
 				wg.Wait()
 				close(done)
-			}, 0.1)
+			}, timeout)
 		})
 
 		Context("when the messages channel is closed after resync", func() {
@@ -79,7 +79,7 @@ var _ = Describe("Reconciler", func() {
 				reconciler.Reconcile(ctx, messages, wg)
 				wg.Wait()
 				close(done)
-			}, 0.1)
+			}, timeout)
 		})
 
 		Context("when notifications are sent", func() {
@@ -102,7 +102,7 @@ var _ = Describe("Reconciler", func() {
 				wg.Wait()
 				Expect(consumer.consumedNotifications).To(Equal(ns))
 				close(done)
-			})
+			}, timeout)
 		})
 
 		Context("when resync is sent", func() {
@@ -123,17 +123,20 @@ var _ = Describe("Reconciler", func() {
 				messages <- &notifications.Message{Resync: true}
 				messages <- &notifications.Message{Notification: nDeleted}
 				messages <- &notifications.Message{Resync: true}
-				reconciler.Reconcile(ctx, messages, wg)
 
-				Eventually(consumer.GetConsumedNotifications).Should(Equal([]*types.Notification{nCreated}))
-				Expect(resyncer.GetResyncCount()).To(Equal(1))
+				Expect(messages).To(HaveLen(4))
+				reconciler.Reconcile(ctx, messages, wg)
+				Eventually(messages).Should(HaveLen(0)) // drain was called
+				Expect(consumer.GetConsumedNotifications()).Should(Equal([]*types.Notification{nCreated}))
 
 				messages <- &notifications.Message{Notification: nModified}
 				close(messages)
 				wg.Wait()
+
+				Expect(resyncer.GetResyncCount()).Should(Equal(1))
 				Expect(consumer.GetConsumedNotifications()).To(Equal([]*types.Notification{nCreated, nModified}))
 				close(done)
-			})
+			}, timeout)
 		})
 	})
 })

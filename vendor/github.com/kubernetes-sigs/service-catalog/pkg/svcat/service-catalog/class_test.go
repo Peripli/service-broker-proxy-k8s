@@ -22,6 +22,7 @@ import (
 
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
 	"github.com/kubernetes-sigs/service-catalog/pkg/client/clientset_generated/clientset/fake"
+	"github.com/kubernetes-sigs/service-catalog/pkg/util"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -44,10 +45,31 @@ var _ = Describe("Class", func() {
 	)
 
 	BeforeEach(func() {
-		csc = &v1beta1.ClusterServiceClass{ObjectMeta: metav1.ObjectMeta{Name: "foobar", ResourceVersion: "1"}}
-		csc2 = &v1beta1.ClusterServiceClass{ObjectMeta: metav1.ObjectMeta{Name: "barbaz", ResourceVersion: "1"}}
-		sc = &v1beta1.ServiceClass{ObjectMeta: metav1.ObjectMeta{Name: "foobar", Namespace: "default", ResourceVersion: "1"}}
-		sc2 = &v1beta1.ServiceClass{ObjectMeta: metav1.ObjectMeta{Name: "barbaz", Namespace: "ns2", ResourceVersion: "1"}}
+		csc = &v1beta1.ClusterServiceClass{ObjectMeta: metav1.ObjectMeta{
+			Name: "foobar", ResourceVersion: "1",
+			Labels: map[string]string{
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName: util.GenerateSHA("foobar"),
+			},
+		}}
+		csc2 = &v1beta1.ClusterServiceClass{
+			ObjectMeta: metav1.ObjectMeta{Name: "barbaz", ResourceVersion: "1",
+				Labels: map[string]string{
+					v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName: util.GenerateSHA("barbaz"),
+				},
+			}}
+
+		sc = &v1beta1.ServiceClass{ObjectMeta: metav1.ObjectMeta{
+			Name: "foobar", Namespace: "default", ResourceVersion: "1",
+			Labels: map[string]string{
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName: util.GenerateSHA("foobar"),
+			},
+		}}
+		sc2 = &v1beta1.ServiceClass{ObjectMeta: metav1.ObjectMeta{
+			Name: "barbaz", Namespace: "ns2", ResourceVersion: "1",
+			Labels: map[string]string{
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName: util.GenerateSHA("barbaz"),
+			},
+		}}
 		svcCatClient = fake.NewSimpleClientset(csc, csc2, sc, sc2)
 		sdk = &SDK{
 			ServiceCatalogClient: svcCatClient,
@@ -82,9 +104,9 @@ var _ = Describe("Class", func() {
 
 		})
 		It("Bubbles up errors", func() {
-			badClient := &fake.Clientset{}
+			badClient := fake.NewSimpleClientset()
 			errorMessage := "error retrieving list"
-			badClient.AddReactor("list", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
+			badClient.PrependReactor("list", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
 				return true, nil, fmt.Errorf(errorMessage)
 			})
 			sdk = &SDK{
@@ -101,10 +123,7 @@ var _ = Describe("Class", func() {
 	Describe("RetrieveClassByName", func() {
 		It("Calls the generated v1beta1 List method with the passed in class name", func() {
 			className := csc.Name
-			realClient := &fake.Clientset{}
-			realClient.AddReactor("list", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, &v1beta1.ClusterServiceClassList{Items: []v1beta1.ClusterServiceClass{*csc}}, nil
-			})
+			realClient := fake.NewSimpleClientset(csc)
 			sdk = &SDK{
 				ServiceCatalogClient: realClient,
 			}
@@ -117,22 +136,19 @@ var _ = Describe("Class", func() {
 			Expect(actions[0].Matches("list", "clusterserviceclasses")).To(BeTrue())
 			Expect(actions[1].Matches("list", "serviceclasses")).To(BeTrue())
 
-			requirements := actions[0].(testing.ListActionImpl).GetListRestrictions().Fields.Requirements()
+			requirements, selectable := actions[0].(testing.ListActionImpl).GetListRestrictions().Labels.Requirements()
+			Expect(selectable).Should(BeTrue())
 			Expect(requirements).ShouldNot(BeEmpty())
-			Expect(requirements[0].Field).To(Equal("spec.externalName"))
-			Expect(requirements[0].Value).To(Equal(className))
+			Expect(requirements[0].String()).To(Equal("servicecatalog.k8s.io/spec.externalName=" + util.GenerateSHA("foobar")))
 
-			requirements = actions[1].(testing.ListActionImpl).GetListRestrictions().Fields.Requirements()
+			requirements, selectable = actions[1].(testing.ListActionImpl).GetListRestrictions().Labels.Requirements()
+			Expect(selectable).Should(BeTrue())
 			Expect(requirements).ShouldNot(BeEmpty())
-			Expect(requirements[0].Field).To(Equal("spec.externalName"))
-			Expect(requirements[0].Value).To(Equal(className))
+			Expect(requirements[0].String()).To(Equal("servicecatalog.k8s.io/spec.externalName=" + util.GenerateSHA("foobar")))
 		})
 		It("Bubbles up errors", func() {
 			className := "notreal_class"
-			emptyClient := &fake.Clientset{}
-			emptyClient.AddReactor("list", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, &v1beta1.ClusterServiceClassList{Items: []v1beta1.ClusterServiceClass{}}, nil
-			})
+			emptyClient := fake.NewSimpleClientset()
 			sdk = &SDK{
 				ServiceCatalogClient: emptyClient,
 			}
@@ -143,22 +159,16 @@ var _ = Describe("Class", func() {
 			Expect(err.Error()).Should(ContainSubstring("not found"))
 			actions := emptyClient.Actions()
 			Expect(actions[0].Matches("list", "clusterserviceclasses")).To(BeTrue())
-			requirements := actions[0].(testing.ListActionImpl).GetListRestrictions().Fields.Requirements()
+			requirements, selectable := actions[0].(testing.ListActionImpl).GetListRestrictions().Labels.Requirements()
+			Expect(selectable).Should(BeTrue())
 			Expect(requirements).ShouldNot(BeEmpty())
-			Expect(requirements[0].Field).To(Equal("spec.externalName"))
-			Expect(requirements[0].Value).To(Equal(className))
+			Expect(requirements[0].String()).To(Equal("servicecatalog.k8s.io/spec.externalName=" + util.GenerateSHA("notreal_class")))
 		})
 	})
 	Describe("RetrieveClassByID", func() {
 		It("Calls the generated v1beta1 get methods for clusterserviceclass and serviceclass with the passed in name", func() {
 			classID := csc.Name
-			realClient := &fake.Clientset{}
-			realClient.AddReactor("get", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, csc, nil
-			})
-			realClient.AddReactor("get", "serviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, nil, nil
-			})
+			realClient := fake.NewSimpleClientset(csc)
 			sdk = &SDK{
 				ServiceCatalogClient: realClient,
 			}
@@ -178,10 +188,7 @@ var _ = Describe("Class", func() {
 		})
 		It("Calls only the generated v1beta1 get method for clusterserviceclass when called with cluster scope", func() {
 			classID := csc.Name
-			realClient := &fake.Clientset{}
-			realClient.AddReactor("get", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, csc, nil
-			})
+			realClient := fake.NewSimpleClientset(csc)
 			sdk = &SDK{
 				ServiceCatalogClient: realClient,
 			}
@@ -199,10 +206,7 @@ var _ = Describe("Class", func() {
 		})
 		It("Calls only the generated v1beta1 get method for serviceclass when called with namespace scope", func() {
 			classID := sc.Name
-			realClient := &fake.Clientset{}
-			realClient.AddReactor("get", "serviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, sc, nil
-			})
+			realClient := fake.NewSimpleClientset(sc)
 			sdk = &SDK{
 				ServiceCatalogClient: realClient,
 			}
@@ -220,8 +224,8 @@ var _ = Describe("Class", func() {
 		})
 		It("Bubbles up errors", func() {
 			errorMessage := "not found"
-			emptyClient := &fake.Clientset{}
-			emptyClient.AddReactor("get", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
+			emptyClient := fake.NewSimpleClientset()
+			emptyClient.PrependReactor("get", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
 				return true, nil, errors.New(errorMessage)
 			})
 			sdk = &SDK{
@@ -241,13 +245,7 @@ var _ = Describe("Class", func() {
 		})
 		It("errors when it finds multiple classes", func() {
 			classID := csc.Name
-			realClient := &fake.Clientset{}
-			realClient.AddReactor("get", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, csc, nil
-			})
-			realClient.AddReactor("get", "serviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, sc, nil
-			})
+			realClient := fake.NewSimpleClientset(csc, sc)
 			sdk = &SDK{
 				ServiceCatalogClient: realClient,
 			}
@@ -268,12 +266,9 @@ var _ = Describe("Class", func() {
 		})
 		It("doesn't short circuit on not-found errors", func() {
 			classID := sc.Name
-			realClient := &fake.Clientset{}
-			realClient.AddReactor("get", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
+			realClient := fake.NewSimpleClientset(sc)
+			realClient.PrependReactor("get", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
 				return true, nil, apierrors.NewNotFound(v1beta1.Resource("clusterserviceclass"), classID)
-			})
-			realClient.AddReactor("get", "serviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, sc, nil
 			})
 			sdk = &SDK{
 				ServiceCatalogClient: realClient,
@@ -292,13 +287,13 @@ var _ = Describe("Class", func() {
 			Expect(actions[1].Matches("get", "serviceclasses")).To(BeTrue())
 			Expect(actions[1].(testing.GetActionImpl).Name).To(Equal(classID))
 		})
-		It("errors when it recieves not-found errors for both types", func() {
+		It("errors when it receives not-found errors for both types", func() {
 			classID := sc.Name
-			realClient := &fake.Clientset{}
-			realClient.AddReactor("get", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
+			realClient := fake.NewSimpleClientset()
+			realClient.PrependReactor("get", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
 				return true, nil, apierrors.NewNotFound(v1beta1.Resource("clusterserviceclass"), classID)
 			})
-			realClient.AddReactor("get", "serviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
+			realClient.PrependReactor("get", "serviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
 				return true, nil, apierrors.NewNotFound(v1beta1.Resource("clusterserviceclass"), classID)
 			})
 			sdk = &SDK{
@@ -332,10 +327,7 @@ var _ = Describe("Class", func() {
 					},
 				},
 			}
-			realClient := &fake.Clientset{}
-			realClient.AddReactor("get", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, csc, nil
-			})
+			realClient := fake.NewSimpleClientset(csc)
 			sdk = &SDK{
 				ServiceCatalogClient: realClient,
 			}
@@ -361,8 +353,8 @@ var _ = Describe("Class", func() {
 					},
 				},
 			}
-			badClient := &fake.Clientset{}
-			badClient.AddReactor("get", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
+			badClient := fake.NewSimpleClientset()
+			badClient.PrependReactor("get", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
 				return true, nil, errors.New(errorMessage)
 			})
 			sdk = &SDK{
@@ -395,10 +387,7 @@ var _ = Describe("Class", func() {
 				}
 			})
 			It("Calls the generated v1beta1 get method for ServiceClasses with the plan's parent service class's name if the plan is a ServicePlan", func() {
-				realClient := &fake.Clientset{}
-				realClient.AddReactor("get", "serviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-					return true, sc, nil
-				})
+				realClient := fake.NewSimpleClientset(sc)
 				sdk = &SDK{
 					ServiceCatalogClient: realClient,
 				}
@@ -414,8 +403,8 @@ var _ = Describe("Class", func() {
 			It("Bubbles up errors from the v1beta1 ServiceClass method", func() {
 				errorMessage := "not found"
 
-				badClient := &fake.Clientset{}
-				badClient.AddReactor("get", "serviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
+				badClient := fake.NewSimpleClientset()
+				badClient.PrependReactor("get", "serviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
 					return true, nil, errors.New(errorMessage)
 				})
 				sdk = &SDK{
@@ -437,13 +426,7 @@ var _ = Describe("Class", func() {
 		It("Calls the generated v1beta1 create method for cluster service class with the passed in class", func() {
 			className := "newclass"
 
-			realClient := &fake.Clientset{}
-			realClient.AddReactor("list", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, &v1beta1.ClusterServiceClassList{Items: []v1beta1.ClusterServiceClass{*csc}}, nil
-			})
-			realClient.AddReactor("create", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, &v1beta1.ClusterServiceClass{ObjectMeta: metav1.ObjectMeta{Name: className}}, nil
-			})
+			realClient := fake.NewSimpleClientset(csc)
 			sdk = &SDK{
 				ServiceCatalogClient: realClient,
 			}
@@ -461,20 +444,13 @@ var _ = Describe("Class", func() {
 		})
 		It("Calls the generated v1beta1 create method for service class with the passed in class", func() {
 			className := "newclass"
-			classNamespace := "newnamespace"
-
-			realClient := &fake.Clientset{}
-			realClient.AddReactor("list", "serviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, &v1beta1.ServiceClassList{Items: []v1beta1.ServiceClass{*sc}}, nil
-			})
-			realClient.AddReactor("create", "serviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, &v1beta1.ServiceClass{ObjectMeta: metav1.ObjectMeta{Name: className, Namespace: classNamespace}}, nil
-			})
+			classNamespace := sc.Namespace
+			realClient := fake.NewSimpleClientset(sc)
 			sdk = &SDK{
 				ServiceCatalogClient: realClient,
 			}
 
-			class, err := sdk.CreateClassFrom(CreateClassFromOptions{Name: className, Namespace: classNamespace, From: csc.Name, Scope: NamespaceScope})
+			class, err := sdk.CreateClassFrom(CreateClassFromOptions{Name: className, Namespace: classNamespace, From: sc.Name, Scope: NamespaceScope})
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(class.GetName()).To(Equal(className))
@@ -491,11 +467,8 @@ var _ = Describe("Class", func() {
 			className := "newclass"
 			errorMessage := "unable to create cluster service class"
 
-			realClient := &fake.Clientset{}
-			realClient.AddReactor("list", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, &v1beta1.ClusterServiceClassList{Items: []v1beta1.ClusterServiceClass{*csc}}, nil
-			})
-			realClient.AddReactor("create", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
+			realClient := fake.NewSimpleClientset(csc)
+			realClient.PrependReactor("create", "clusterserviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
 				return true, nil, errors.New(errorMessage)
 			})
 			sdk = &SDK{
@@ -513,14 +486,11 @@ var _ = Describe("Class", func() {
 		})
 		It("Bubbles up errors for service class", func() {
 			className := "newclass"
-			classNamespace := "newnamespace"
+			classNamespace := sc.Namespace
 			errorMessage := "unable to create service class"
 
-			realClient := &fake.Clientset{}
-			realClient.AddReactor("list", "serviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
-				return true, &v1beta1.ServiceClassList{Items: []v1beta1.ServiceClass{*sc}}, nil
-			})
-			realClient.AddReactor("create", "serviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
+			realClient := fake.NewSimpleClientset(sc)
+			realClient.PrependReactor("create", "serviceclasses", func(action testing.Action) (bool, runtime.Object, error) {
 				return true, nil, errors.New(errorMessage)
 			})
 			sdk = &SDK{

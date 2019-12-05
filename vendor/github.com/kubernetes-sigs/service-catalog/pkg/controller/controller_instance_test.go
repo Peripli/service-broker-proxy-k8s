@@ -27,10 +27,11 @@ import (
 	"testing"
 	"time"
 
-	osb "github.com/pmorie/go-open-service-broker-client/v2"
-	fakeosb "github.com/pmorie/go-open-service-broker-client/v2/fake"
+	osb "github.com/kubernetes-sigs/go-open-service-broker-client/v2"
+	fakeosb "github.com/kubernetes-sigs/go-open-service-broker-client/v2/fake"
 
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
+	"github.com/kubernetes-sigs/service-catalog/pkg/util"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,6 +52,54 @@ const (
 	lastOperationDescription = "testdescr"
 )
 
+// TestReconcileServiceInstanceNotInitializedStatus tests reconcileInstance to ensure that
+// instance Status will be initialized when it's empty.
+func TestReconcileServiceInstanceNotInitializedStatus(t *testing.T) {
+	_, fakeServiceCatalogClient, fakeClusterServiceBrokerClient, testController, _ := newTestController(t, noFakeActions())
+
+	instance := &v1beta1.ServiceInstance{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       testServiceInstanceName,
+			Generation: 1,
+		},
+		Spec: v1beta1.ServiceInstanceSpec{
+			PlanReference: v1beta1.PlanReference{
+				ClusterServiceClassExternalName: "test",
+				ClusterServicePlanExternalName:  "test",
+			},
+			ExternalID: testServiceInstanceGUID,
+		},
+		Status: v1beta1.ServiceInstanceStatus{},
+	}
+
+	expectedStatus := v1beta1.ServiceInstanceStatus{
+		UserSpecifiedPlanName:  "test",
+		UserSpecifiedClassName: "ClusterServiceClass/test",
+		Conditions:             []v1beta1.ServiceInstanceCondition{},
+		DeprovisionStatus:      v1beta1.ServiceInstanceDeprovisionStatusNotRequired,
+	}
+
+	err := reconcileServiceInstance(t, testController, instance)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	brokerActions := fakeClusterServiceBrokerClient.Actions()
+	assertNumberOfBrokerActions(t, brokerActions, 0)
+
+	actions := fakeServiceCatalogClient.Actions()
+	assertNumberOfActions(t, actions, 1)
+
+	updatedObjInstance := assertUpdateStatus(t, actions[0], instance)
+	updatedInstance, ok := updatedObjInstance.(*v1beta1.ServiceInstance)
+	if !ok {
+		t.Fatalf("cast error: want: *v1beta1.ServiceInstance, got: %T", updatedObjInstance)
+	}
+	if !reflect.DeepEqual(updatedInstance.Status, expectedStatus) {
+		t.Errorf("unexpected diff: %v", diff.ObjectReflectDiff(updatedInstance.Status, expectedStatus))
+	}
+}
+
 // TestReconcileServiceInstanceNonExistentClusterServiceClass tests that reconcileInstance gets a failure when
 // the specified service class is not found
 func TestReconcileServiceInstanceNonExistentClusterServiceClass(t *testing.T) {
@@ -68,6 +117,10 @@ func TestReconcileServiceInstanceNonExistentClusterServiceClass(t *testing.T) {
 			},
 			ExternalID: testServiceInstanceGUID,
 		},
+		Status: v1beta1.ServiceInstanceStatus{
+			Conditions:        []v1beta1.ServiceInstanceCondition{},
+			DeprovisionStatus: v1beta1.ServiceInstanceDeprovisionStatusNotRequired,
+		},
 	}
 
 	if err := reconcileServiceInstance(t, testController, instance); err == nil {
@@ -81,8 +134,10 @@ func TestReconcileServiceInstanceNonExistentClusterServiceClass(t *testing.T) {
 	assertNumberOfActions(t, actions, 2)
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.externalName", instance.Spec.ClusterServiceClassExternalName),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName: util.GenerateSHA(instance.Spec.ClusterServiceClassExternalName),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[0], &v1beta1.ClusterServiceClass{}, listRestrictions)
 
@@ -117,6 +172,10 @@ func TestReconcileServiceInstanceNonExistentClusterServiceClassWithK8SName(t *te
 				ClusterServicePlanName:  "nothereplan",
 			},
 			ExternalID: testServiceInstanceGUID,
+		},
+		Status: v1beta1.ServiceInstanceStatus{
+			Conditions:        []v1beta1.ServiceInstanceCondition{},
+			DeprovisionStatus: v1beta1.ServiceInstanceDeprovisionStatusNotRequired,
 		},
 	}
 
@@ -162,10 +221,10 @@ func TestReconcileServiceInstanceNonExistentClusterServiceBroker(t *testing.T) {
 	assertNumberOfBrokerActions(t, brokerActions, 0)
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
 	// There should only be one action that says it failed because no such broker exists.
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdateStatus(t, actions[1], instance)
 	assertServiceInstanceErrorBeforeRequest(t, updatedServiceInstance, errorNonexistentClusterServiceBrokerReason, instance)
 
 	events := getRecordedEvents(testController)
@@ -206,10 +265,10 @@ func TestReconcileServiceInstanceWithNotExistingBroker(t *testing.T) {
 
 	// verify that one catalog client action occurred
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
 	// There should only be one action that says it failed fetching auth credentials.
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdateStatus(t, actions[1], instance)
 	assertServiceInstanceErrorBeforeRequest(t, updatedServiceInstance, errorNonexistentClusterServiceBrokerReason, instance)
 
 	// verify that one event was emitted
@@ -247,6 +306,10 @@ func TestReconcileServiceInstanceNonExistentClusterServicePlan(t *testing.T) {
 			},
 			ExternalID: testServiceInstanceGUID,
 		},
+		Status: v1beta1.ServiceInstanceStatus{
+			Conditions:        []v1beta1.ServiceInstanceCondition{},
+			DeprovisionStatus: v1beta1.ServiceInstanceDeprovisionStatusNotRequired,
+		},
 	}
 
 	if err := reconcileServiceInstance(t, testController, instance); err == nil {
@@ -263,8 +326,12 @@ func TestReconcileServiceInstanceNonExistentClusterServicePlan(t *testing.T) {
 
 	assertNumberOfActions(t, actions, 2)
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.ParseSelectorOrDie("spec.externalName=nothere,spec.clusterServiceBrokerName=test-clusterservicebroker,spec.clusterServiceClassRef.name=cscguid"),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName:               util.GenerateSHA("nothere"),
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName:   util.GenerateSHA("test-clusterservicebroker"),
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: util.GenerateSHA("cscguid"),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[0], &v1beta1.ClusterServicePlan{}, listRestrictions)
 
@@ -308,6 +375,10 @@ func TestReconcileServiceInstanceNonExistentClusterServicePlanK8SName(t *testing
 				Name: testClusterServiceClassGUID,
 			},
 			ExternalID: testServiceInstanceGUID,
+		},
+		Status: v1beta1.ServiceInstanceStatus{
+			Conditions:        []v1beta1.ServiceInstanceCondition{},
+			DeprovisionStatus: v1beta1.ServiceInstanceDeprovisionStatusNotRequired,
 		},
 	}
 
@@ -611,8 +682,8 @@ func TestReconcileServiceInstanceWithParameters(t *testing.T) {
 			}
 
 			actions := fakeCatalogClient.Actions()
-			assertNumberOfActions(t, actions, 1)
-			updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+			assertNumberOfActions(t, actions, 2)
+			updatedServiceInstance := assertUpdateStatus(t, actions[1], instance)
 
 			events := getRecordedEvents(testController)
 			if tc.expectedError {
@@ -738,18 +809,24 @@ func TestReconcileServiceInstanceResolvesReferences(t *testing.T) {
 	assertNumberOfActions(t, actions, 3)
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.externalName", instance.Spec.ClusterServiceClassExternalName),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName: util.GenerateSHA(instance.Spec.ClusterServiceClassExternalName),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[0], &v1beta1.ClusterServiceClass{}, listRestrictions)
 
 	listRestrictions = clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.ParseSelectorOrDie("spec.externalName=test-clusterserviceplan,spec.clusterServiceBrokerName=test-clusterservicebroker,spec.clusterServiceClassRef.name=cscguid"),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName:               util.GenerateSHA("test-clusterserviceplan"),
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName:   util.GenerateSHA("test-clusterservicebroker"),
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: util.GenerateSHA("cscguid"),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[1], &v1beta1.ClusterServicePlan{}, listRestrictions)
 
-	updatedServiceInstance := assertUpdateReference(t, actions[2], instance)
+	updatedServiceInstance := assertUpdate(t, actions[2], instance)
 
 	updateObject, ok := updatedServiceInstance.(*v1beta1.ServiceInstance)
 	if !ok {
@@ -810,11 +887,11 @@ func TestReconcileServiceInstanceAppliesDefaultProvisioningParams(t *testing.T) 
 	}
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 2)
+	assertNumberOfActions(t, actions, 3)
 
 	// Check that the default provisioning parameters defined on the plan is
 	// now on the service instance
-	updatedServiceInstance := assertUpdate(t, actions[0], instance)
+	updatedServiceInstance := assertUpdate(t, actions[1], instance)
 	updateObject, ok := updatedServiceInstance.(*v1beta1.ServiceInstance)
 	if !ok {
 		t.Fatalf("couldn't convert to *v1beta1.ServiceInstance")
@@ -827,7 +904,7 @@ func TestReconcileServiceInstanceAppliesDefaultProvisioningParams(t *testing.T) 
 	}
 
 	// Check that the default parameters were saved on the status
-	updatedServiceInstance = assertUpdateStatus(t, actions[1], instance)
+	updatedServiceInstance = assertUpdateStatus(t, actions[2], instance)
 	updateObject, ok = updatedServiceInstance.(*v1beta1.ServiceInstance)
 	if !ok {
 		t.Fatalf("couldn't convert to *v1beta1.ServiceInstance")
@@ -881,11 +958,11 @@ func TestReconcileServiceInstanceRespectsServicePlanDefaultsMutableFeatureGate(t
 	}
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
 	// Check that the default parameters were not saved on the status
 	// because the feature is disabled
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdateStatus(t, actions[1], instance)
 	updateObject, ok := updatedServiceInstance.(*v1beta1.ServiceInstance)
 	if !ok {
 		t.Fatalf("couldn't convert to *v1beta1.ServiceInstance")
@@ -942,12 +1019,16 @@ func TestReconcileServiceInstanceResolvesReferencesClusterServiceClassRefAlready
 	assertNumberOfActions(t, actions, 2)
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.ParseSelectorOrDie("spec.externalName=test-clusterserviceplan,spec.clusterServiceBrokerName=test-clusterservicebroker,spec.clusterServiceClassRef.name=cscguid"),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName:               util.GenerateSHA("test-clusterserviceplan"),
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName:   util.GenerateSHA("test-clusterservicebroker"),
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: util.GenerateSHA("cscguid"),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[0], &v1beta1.ClusterServicePlan{}, listRestrictions)
 
-	updatedServiceInstance := assertUpdateReference(t, actions[1], instance)
+	updatedServiceInstance := assertUpdate(t, actions[1], instance)
 
 	updateObject, ok := updatedServiceInstance.(*v1beta1.ServiceInstance)
 	if !ok {
@@ -984,7 +1065,7 @@ func TestReconcileServiceInstanceWithProvisionCallFailure(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	instance = assertServiceInstanceProvisionInProgressIsTheOnlyCatalogClientAction(t, fakeCatalogClient, instance)
+	instance = assertServiceInstanceProvisionInProgressAndUserSpecifiedFieldsClientActions(t, fakeCatalogClient, instance)
 	fakeCatalogClient.ClearActions()
 	fakeKubeClient.ClearActions()
 
@@ -1069,11 +1150,11 @@ func TestReconcileServiceInstanceWithTemporaryProvisionFailure(t *testing.T) {
 	}
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	assertNumberOfActions(t, actions, 2)
+	updatedServiceInstance := assertUpdateStatus(t, actions[1], instance)
 
 	events := getRecordedEvents(testController)
-	updatedServiceInstance = assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance = assertUpdateStatus(t, actions[1], instance)
 	assertServiceInstanceOperationInProgress(t,
 		updatedServiceInstance,
 		v1beta1.ServiceInstanceOperationProvision,
@@ -1170,7 +1251,7 @@ func TestReconcileServiceInstanceWithTerminalProvisionFailure(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	instance = assertServiceInstanceProvisionInProgressIsTheOnlyCatalogClientAction(t, fakeCatalogClient, instance)
+	instance = assertServiceInstanceProvisionInProgressAndUserSpecifiedFieldsClientActions(t, fakeCatalogClient, instance)
 	fakeCatalogClient.ClearActions()
 	fakeKubeClient.ClearActions()
 
@@ -1248,7 +1329,7 @@ func TestReconcileServiceInstance(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	instance = assertServiceInstanceProvisionInProgressIsTheOnlyCatalogClientAction(t, fakeCatalogClient, instance)
+	instance = assertServiceInstanceProvisionInProgressAndUserSpecifiedFieldsClientActions(t, fakeCatalogClient, instance)
 	fakeCatalogClient.ClearActions()
 
 	assertNumberOfBrokerActions(t, fakeClusterServiceBrokerClient.Actions(), 0)
@@ -1330,13 +1411,13 @@ func TestReconcileServiceInstanceFailsWithDeletedPlan(t *testing.T) {
 	}
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
 	// verify no kube actions
 	kubeActions := fakeKubeClient.Actions()
 	assertNumberOfActions(t, kubeActions, 0)
 
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdateStatus(t, actions[1], instance)
 	assertServiceInstanceReadyFalse(t, updatedServiceInstance, errorDeletedClusterServicePlanReason)
 
 	events := getRecordedEvents(testController)
@@ -1380,13 +1461,13 @@ func TestReconcileServiceInstanceFailsWithDeletedClass(t *testing.T) {
 	}
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
 	// verify no kube actions
 	kubeActions := fakeKubeClient.Actions()
 	assertNumberOfActions(t, kubeActions, 0)
 
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdateStatus(t, actions[1], instance)
 	assertServiceInstanceReadyFalse(t, updatedServiceInstance, errorDeletedClusterServiceClassReason)
 
 	events := getRecordedEvents(testController)
@@ -1424,7 +1505,7 @@ func TestReconcileServiceInstanceSuccessWithK8SNames(t *testing.T) {
 
 	actions := fakeCatalogClient.Actions()
 	assertNumberOfActions(t, actions, 1)
-	updatedServiceInstance := assertUpdateReference(t, actions[0], instance)
+	updatedServiceInstance := assertUpdate(t, actions[0], instance)
 	updateObject, ok := updatedServiceInstance.(*v1beta1.ServiceInstance)
 	if !ok {
 		t.Fatalf("couldn't convert to *v1beta1.ServiceInstance")
@@ -1445,7 +1526,7 @@ func TestReconcileServiceInstanceSuccessWithK8SNames(t *testing.T) {
 		t.Fatalf("This should not fail : %v", err)
 	}
 
-	instance = assertServiceInstanceProvisionInProgressIsTheOnlyCatalogClientAction(t, fakeCatalogClient, instance)
+	instance = assertServiceInstanceProvisionInProgressAndUserSpecifiedFieldsClientActions(t, fakeCatalogClient, instance)
 	fakeCatalogClient.ClearActions()
 	fakeKubeClient.ClearActions()
 
@@ -1523,7 +1604,7 @@ func TestReconcileServiceInstanceAsynchronous(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	instance = assertServiceInstanceProvisionInProgressIsTheOnlyCatalogClientAction(t, fakeCatalogClient, instance)
+	instance = assertServiceInstanceProvisionInProgressAndUserSpecifiedFieldsClientActions(t, fakeCatalogClient, instance)
 	fakeCatalogClient.ClearActions()
 	fakeKubeClient.ClearActions()
 
@@ -1593,7 +1674,7 @@ func TestReconcileServiceInstanceAsynchronousNoOperation(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	instance = assertServiceInstanceProvisionInProgressIsTheOnlyCatalogClientAction(t, fakeCatalogClient, instance)
+	instance = assertServiceInstanceProvisionInProgressAndUserSpecifiedFieldsClientActions(t, fakeCatalogClient, instance)
 	fakeCatalogClient.ClearActions()
 	fakeKubeClient.ClearActions()
 
@@ -1670,9 +1751,9 @@ func TestReconcileServiceInstanceNamespaceError(t *testing.T) {
 	}
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdateStatus(t, actions[1], instance)
 	assertServiceInstanceErrorBeforeRequest(t, updatedServiceInstance, errorFindingNamespaceServiceInstanceReason, instance)
 
 	events := getRecordedEvents(testController)
@@ -1717,6 +1798,10 @@ func TestReconcileServiceInstanceDelete(t *testing.T) {
 		return true, instance, nil
 	})
 
+	// simulate real update and return updated object,
+	// without that fake client will return empty ServiceInstances struct
+	fakeCatalogClient.AddReactor(updateObjectReactor("serviceinstances"))
+
 	if err := reconcileServiceInstance(t, testController, instance); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1743,9 +1828,10 @@ func TestReconcileServiceInstanceDelete(t *testing.T) {
 	assertNumberOfActions(t, kubeActions, 0)
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdate(t, actions[1], instance)
 	assertServiceInstanceOperationSuccess(t, updatedServiceInstance, v1beta1.ServiceInstanceOperationDeprovision, testClusterServicePlanName, testClusterServicePlanGUID, instance)
 
 	events := getRecordedEvents(testController)
@@ -1791,6 +1877,10 @@ func TestReconcileServiceInstanceDeleteBlockedByCredentials(t *testing.T) {
 	fakeCatalogClient.AddReactor("get", "serviceinstances", func(action clientgotesting.Action) (bool, runtime.Object, error) {
 		return true, instance, nil
 	})
+
+	// simulate real update and return updated object,
+	// without that fake client will return empty ServiceInstances struct
+	fakeCatalogClient.AddReactor(updateObjectReactor("serviceinstances"))
 
 	if err := reconcileServiceInstance(t, testController, instance); err == nil {
 		t.Fatalf("expected reconcileServiceInstance to return an error, but there was none")
@@ -1856,9 +1946,10 @@ func TestReconcileServiceInstanceDeleteBlockedByCredentials(t *testing.T) {
 	// The actions should be:
 	// 0. Updating the current operation
 	// 1. Updating the ready condition
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
-	updateObject = assertUpdateStatus(t, actions[0], instance)
+	assertUpdateStatus(t, actions[0], instance)
+	updateObject = assertUpdate(t, actions[1], instance)
 	assertServiceInstanceOperationSuccess(t, updateObject, v1beta1.ServiceInstanceOperationDeprovision, testClusterServicePlanName, testClusterServicePlanGUID, instance)
 
 	events = getRecordedEvents(testController)
@@ -2005,6 +2096,10 @@ func TestReconcileServiceInstanceDeleteFailedProvisionWithRequest(t *testing.T) 
 				return true, instance, nil
 			})
 
+			// simulate real update and return updated object,
+			// without that fake client will return empty ServiceInstances struct
+			fakeCatalogClient.AddReactor(updateObjectReactor("serviceinstances"))
+
 			if err := reconcileServiceInstance(t, testController, instance); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -2031,9 +2126,10 @@ func TestReconcileServiceInstanceDeleteFailedProvisionWithRequest(t *testing.T) 
 			assertNumberOfActions(t, kubeActions, 0)
 
 			actions := fakeCatalogClient.Actions()
-			assertNumberOfActions(t, actions, 1)
+			assertNumberOfActions(t, actions, 2)
 
-			updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+			assertUpdateStatus(t, actions[0], instance)
+			updatedServiceInstance := assertUpdate(t, actions[1], instance)
 			assertServiceInstanceOperationSuccess(t, updatedServiceInstance, v1beta1.ServiceInstanceOperationDeprovision, testClusterServicePlanName, testClusterServicePlanGUID, instance)
 
 			events := getRecordedEvents(testController)
@@ -2117,6 +2213,10 @@ func TestReconsileServiceInstanceDeleteWithParameters(t *testing.T) {
 				return true, instance, nil
 			})
 
+			// simulate real update and return updated object,
+			// without that fake client will return empty ServiceInstances struct
+			fakeCatalogClient.AddReactor(updateObjectReactor("serviceinstances"))
+
 			err := reconcileServiceInstance(t, testController, instance)
 			if err != nil {
 				t.Fatalf("Unexpected error from reconcileServiceInstance: %v", err)
@@ -2130,9 +2230,10 @@ func TestReconsileServiceInstanceDeleteWithParameters(t *testing.T) {
 			assertNumberOfActions(t, kubeActions, 0)
 
 			actions := fakeCatalogClient.Actions()
-			assertNumberOfActions(t, actions, 1)
+			assertNumberOfActions(t, actions, 2)
 
-			updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+			assertUpdateStatus(t, actions[0], instance)
+			updatedServiceInstance := assertUpdate(t, actions[1], instance)
 			assertEmptyFinalizers(t, updatedServiceInstance)
 
 			events := getRecordedEvents(testController)
@@ -2218,6 +2319,10 @@ func TestReconcileServiceInstanceDeleteFailedUpdate(t *testing.T) {
 		return true, instance, nil
 	})
 
+	// simulate real update and return updated object,
+	// without that fake client will return empty ServiceInstances struct
+	fakeCatalogClient.AddReactor(updateObjectReactor("serviceinstances"))
+
 	if err := reconcileServiceInstance(t, testController, instance); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -2244,9 +2349,10 @@ func TestReconcileServiceInstanceDeleteFailedUpdate(t *testing.T) {
 	assertNumberOfActions(t, kubeActions, 0)
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdate(t, actions[1], instance)
 	assertServiceInstanceOperationSuccess(t, updatedServiceInstance, v1beta1.ServiceInstanceOperationDeprovision, testClusterServicePlanName, testClusterServicePlanGUID, instance)
 
 	events := getRecordedEvents(testController)
@@ -2283,6 +2389,10 @@ func TestReconcileServiceInstanceDeleteDoesNotInvokeClusterServiceBroker(t *test
 		return true, instance, nil
 	})
 
+	// simulate real update and return updated object,
+	// without that fake client will return empty ServiceInstances struct
+	fakeCatalogClient.AddReactor(updateObjectReactor("serviceinstances"))
+
 	if err := reconcileServiceInstance(t, testController, instance); err != nil {
 		t.Fatalf("This should not fail : %v", err)
 	}
@@ -2295,11 +2405,13 @@ func TestReconcileServiceInstanceDeleteDoesNotInvokeClusterServiceBroker(t *test
 	assertNumberOfActions(t, kubeActions, 0)
 
 	actions := fakeCatalogClient.Actions()
-	// The one actions should be:
-	// 0. Removing the finalizer
-	assertNumberOfActions(t, actions, 1)
+	// The actions should be:
+	// 1. Updating status
+	// 2. Removing the finalizer
+	assertNumberOfActions(t, actions, 2)
 
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdate(t, actions[1], instance)
 	assertEmptyFinalizers(t, updatedServiceInstance)
 
 	events := getRecordedEvents(testController)
@@ -2340,7 +2452,7 @@ func TestFinalizerClearedWhen409ConflictEncounteredOnStatusUpdate(t *testing.T) 
 		if instance.ResourceVersion == "1" {
 			return true, nil, apierrors.NewConflict(action.GetResource().GroupResource(), instance.Name, errors.New("object has changed"))
 		}
-		return false, nil, nil
+		return true, object, nil
 	})
 
 	if err := reconcileServiceInstance(t, testController, instance); err != nil {
@@ -2356,14 +2468,16 @@ func TestFinalizerClearedWhen409ConflictEncounteredOnStatusUpdate(t *testing.T) 
 
 	actions := fakeCatalogClient.Actions()
 	// The actions should be:
-	// 0. Update the instance status (with finalizer removed); the server responds with 409 Conflict
+	// 0. Update the instance status; the server responds with 409 Conflict
 	// 1. Fetch the fresh instance
-	// 2. Update the fresh instance. Finalizer should be removed again.
-	assertNumberOfActions(t, actions, 3)
+	// 2. Update instance status with the fresh instance.
+	// 3. Remove the finalizer on the fresh instance.
+	assertNumberOfActions(t, actions, 4)
 
 	assertUpdateStatus(t, actions[0], instance)
 	assertGet(t, actions[1], instance)
-	updatedServiceInstance := assertUpdateStatus(t, actions[2], instance)
+	assertUpdateStatus(t, actions[2], instance)
+	updatedServiceInstance := assertUpdate(t, actions[3], instance)
 	assertEmptyFinalizers(t, updatedServiceInstance)
 
 	events := getRecordedEvents(testController)
@@ -2389,7 +2503,7 @@ func TestReconcileServiceInstanceWithFailedCondition(t *testing.T) {
 	if err := reconcileServiceInstance(t, testController, instance); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	instance = assertServiceInstanceProvisionInProgressIsTheOnlyCatalogClientAction(t, fakeCatalogClient, instance)
+	instance = assertServiceInstanceProvisionInProgressAndUserSpecifiedFieldsClientActions(t, fakeCatalogClient, instance)
 	fakeCatalogClient.ClearActions()
 	fakeKubeClient.ClearActions()
 
@@ -2713,6 +2827,10 @@ func TestPollServiceInstanceSuccessDeprovisioningWithOperationNoFinalizer(t *tes
 	instance := getTestServiceInstanceAsyncDeprovisioning(testOperation)
 	instanceKey := testNamespace + "/" + testServiceInstanceName
 
+	// simulate real update and return updated object,
+	// without that fake client will return empty ServiceInstances struct
+	fakeCatalogClient.AddReactor(updateObjectReactor("serviceinstances"))
+
 	if testController.instancePollingQueue.NumRequeues(instanceKey) != 0 {
 		t.Fatalf("Expected polling queue to not have any record of test instance")
 	}
@@ -2742,9 +2860,10 @@ func TestPollServiceInstanceSuccessDeprovisioningWithOperationNoFinalizer(t *tes
 	assertNumberOfActions(t, kubeActions, 0)
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdate(t, actions[1], instance)
 	assertServiceInstanceOperationSuccess(t, updatedServiceInstance, v1beta1.ServiceInstanceOperationDeprovision, testClusterServicePlanName, testClusterServicePlanGUID, instance)
 
 	events := getRecordedEvents(testController)
@@ -2917,6 +3036,10 @@ func TestPollServiceInstanceStatusGoneDeprovisioningWithOperationNoFinalizer(t *
 	instance := getTestServiceInstanceAsyncDeprovisioning(testOperation)
 	instanceKey := testNamespace + "/" + testServiceInstanceName
 
+	// simulate real update and return updated object,
+	// without that fake client will return empty ServiceInstances struct
+	fakeCatalogClient.AddReactor(updateObjectReactor("serviceinstances"))
+
 	if testController.instancePollingQueue.NumRequeues(instanceKey) != 0 {
 		t.Fatalf("Expected polling queue to not have any record of test instance")
 	}
@@ -2946,9 +3069,10 @@ func TestPollServiceInstanceStatusGoneDeprovisioningWithOperationNoFinalizer(t *
 	assertNumberOfActions(t, kubeActions, 0)
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdate(t, actions[1], instance)
 	assertServiceInstanceOperationSuccess(t, updatedServiceInstance, v1beta1.ServiceInstanceOperationDeprovision, testClusterServicePlanName, testClusterServicePlanGUID, instance)
 
 	events := getRecordedEvents(testController)
@@ -3108,6 +3232,10 @@ func TestPollServiceInstanceSuccessDeprovisioningWithOperationWithFinalizer(t *t
 		return true, instance, nil
 	})
 
+	// simulate real update and return updated object,
+	// without that fake client will return empty ServiceInstances struct
+	fakeCatalogClient.AddReactor(updateObjectReactor("serviceinstances"))
+
 	if testController.instancePollingQueue.NumRequeues(instanceKey) != 0 {
 		t.Fatalf("Expected polling queue to not have any record of test instance")
 	}
@@ -3137,9 +3265,10 @@ func TestPollServiceInstanceSuccessDeprovisioningWithOperationWithFinalizer(t *t
 	assertNumberOfActions(t, kubeActions, 0)
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdate(t, actions[1], instance)
 	assertServiceInstanceOperationSuccess(t, updatedServiceInstance, v1beta1.ServiceInstanceOperationDeprovision, testClusterServicePlanName, testClusterServicePlanGUID, instance)
 
 	events := getRecordedEvents(testController)
@@ -3190,9 +3319,9 @@ func TestReconcileServiceInstanceSuccessOnFinalRetry(t *testing.T) {
 		Context:           testContext})
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdateStatus(t, actions[1], instance)
 	assertServiceInstanceOperationSuccess(t, updatedServiceInstance, v1beta1.ServiceInstanceOperationProvision, testClusterServicePlanName, testClusterServicePlanGUID, instance)
 
 	// verify no kube resources created
@@ -3276,8 +3405,8 @@ func TestReconcileServiceInstanceUpdateInProgressPropertiesOnRetry(t *testing.T)
 	expectedParametersChecksum := generateChecksumOfParametersOrFail(t, expectedParameters)
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance).(*v1beta1.ServiceInstance)
+	assertNumberOfActions(t, actions, 2)
+	updatedServiceInstance := assertUpdateStatus(t, actions[1], instance).(*v1beta1.ServiceInstance)
 	assertServiceInstanceOperationInProgressWithParameters(t, updatedServiceInstance, v1beta1.ServiceInstanceOperationProvision, testClusterServicePlanName, testClusterServicePlanGUID, expectedParameters, expectedParametersChecksum, instance)
 
 	// verify no kube resources created
@@ -3342,9 +3471,9 @@ func TestReconcileServiceInstanceFailureOnFinalRetry(t *testing.T) {
 	}
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdateStatus(t, actions[1], instance)
 	assertServiceInstanceProvisionRequestFailingErrorNoOrphanMitigation(
 		t,
 		updatedServiceInstance,
@@ -3498,6 +3627,8 @@ func TestReconcileServiceInstanceWithStatusUpdateError(t *testing.T) {
 	sharedInformers.ClusterServicePlans().Informer().GetStore().Add(getTestClusterServicePlan())
 
 	instance := getTestServiceInstanceWithClusterRefs()
+	instance.Status.UserSpecifiedClassName = fmt.Sprintf("ClusterServiceClass/%s", instance.Spec.GetSpecifiedClusterServiceClass())
+	instance.Status.UserSpecifiedPlanName = instance.Spec.GetSpecifiedClusterServicePlan()
 
 	fakeCatalogClient.AddReactor("update", "serviceinstances", func(action clientgotesting.Action) (bool, runtime.Object, error) {
 		return true, nil, errors.New("update error")
@@ -3713,6 +3844,7 @@ func TestUpdateServiceInstanceCondition(t *testing.T) {
 		reason                string
 		message               string
 		transitionTimeChanged bool
+		expectedLastCondition string
 	}{
 
 		{
@@ -3721,12 +3853,14 @@ func TestUpdateServiceInstanceCondition(t *testing.T) {
 			status:                v1beta1.ConditionFalse,
 			message:               "message",
 			transitionTimeChanged: true,
+			expectedLastCondition: "",
 		},
 		{
 			name:                  "not ready -> not ready",
 			input:                 getTestServiceInstanceWithStatus(v1beta1.ConditionFalse),
 			status:                v1beta1.ConditionFalse,
 			transitionTimeChanged: false,
+			expectedLastCondition: "",
 		},
 		{
 			name:                  "not ready -> not ready, reason and message change",
@@ -3735,6 +3869,7 @@ func TestUpdateServiceInstanceCondition(t *testing.T) {
 			reason:                "foo",
 			message:               "bar",
 			transitionTimeChanged: false,
+			expectedLastCondition: "foo",
 		},
 		{
 			name:                  "not ready -> ready",
@@ -3742,6 +3877,7 @@ func TestUpdateServiceInstanceCondition(t *testing.T) {
 			status:                v1beta1.ConditionTrue,
 			message:               "message",
 			transitionTimeChanged: true,
+			expectedLastCondition: "Ready",
 		},
 		{
 			name:                  "ready -> ready",
@@ -3749,6 +3885,7 @@ func TestUpdateServiceInstanceCondition(t *testing.T) {
 			status:                v1beta1.ConditionTrue,
 			message:               "message",
 			transitionTimeChanged: false,
+			expectedLastCondition: "Ready",
 		},
 		{
 			name:                  "ready -> not ready",
@@ -3756,6 +3893,7 @@ func TestUpdateServiceInstanceCondition(t *testing.T) {
 			status:                v1beta1.ConditionFalse,
 			message:               "message",
 			transitionTimeChanged: true,
+			expectedLastCondition: "",
 		},
 		{
 			name:                  "message -> message2",
@@ -3763,6 +3901,7 @@ func TestUpdateServiceInstanceCondition(t *testing.T) {
 			status:                v1beta1.ConditionFalse,
 			message:               "message2",
 			transitionTimeChanged: true,
+			expectedLastCondition: "",
 		},
 	}
 
@@ -3777,7 +3916,6 @@ func TestUpdateServiceInstanceCondition(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%v: error updating instance condition: %v", tc.name, err)
 			}
-
 			brokerActions := fakeClusterServiceBrokerClient.Actions()
 			assertNumberOfBrokerActions(t, brokerActions, 0)
 
@@ -3793,6 +3931,10 @@ func TestUpdateServiceInstanceCondition(t *testing.T) {
 			updateActionObject, ok := updatedServiceInstance.(*v1beta1.ServiceInstance)
 			if !ok {
 				t.Fatalf("%v: couldn't convert to instance", tc.name)
+			}
+
+			if updateActionObject.Status.LastConditionState != tc.expectedLastCondition {
+				t.Fatalf("LastConditionState has unexpected value. Expected: %v, got: %v", tc.expectedLastCondition, updateActionObject.Status.LastConditionState)
 			}
 
 			var initialTs metav1.Time
@@ -3852,8 +3994,8 @@ func TestReconcileInstanceUsingOriginatingIdentity(t *testing.T) {
 			}
 
 			actions := fakeCatalogClient.Actions()
-			assertNumberOfActions(t, actions, 1)
-			updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+			assertNumberOfActions(t, actions, 2)
+			updatedServiceInstance := assertUpdateStatus(t, actions[1], instance)
 
 			instance = updatedServiceInstance.(*v1beta1.ServiceInstance)
 
@@ -4054,7 +4196,7 @@ func TestReconcileServiceInstanceWithHTTPStatusCodeErrorOrphanMitigation(t *test
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			instance = assertServiceInstanceProvisionInProgressIsTheOnlyCatalogClientAction(t, fakeCatalogClient, instance)
+			instance = assertServiceInstanceProvisionInProgressAndUserSpecifiedFieldsClientActions(t, fakeCatalogClient, instance)
 			fakeCatalogClient.ClearActions()
 
 			err := reconcileServiceInstance(t, testController, instance)
@@ -4104,7 +4246,7 @@ func TestReconcileServiceInstanceTimeoutTriggersOrphanMitigation(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	instance = assertServiceInstanceProvisionInProgressIsTheOnlyCatalogClientAction(t, fakeCatalogClient, instance)
+	instance = assertServiceInstanceProvisionInProgressAndUserSpecifiedFieldsClientActions(t, fakeCatalogClient, instance)
 	fakeCatalogClient.ClearActions()
 
 	if err := reconcileServiceInstance(t, testController, instance); err == nil {
@@ -4441,8 +4583,8 @@ func TestReconcileServiceInstanceWithSecretParameters(t *testing.T) {
 		"b": "2",
 	})
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	assertNumberOfActions(t, actions, 2)
+	updatedServiceInstance := assertUpdateStatus(t, actions[1], instance)
 	assertServiceInstanceOperationInProgressWithParameters(t, updatedServiceInstance, v1beta1.ServiceInstanceOperationProvision, testClusterServicePlanName, testClusterServicePlanGUID, expectedParameters, expectedParametersChecksum, instance)
 
 	instance = updatedServiceInstance.(*v1beta1.ServiceInstance)
@@ -4554,8 +4696,10 @@ func TestResolveReferencesNoClusterServiceClass(t *testing.T) {
 	assertNumberOfActions(t, actions, 2)
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.externalName", instance.Spec.ClusterServiceClassExternalName),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName: util.GenerateSHA(instance.Spec.ClusterServiceClassExternalName),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[0], &v1beta1.ClusterServiceClass{}, listRestrictions)
 
@@ -4675,6 +4819,7 @@ func TestReconcileServiceInstanceUpdateParameters(t *testing.T) {
 			},
 			"name": "test-param",
 		},
+		PreviousValues: &osb.PreviousValues{PlanID: testClusterServicePlanGUID, ServiceID: testClusterServiceClassGUID},
 	})
 
 	actions := fakeCatalogClient.Actions()
@@ -4686,6 +4831,10 @@ func TestReconcileServiceInstanceUpdateParameters(t *testing.T) {
 	updateObject, ok := updatedServiceInstance.(*v1beta1.ServiceInstance)
 	if !ok {
 		t.Fatalf("couldn't convert to *v1beta1.ServiceInstance")
+	}
+
+	if updateObject.Status.LastConditionState != "Ready" {
+		t.Fatalf("LastConditionState has unexpected value. Expected: %v, got: %v", "Ready", updateObject.Status.LastConditionState)
 	}
 
 	// Verify parameters are what we'd expect them to be, basically name, map with two values in it.
@@ -4772,6 +4921,7 @@ func TestReconcileServiceInstanceDeleteParameters(t *testing.T) {
 		PlanID:            nil, // no change to plan
 		Context:           testContext,
 		Parameters:        make(map[string]interface{}),
+		PreviousValues:    &osb.PreviousValues{PlanID: testClusterServicePlanGUID, ServiceID: testClusterServiceClassGUID},
 	})
 
 	actions := fakeCatalogClient.Actions()
@@ -4841,14 +4991,20 @@ func TestResolveReferencesNoClusterServicePlan(t *testing.T) {
 	assertNumberOfActions(t, actions, 3)
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.externalName", instance.Spec.ClusterServiceClassExternalName),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName: util.GenerateSHA(instance.Spec.ClusterServiceClassExternalName),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[0], &v1beta1.ClusterServiceClass{}, listRestrictions)
 
 	listRestrictions = clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.ParseSelectorOrDie("spec.externalName=test-clusterserviceplan,spec.clusterServiceBrokerName=test-clusterservicebroker,spec.clusterServiceClassRef.name=cscguid"),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName:               util.GenerateSHA("test-clusterserviceplan"),
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName:   util.GenerateSHA("test-clusterservicebroker"),
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: util.GenerateSHA("cscguid"),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[1], &v1beta1.ClusterServicePlan{}, listRestrictions)
 
@@ -4995,6 +5151,7 @@ func TestReconcileServiceInstanceUpdateDashboardURLResponse(t *testing.T) {
 			PlanID:            &expectedPlanID,
 			Context:           testContext,
 			Parameters:        nil, // no change to parameters
+			PreviousValues:    &osb.PreviousValues{PlanID: "old-plan-id", ServiceID: testClusterServiceClassGUID},
 		})
 
 		actions := fakeCatalogClient.Actions()
@@ -5106,6 +5263,7 @@ func TestReconcileServiceInstanceUpdatePlan(t *testing.T) {
 		PlanID:            &expectedPlanID,
 		Context:           testContext,
 		Parameters:        nil, // no change to parameters
+		PreviousValues:    &osb.PreviousValues{PlanID: "old-plan-id", ServiceID: testClusterServiceClassGUID},
 	})
 
 	actions := fakeCatalogClient.Actions()
@@ -5176,7 +5334,9 @@ func TestReconcileServiceInstanceWithUpdateCallFailure(t *testing.T) {
 		InstanceID:        testServiceInstanceGUID,
 		ServiceID:         testClusterServiceClassGUID,
 		PlanID:            &expectedPlanID,
-		Context:           testContext})
+		Context:           testContext,
+		PreviousValues:    &osb.PreviousValues{PlanID: "old-plan-id", ServiceID: testClusterServiceClassGUID},
+	})
 
 	// verify no kube resources created
 	// One single action comes from getting namespace uid
@@ -5275,7 +5435,9 @@ func TestReconcileServiceInstanceWithUpdateFailure(t *testing.T) {
 				InstanceID:        testServiceInstanceGUID,
 				ServiceID:         testClusterServiceClassGUID,
 				PlanID:            &expectedPlanID,
-				Context:           testContext})
+				Context:           testContext,
+				PreviousValues:    &osb.PreviousValues{PlanID: "old-plan-id", ServiceID: testClusterServiceClassGUID},
+			})
 
 			// verify one kube action occurred
 			kubeActions := fakeKubeClient.Actions()
@@ -5338,18 +5500,24 @@ func TestResolveReferencesWorks(t *testing.T) {
 	assertNumberOfActions(t, actions, 3)
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.externalName", instance.Spec.ClusterServiceClassExternalName),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName: util.GenerateSHA(instance.Spec.ClusterServiceClassExternalName),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[0], &v1beta1.ClusterServiceClass{}, listRestrictions)
 
 	listRestrictions = clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.ParseSelectorOrDie("spec.externalName=test-clusterserviceplan,spec.clusterServiceBrokerName=test-clusterservicebroker,spec.clusterServiceClassRef.name=cscguid"),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName:               util.GenerateSHA("test-clusterserviceplan"),
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName:   util.GenerateSHA("test-clusterservicebroker"),
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: util.GenerateSHA("cscguid"),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[1], &v1beta1.ClusterServicePlan{}, listRestrictions)
 
-	updatedServiceInstance := assertUpdateReference(t, actions[2], instance)
+	updatedServiceInstance := assertUpdate(t, actions[2], instance)
 	updateObject, ok := updatedServiceInstance.(*v1beta1.ServiceInstance)
 	if !ok {
 		t.Fatalf("couldn't convert to *v1beta1.ServiceInstance")
@@ -5383,7 +5551,14 @@ func TestResolveReferencesForPlanChange(t *testing.T) {
 	newPlanName := "new-plan-name"
 
 	sp := &v1beta1.ClusterServicePlan{
-		ObjectMeta: metav1.ObjectMeta{Name: newPlanID},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: newPlanID,
+			Labels: map[string]string{
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName:               util.GenerateSHA(newPlanName),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName:   util.GenerateSHA(testClusterServiceBrokerName),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: util.GenerateSHA(testClusterServiceClassGUID),
+			},
+		},
 		Spec: v1beta1.ClusterServicePlanSpec{
 			CommonServicePlanSpec: v1beta1.CommonServicePlanSpec{
 				ExternalID:   newPlanID,
@@ -5417,12 +5592,16 @@ func TestResolveReferencesForPlanChange(t *testing.T) {
 	assertNumberOfActions(t, actions, 2)
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.ParseSelectorOrDie("spec.externalName=new-plan-name,spec.clusterServiceBrokerName=test-clusterservicebroker,spec.clusterServiceClassRef.name=cscguid"),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName:               util.GenerateSHA("new-plan-name"),
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName:   util.GenerateSHA("test-clusterservicebroker"),
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: util.GenerateSHA("cscguid"),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[0], &v1beta1.ClusterServicePlan{}, listRestrictions)
 
-	updatedServiceInstance := assertUpdateReference(t, actions[1], instance)
+	updatedServiceInstance := assertUpdate(t, actions[1], instance)
 	updateObject, ok := updatedServiceInstance.(*v1beta1.ServiceInstance)
 	if !ok {
 		t.Fatalf("couldn't convert to *v1beta1.ServiceInstance")
@@ -5468,7 +5647,7 @@ func TestResolveReferencesWorksK8SNames(t *testing.T) {
 	actions := fakeCatalogClient.Actions()
 	assertNumberOfActions(t, actions, 1)
 
-	updatedServiceInstance := assertUpdateReference(t, actions[0], instance)
+	updatedServiceInstance := assertUpdate(t, actions[0], instance)
 	updateObject, ok := updatedServiceInstance.(*v1beta1.ServiceInstance)
 	if !ok {
 		t.Fatalf("couldn't convert to *v1beta1.ServiceInstance")
@@ -5545,7 +5724,9 @@ func TestReconcileServiceInstanceUpdateAsynchronous(t *testing.T) {
 		InstanceID:        testServiceInstanceGUID,
 		ServiceID:         testClusterServiceClassGUID,
 		PlanID:            &expectedPlanID,
-		Context:           testContext})
+		Context:           testContext,
+		PreviousValues:    &osb.PreviousValues{PlanID: "old-plan-id", ServiceID: testClusterServiceClassGUID},
+	})
 
 	actions := fakeCatalogClient.Actions()
 	assertNumberOfActions(t, actions, 1)
@@ -5847,6 +6028,10 @@ func TestReconcileServiceInstanceDeleteDuringOngoingOperation(t *testing.T) {
 		return true, instance, nil
 	})
 
+	// simulate real update and return updated object,
+	// without that fake client will return empty ServiceInstances struct
+	fakeCatalogClient.AddReactor(updateObjectReactor("serviceinstances"))
+
 	timeOfReconciliation := metav1.Now()
 
 	if err := reconcileServiceInstance(t, testController, instance); err != nil {
@@ -5886,9 +6071,10 @@ func TestReconcileServiceInstanceDeleteDuringOngoingOperation(t *testing.T) {
 	assertNumberOfActions(t, kubeActions, 0)
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance).(*v1beta1.ServiceInstance)
+	assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdate(t, actions[1], instance)
 	assertServiceInstanceOperationSuccess(t, updatedServiceInstance, v1beta1.ServiceInstanceOperationDeprovision, testClusterServicePlanName, testClusterServicePlanGUID, instance)
 
 	events := getRecordedEvents(testController)
@@ -5931,6 +6117,10 @@ func TestReconcileServiceInstanceDeleteWithOngoingOperation(t *testing.T) {
 		return true, instance, nil
 	})
 
+	// simulate real update and return updated object,
+	// without that fake client will return empty ServiceInstances struct
+	fakeCatalogClient.AddReactor(updateObjectReactor("serviceinstances"))
+
 	timeOfReconciliation := metav1.Now()
 
 	if err := reconcileServiceInstance(t, testController, instance); err != nil {
@@ -5970,9 +6160,10 @@ func TestReconcileServiceInstanceDeleteWithOngoingOperation(t *testing.T) {
 	assertNumberOfActions(t, kubeActions, 0)
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance).(*v1beta1.ServiceInstance)
+	assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdate(t, actions[1], instance)
 	assertServiceInstanceOperationSuccess(t, updatedServiceInstance, v1beta1.ServiceInstanceOperationDeprovision, testClusterServicePlanName, testClusterServicePlanGUID, instance)
 
 	events := getRecordedEvents(testController)
@@ -6016,6 +6207,10 @@ func TestReconcileServiceInstanceDeleteWithNonExistentPlan(t *testing.T) {
 		return true, instance, nil
 	})
 
+	// simulate real update and return updated object,
+	// without that fake client will return empty ServiceInstances struct
+	fakeCatalogClient.AddReactor(updateObjectReactor("serviceinstances"))
+
 	if err := reconcileServiceInstance(t, testController, instance); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -6043,9 +6238,10 @@ func TestReconcileServiceInstanceDeleteWithNonExistentPlan(t *testing.T) {
 	assertNumberOfActions(t, kubeActions, 0)
 
 	actions := fakeCatalogClient.Actions()
-	assertNumberOfActions(t, actions, 1)
+	assertNumberOfActions(t, actions, 2)
 
-	updatedServiceInstance := assertUpdateStatus(t, actions[0], instance)
+	assertUpdateStatus(t, actions[0], instance)
+	updatedServiceInstance := assertUpdate(t, actions[1], instance)
 	assertServiceInstanceOperationSuccess(t, updatedServiceInstance, v1beta1.ServiceInstanceOperationDeprovision, "old-plan-name", "old-plan-id", instance)
 
 	events := getRecordedEvents(testController)
@@ -6211,4 +6407,44 @@ func reconcileServiceInstance(t *testing.T, testController *controller, instance
 		t.Errorf("reconcileServiceInstance shouldn't mutate input, but it does: %s", expectedGot(clone, instance))
 	}
 	return err
+}
+
+func assertServiceInstanceProvisionInProgressAndUserSpecifiedFieldsClientActions(t *testing.T, fakeCatalogClient *fake.Clientset, instance *v1beta1.ServiceInstance) *v1beta1.ServiceInstance {
+	var planName, planGUID string
+	if instance.Spec.ClusterServiceClassSpecified() {
+		planName = testClusterServicePlanName
+		planGUID = testClusterServicePlanGUID
+	} else {
+		planName = testServicePlanName
+		planGUID = testServicePlanGUID
+	}
+	return assertServiceInstanceOperationInProgressAndUserSpecifiedFieldsClientActions(t, fakeCatalogClient, instance, v1beta1.ServiceInstanceOperationProvision, planName, planGUID)
+}
+
+func assertServiceInstanceOperationInProgressAndUserSpecifiedFieldsClientActions(t *testing.T, fakeCatalogClient *fake.Clientset, instance *v1beta1.ServiceInstance, operation v1beta1.ServiceInstanceOperation, planName string, planGUID string) *v1beta1.ServiceInstance {
+	return assertServiceInstanceOperationInProgressWithParameterAndUserSpecifiedFieldsClientActions(t, fakeCatalogClient, instance, operation, planName, planGUID, nil, "")
+}
+
+func assertServiceInstanceOperationInProgressWithParameterAndUserSpecifiedFieldsClientActions(t *testing.T, fakeCatalogClient *fake.Clientset, instance *v1beta1.ServiceInstance, operation v1beta1.ServiceInstanceOperation, planName string, planGUID string, parameters map[string]interface{}, parametersChecksum string) *v1beta1.ServiceInstance {
+	actions := fakeCatalogClient.Actions()
+	assertNumberOfActions(t, actions, 2)
+
+	updateServiceInstance := assertUpdateStatus(t, actions[1], instance)
+	assertServiceInstanceOperationInProgressWithParameters(t, updateServiceInstance, operation, planName, planGUID, parameters, parametersChecksum, instance)
+
+	updateObject, ok := updateServiceInstance.(*v1beta1.ServiceInstance)
+	if !ok {
+		t.Fatalf("couldn't convert to *v1beta1.ServiceInstance")
+	}
+
+	class, plan := getServiceInstanceCommonClassAndPlan(*updateObject)
+	if updateObject.Status.UserSpecifiedClassName != class {
+		t.Fatalf("Unexpected ClassName: expected %v, got %v", class, updateObject.Status.UserSpecifiedClassName)
+	}
+
+	if updateObject.Status.UserSpecifiedPlanName != plan {
+		t.Fatalf("Unexpected PlanName %v, got %v", plan, updateObject.Status.UserSpecifiedPlanName)
+	}
+
+	return updateObject
 }
