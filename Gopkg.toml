@@ -1,37 +1,16 @@
-# Gopkg.toml example
-#
-# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
-# for detailed Gopkg.toml documentation.
-#
-# required = ["github.com/user/thing/cmd/thing"]
-# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
-#
-# [[constraint]]
-#   name = "github.com/user/project"
-#   version = "1.0.0"
-#
-# [[constraint]]
-#   name = "github.com/user/project2"
-#   branch = "dev"
-#   source = "github.com/myfork/project2"
-#
-# [[override]]
-#   name = "github.com/x/y"
-#   version = "2.4.0"
-#
 [prune]
   [[prune.project]]
     name = "github.com/kubernetes-sigs/service-catalog"
-    # service catalog has some wierd files that are too long on Windows
+    # service catalog has some files that are too long on Windows
     non-go = true
 
 [[constraint]]
   name = "github.com/kubernetes-sigs/service-catalog"
-  revision = "6d7cea62c1aa18b8296ce1c7263b431ade159f3a"
+  revision = "f950e6866b3dd192f7aef05336f6a20b9dce319f"
 
 [[constraint]]
   name = "github.com/Peripli/service-broker-proxy"
-  branch = "master"
+  version = "=0.7.0"
 
 [[constraint]]
   name = "github.com/onsi/ginkgo"
@@ -48,25 +27,25 @@
 
 # Specify kubernetes dependency versions
 [[override]]
-  branch = "release-1.14"
+  branch = "release-1.15"
   name = "k8s.io/api"
 
 [[override]]
-  branch = "release-1.14"
+  branch = "release-1.15"
   name = "k8s.io/apiextensions-apiserver"
 
 [[override]]
-  branch = "release-1.14"
+  branch = "release-1.15"
   name = "k8s.io/apimachinery"
 
 [[override]]
-  branch = "release-1.14"
+  branch = "release-1.15"
   name = "k8s.io/apiserver"
 
 [[override]]
-  branch = "release-11.0"
+  branch = "release-12.0"
   name = "k8s.io/client-go"
 
 [[override]]
-  branch = "release-1.14"
+  branch = "release-1.15"
   name = "k8s.io/code-generator"
