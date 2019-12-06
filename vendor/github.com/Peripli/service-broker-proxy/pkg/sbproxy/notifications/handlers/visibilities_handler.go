@@ -29,7 +29,7 @@ type visibilityWithAdditionalDetails struct {
 }
 
 // Validate validates the visibility payload
-func (vp visibilityPayload) Validate(op types.OperationType) error {
+func (vp visibilityPayload) Validate(op types.NotificationOperation) error {
 	switch op {
 	case types.CREATED:
 		if err := vp.New.Validate(); err != nil {

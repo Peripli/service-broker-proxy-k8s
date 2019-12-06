@@ -24,13 +24,14 @@ import (
 	"testing"
 	"time"
 
-	osb "github.com/pmorie/go-open-service-broker-client/v2"
-	fakeosb "github.com/pmorie/go-open-service-broker-client/v2/fake"
+	osb "github.com/kubernetes-sigs/go-open-service-broker-client/v2"
+	fakeosb "github.com/kubernetes-sigs/go-open-service-broker-client/v2/fake"
 	"sigs.k8s.io/yaml"
 
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
 	servicecataloginformers "github.com/kubernetes-sigs/service-catalog/pkg/client/informers_generated/externalversions"
 	v1beta1informers "github.com/kubernetes-sigs/service-catalog/pkg/client/informers_generated/externalversions/servicecatalog/v1beta1"
+	"github.com/kubernetes-sigs/service-catalog/pkg/util"
 
 	servicecatalogclientset "github.com/kubernetes-sigs/service-catalog/pkg/client/clientset_generated/clientset/fake"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -98,6 +99,7 @@ var (
 	testContext         = map[string]interface{}{
 		"platform":           ContextProfilePlatformKubernetes,
 		"namespace":          testNamespace,
+		"instance_name":      testServiceInstanceName,
 		clusterIdentifierKey: testClusterID,
 	}
 )
@@ -555,7 +557,34 @@ func getTestBearerAuthSecret() *corev1.Secret {
 func getTestClusterServiceClass() *v1beta1.ClusterServiceClass {
 	broker := getTestClusterServiceBroker()
 	class := &v1beta1.ClusterServiceClass{
-		ObjectMeta: metav1.ObjectMeta{Name: testClusterServiceClassGUID},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: testClusterServiceClassGUID,
+			Labels: map[string]string{
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: util.GenerateSHA(testClusterServiceClassGUID),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName:               util.GenerateSHA(testClusterServiceClassName),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName:   util.GenerateSHA(testClusterServiceBrokerName),
+			},
+		},
+		Spec: v1beta1.ClusterServiceClassSpec{
+			ClusterServiceBrokerName: testClusterServiceBrokerName,
+			CommonServiceClassSpec: v1beta1.CommonServiceClassSpec{
+				Description:  "a test service",
+				ExternalName: testClusterServiceClassName,
+				ExternalID:   testClusterServiceClassGUID,
+				Bindable:     true,
+			},
+		},
+	}
+	markAsServiceCatalogManagedResource(class, broker)
+	return class
+}
+
+func getTestClusterServiceClassWithoutLabels() *v1beta1.ClusterServiceClass {
+	broker := getTestClusterServiceBroker()
+	class := &v1beta1.ClusterServiceClass{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: testClusterServiceClassGUID,
+		},
 		Spec: v1beta1.ClusterServiceClassSpec{
 			ClusterServiceBrokerName: testClusterServiceBrokerName,
 			CommonServiceClassSpec: v1beta1.CommonServiceClassSpec{
@@ -573,7 +602,14 @@ func getTestClusterServiceClass() *v1beta1.ClusterServiceClass {
 func getTestMarkedAsRemovedClusterServiceClass() *v1beta1.ClusterServiceClass {
 	broker := getTestClusterServiceBroker()
 	class := &v1beta1.ClusterServiceClass{
-		ObjectMeta: metav1.ObjectMeta{Name: testRemovedClusterServiceClassGUID},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: testRemovedClusterServiceClassGUID,
+			Labels: map[string]string{
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: testClusterServiceClassGUID,
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName:               testClusterServiceClassName,
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName:   testClusterServiceBrokerName,
+			},
+		},
 		Spec: v1beta1.ClusterServiceClassSpec{
 			ClusterServiceBrokerName: testClusterServiceBrokerName,
 			CommonServiceClassSpec: v1beta1.CommonServiceClassSpec{
@@ -596,7 +632,12 @@ func getTestMarkedAsRemovedClusterServiceClass() *v1beta1.ClusterServiceClass {
 func getTestRemovedClusterServiceClass() *v1beta1.ClusterServiceClass {
 	broker := getTestClusterServiceBroker()
 	class := &v1beta1.ClusterServiceClass{
-		ObjectMeta: metav1.ObjectMeta{Name: testRemovedClusterServiceClassGUID},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: testRemovedClusterServiceClassGUID,
+			Labels: map[string]string{
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName: util.GenerateSHA(testClusterServiceBrokerName),
+			},
+		},
 		Spec: v1beta1.ClusterServiceClassSpec{
 			ClusterServiceBrokerName: testClusterServiceBrokerName,
 			CommonServiceClassSpec: v1beta1.CommonServiceClassSpec{
@@ -649,7 +690,15 @@ func getTestBindingRetrievableServiceClass() *v1beta1.ServiceClass {
 func getTestClusterServicePlan() *v1beta1.ClusterServicePlan {
 	broker := getTestClusterServiceBroker()
 	plan := &v1beta1.ClusterServicePlan{
-		ObjectMeta: metav1.ObjectMeta{Name: testClusterServicePlanGUID},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: testClusterServicePlanGUID,
+			Labels: map[string]string{
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServicePlanRefName:  util.GenerateSHA(testClusterServicePlanGUID),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName:               util.GenerateSHA(testClusterServicePlanName),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName:   util.GenerateSHA(testClusterServiceBrokerName),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: util.GenerateSHA(testClusterServiceClassGUID),
+			},
+		},
 		Spec: v1beta1.ClusterServicePlanSpec{
 			ClusterServiceBrokerName: testClusterServiceBrokerName,
 			CommonServicePlanSpec: v1beta1.CommonServicePlanSpec{
@@ -695,7 +744,14 @@ func getTestMarkedAsRemovedClusterServicePlan() *v1beta1.ClusterServicePlan {
 func getTestRemovedClusterServicePlan() *v1beta1.ClusterServicePlan {
 	broker := getTestClusterServiceBroker()
 	plan := &v1beta1.ClusterServicePlan{
-		ObjectMeta: metav1.ObjectMeta{Name: testRemovedClusterServicePlanGUID},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: testRemovedClusterServicePlanGUID,
+			Labels: map[string]string{
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName:               util.GenerateSHA(testRemovedClusterServicePlanGUID),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: util.GenerateSHA(testClusterServiceClassGUID),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName:   util.GenerateSHA(testClusterServiceBrokerName),
+			},
+		},
 		Spec: v1beta1.ClusterServicePlanSpec{
 			ClusterServiceBrokerName: testClusterServiceBrokerName,
 			CommonServicePlanSpec: v1beta1.CommonServicePlanSpec{
@@ -715,7 +771,14 @@ func getTestRemovedClusterServicePlan() *v1beta1.ClusterServicePlan {
 func getTestClusterServicePlanNonbindable() *v1beta1.ClusterServicePlan {
 	broker := getTestClusterServiceBroker()
 	plan := &v1beta1.ClusterServicePlan{
-		ObjectMeta: metav1.ObjectMeta{Name: testNonbindableClusterServicePlanGUID},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: testNonbindableClusterServicePlanGUID,
+			Labels: map[string]string{
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServicePlanRefName: util.GenerateSHA(testNonbindableClusterServicePlanGUID),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecExternalName:              util.GenerateSHA(testClusterServicePlanName),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName:  util.GenerateSHA(testClusterServiceBrokerName),
+			},
+		},
 		Spec: v1beta1.ClusterServicePlanSpec{
 			CommonServicePlanSpec: v1beta1.CommonServicePlanSpec{
 				ExternalName: testNonbindableClusterServicePlanName,
@@ -776,6 +839,36 @@ func getTestCatalog() *osb.CatalogResponse {
 	}
 }
 
+// broker catalog that provides the service class named in of
+// getTestNamespacedServiceClass()
+func getTestNamespacedCatalog() *osb.CatalogResponse {
+	return &osb.CatalogResponse{
+		Services: []osb.Service{
+			{
+				Name:        testServiceClassName,
+				ID:          testServiceClassGUID,
+				Description: "a test service",
+				Bindable:    true,
+				Plans: []osb.Plan{
+					{
+						Name:        testServicePlanName,
+						Free:        truePtr(),
+						ID:          testServicePlanGUID,
+						Description: "a test plan",
+					},
+					{
+						Name:        testNonbindableServicePlanName,
+						Free:        truePtr(),
+						ID:          testNonbindableServicePlanGUID,
+						Description: "a test plan",
+						Bindable:    falsePtr(),
+					},
+				},
+			},
+		},
+	}
+}
+
 // instance referencing the result of getTestClusterServiceClass()
 // and getTestClusterServicePlan()
 // This version sets:
@@ -818,6 +911,12 @@ func getTestServiceInstance() *v1beta1.ServiceInstance {
 			Name:       testServiceInstanceName,
 			Namespace:  testNamespace,
 			Generation: 1,
+			Labels: map[string]string{
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecServiceClassRefName:        util.GenerateSHA(testServiceClassGUID),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecServicePlanRefName:         util.GenerateSHA(testServicePlanGUID),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceClassRefName: util.GenerateSHA(testClusterServiceClassGUID),
+				v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServicePlanRefName:  util.GenerateSHA(testClusterServicePlanGUID),
+			},
 		},
 		Spec: v1beta1.ServiceInstanceSpec{
 			PlanReference: v1beta1.PlanReference{
@@ -875,6 +974,10 @@ func getTestServiceInstanceK8SNames() *v1beta1.ServiceInstance {
 				ClusterServicePlanName:  testClusterServicePlanGUID,
 			},
 			ExternalID: testServiceInstanceGUID,
+		},
+		Status: v1beta1.ServiceInstanceStatus{
+			Conditions:        []v1beta1.ServiceInstanceCondition{},
+			DeprovisionStatus: v1beta1.ServiceInstanceDeprovisionStatusNotRequired,
 		},
 	}
 }
@@ -1094,6 +1197,7 @@ func getTestServiceBinding() *v1beta1.ServiceBinding {
 			Generation: 1,
 		},
 		Spec: v1beta1.ServiceBindingSpec{
+			SecretName:  testServiceBindingSecretName,
 			InstanceRef: v1beta1.LocalObjectReference{Name: testServiceInstanceName},
 			ExternalID:  testServiceBindingGUID,
 		},
@@ -1190,8 +1294,7 @@ func getTestServiceBindingAsyncBinding(operation string) *v1beta1.ServiceBinding
 // async mode whose retry duration has been exceeded
 func getTestServiceBindingAsyncBindingRetryDurationExceeded(operation string) *v1beta1.ServiceBinding {
 	binding := getTestServiceBindingAsyncBinding(operation)
-	var startTime metav1.Time
-	startTime = metav1.NewTime(time.Now().Add(-7 * 24 * time.Hour))
+	var startTime = metav1.NewTime(time.Now().Add(-7 * 24 * time.Hour))
 	binding.Status.OperationStartTime = &startTime
 	return binding
 }
@@ -1229,8 +1332,7 @@ func getTestServiceBindingAsyncUnbinding(operation string) *v1beta1.ServiceBindi
 // async mode whose retry duration has been exceeded
 func getTestServiceBindingAsyncUnbindingRetryDurationExceeded(operation string) *v1beta1.ServiceBinding {
 	binding := getTestServiceBindingAsyncUnbinding(operation)
-	var startTime metav1.Time
-	startTime = metav1.NewTime(time.Now().Add(-7 * 24 * time.Hour))
+	var startTime = metav1.NewTime(time.Now().Add(-7 * 24 * time.Hour))
 	binding.Status.OperationStartTime = &startTime
 	return binding
 }
@@ -1269,8 +1371,7 @@ func getTestServiceBindingAsyncOrphanMitigation(operation string) *v1beta1.Servi
 // exceeded
 func getTestServiceBindingAsyncOrphanMitigationRetryDurationExceeded(operation string) *v1beta1.ServiceBinding {
 	binding := getTestServiceBindingAsyncOrphanMitigation(operation)
-	var startTime metav1.Time
-	startTime = metav1.NewTime(time.Now().Add(-7 * 24 * time.Hour))
+	var startTime = metav1.NewTime(time.Now().Add(-7 * 24 * time.Hour))
 	binding.Status.OperationStartTime = &startTime
 	return binding
 }
@@ -2354,6 +2455,7 @@ func newTestController(t *testing.T, config fakeosb.FakeClientConfiguration) (
 		7*24*time.Hour,
 		DefaultClusterIDConfigMapName,
 		DefaultClusterIDConfigMapNamespace,
+		60*time.Second,
 	)
 
 	if err != nil {
@@ -2435,10 +2537,6 @@ func assertUpdate(t *testing.T, action clientgotesting.Action, obj interface{}) 
 
 func assertUpdateStatus(t *testing.T, action clientgotesting.Action, obj interface{}) runtime.Object {
 	return assertActionFor(t, action, "update", "status", obj)
-}
-
-func assertUpdateReference(t *testing.T, action clientgotesting.Action, obj interface{}) runtime.Object {
-	return assertActionFor(t, action, "update", "reference", obj)
 }
 
 func assertDelete(t *testing.T, action clientgotesting.Action, obj interface{}) {
@@ -3977,6 +4075,14 @@ func getTestCatalogConfig() fakeosb.FakeClientConfiguration {
 	}
 }
 
+func getTestNamespacedCatalogConfig() fakeosb.FakeClientConfiguration {
+	return fakeosb.FakeClientConfiguration{
+		CatalogReaction: &fakeosb.CatalogReaction{
+			Response: getTestNamespacedCatalog(),
+		},
+	}
+}
+
 func addGetNamespaceReaction(fakeKubeClient *clientgofake.Clientset) {
 	fakeKubeClient.AddReactor("get", "namespaces", func(action clientgotesting.Action) (bool, runtime.Object, error) {
 		return true, &corev1.Namespace{
@@ -3997,4 +4103,15 @@ func addGetSecretReaction(fakeKubeClient *clientgofake.Clientset, secret *corev1
 	fakeKubeClient.AddReactor("get", "secrets", func(action clientgotesting.Action) (bool, runtime.Object, error) {
 		return true, secret, nil
 	})
+}
+
+// updateObjectReactor is used to simulate real update and return updated object,
+// without that fake client will return empty struct
+// TODO: in future we should consider refactor of newTestController method to use servicecatalogclientset.NewSimpleClientset() instead of &servicecatalogclientset.Clientset{}
+// thanks to that such methods will not be required because we will have that behaviour out-of-the-box - also other reactor like "get" etc. could be removed.
+func updateObjectReactor(resource string) (string, string, clientgotesting.ReactionFunc) {
+	return "update", resource, func(action clientgotesting.Action) (bool, runtime.Object, error) {
+		e := action.(clientgotesting.UpdateAction)
+		return true, e.GetObject(), nil
+	}
 }

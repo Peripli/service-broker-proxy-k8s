@@ -1990,3 +1990,53 @@ func TestSingleModifier(t *testing.T) {
 	assert(t, Get(data, "@key").String() == "value")
 	assert(t, Get(data, "\\@key").String() == "value")
 }
+
+func TestModifiersInMultipaths(t *testing.T) {
+	AddModifier("case", func(json, arg string) string {
+		if arg == "upper" {
+			return strings.ToUpper(json)
+		}
+		if arg == "lower" {
+			return strings.ToLower(json)
+		}
+		return json
+	})
+	json := `{"friends": [
+		{"age": 44, "first": "Dale", "last": "Murphy"},
+		{"age": 68, "first": "Roger", "last": "Craig"},
+		{"age": 47, "first": "Jane", "last": "Murphy"}
+	]}`
+
+	res := Get(json, `friends.#.{age,first|@case:upper}|@ugly`)
+	exp := `[{"age":44,"@case:upper":"DALE"},{"age":68,"@case:upper":"ROGER"},{"age":47,"@case:upper":"JANE"}]`
+	assert(t, res.Raw == exp)
+
+	res = Get(json, `{friends.#.{age,first:first|@case:upper}|0.first}`)
+	exp = `{"first":"DALE"}`
+	assert(t, res.Raw == exp)
+
+}
+
+func TestIssue141(t *testing.T) {
+	json := `{"data": [{"q": 11, "w": 12}, {"q": 21, "w": 22}, {"q": 31, "w": 32} ], "sql": "some stuff here"}`
+	assert(t, Get(json, "data.#").Int() == 3)
+	assert(t, Get(json, "data.#.{q}|@ugly").Raw == `[{"q":11},{"q":21},{"q":31}]`)
+	assert(t, Get(json, "data.#.q|@ugly").Raw == `[11,21,31]`)
+}
+
+func TestChainedModifierStringArgs(t *testing.T) {
+	// issue #143
+	AddModifier("push", func(json, arg string) string {
+		json = strings.TrimSpace(json)
+		if len(json) < 2 || !Parse(json).IsArray() {
+			return json
+		}
+		json = strings.TrimSpace(json[1 : len(json)-1])
+		if len(json) == 0 {
+			return "[" + arg + "]"
+		}
+		return "[" + json + "," + arg + "]"
+	})
+	res := Get("[]", `@push:"2"|@push:"3"|@push:{"a":"b","c":["e","f"]}|@push:true|@push:10.23`)
+	assert(t, res.String() == `["2","3",{"a":"b","c":["e","f"]},true,10.23]`)
+}

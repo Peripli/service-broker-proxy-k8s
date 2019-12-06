@@ -30,8 +30,8 @@ import (
 
 	_ "github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/install"
 
-	osb "github.com/pmorie/go-open-service-broker-client/v2"
-	fakeosb "github.com/pmorie/go-open-service-broker-client/v2/fake"
+	osb "github.com/kubernetes-sigs/go-open-service-broker-client/v2"
+	fakeosb "github.com/kubernetes-sigs/go-open-service-broker-client/v2/fake"
 
 	"time"
 
@@ -555,10 +555,10 @@ func TestCreateServiceBindingWithSecretTransform(t *testing.T) {
 				},
 			},
 			expectedSecretData: map[string][]byte{
-				"addedStringValue":  []byte("stringValue"),
-				"addedByteArray":    []byte("byteArray"),
-				"valueFromJSONPath": []byte("bar"),
-				"bar":               []byte("bar"),
+				"addedStringValue":      []byte("stringValue"),
+				"addedByteArray":        []byte("byteArray"),
+				"valueFromJSONPath":     []byte("bar"),
+				"bar":                   []byte("bar"),
 				"key-from-other-secret": []byte("qux"),
 			},
 		},

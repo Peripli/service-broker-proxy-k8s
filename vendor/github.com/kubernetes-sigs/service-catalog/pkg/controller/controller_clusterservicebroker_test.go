@@ -22,10 +22,11 @@ import (
 	"testing"
 	"time"
 
-	osb "github.com/pmorie/go-open-service-broker-client/v2"
-	fakeosb "github.com/pmorie/go-open-service-broker-client/v2/fake"
+	osb "github.com/kubernetes-sigs/go-open-service-broker-client/v2"
+	fakeosb "github.com/kubernetes-sigs/go-open-service-broker-client/v2/fake"
 
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
+	"github.com/kubernetes-sigs/service-catalog/pkg/util"
 	"github.com/kubernetes-sigs/service-catalog/test/fake"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -232,6 +233,21 @@ func TestShouldReconcileClusterServiceBroker(t *testing.T) {
 	}
 }
 
+// TestReconcileClusterServiceBrokerSetOSBTimeOut
+// verifies that timeout of any request to the
+// broker takes effect.
+func TestReconcileClusterServiceBrokerSetOSBTimeOut(t *testing.T) {
+	_, _, _, testController, _ := newTestController(t, getTestCatalogConfig())
+	testController.OSBAPITimeOut = time.Second * 80
+	if err := reconcileClusterServiceBroker(t, testController, getTestClusterServiceBroker()); err != nil {
+		t.Fatalf("This should not fail : %v", err)
+	}
+	createdClient := testController.brokerClientManager.clients[NewClusterServiceBrokerKey(getTestClusterServiceBroker().Name)]
+	if createdClient.clientConfig.TimeoutSeconds != int(testController.OSBAPITimeOut.Seconds()) {
+		t.Errorf("Unexpected OSBTimeOut: got %v, expeted %v", createdClient.clientConfig.TimeoutSeconds, int(testController.OSBAPITimeOut.Seconds()))
+	}
+}
+
 // TestReconcileClusterServiceBrokerExistingServiceClassAndServicePlan
 // verifies a simple, successful run of reconcileClusterServiceBroker() when a
 // ClusterServiceClass and plan already exist.  This test will cause
@@ -265,8 +281,10 @@ func TestReconcileClusterServiceBrokerExistingServiceClassAndServicePlan(t *test
 	assertGetCatalog(t, brokerActions[0])
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.clusterServiceBrokerName", "test-clusterservicebroker"),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName: util.GenerateSHA("test-clusterservicebroker"),
+		}),
+		Fields: fields.Everything(),
 	}
 
 	actions := fakeCatalogClient.Actions()
@@ -284,6 +302,15 @@ func TestReconcileClusterServiceBrokerExistingServiceClassAndServicePlan(t *test
 	// verify no kube resources created
 	kubeActions := fakeKubeClient.Actions()
 	assertNumberOfActions(t, kubeActions, 0)
+
+	updateObject, ok := updatedClusterServiceBroker.(*v1beta1.ClusterServiceBroker)
+	if !ok {
+		t.Fatalf("couldn't convert to *v1beta1.ClusterServiceBroker")
+	}
+
+	if updateObject.Status.LastConditionState != "Ready" {
+		t.Fatalf("LastConditionState has unexpected value. Expected: %v, got: %v", "Ready", updateObject.Status.LastConditionState)
+	}
 }
 
 func TestReconcileClusterServiceBrokerRemovedClusterServiceClass(t *testing.T) {
@@ -314,8 +341,10 @@ func TestReconcileClusterServiceBrokerRemovedClusterServiceClass(t *testing.T) {
 	assertGetCatalog(t, brokerActions[0])
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.clusterServiceBrokerName", "test-clusterservicebroker"),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName: util.GenerateSHA("test-clusterservicebroker"),
+		}),
+		Fields: fields.Everything(),
 	}
 
 	actions := fakeCatalogClient.Actions()
@@ -382,8 +411,10 @@ func TestReconcileClusterServiceBrokerRemovedAndRestoredClusterServiceClass(t *t
 	assertGetCatalog(t, brokerActions[0])
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.clusterServiceBrokerName", "test-clusterservicebroker"),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName: util.GenerateSHA("test-clusterservicebroker"),
+		}),
+		Fields: fields.Everything(),
 	}
 
 	actions := fakeCatalogClient.Actions()
@@ -439,8 +470,10 @@ func TestReconcileClusterServiceBrokerRemovedClusterServicePlan(t *testing.T) {
 	assertGetCatalog(t, brokerActions[0])
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.clusterServiceBrokerName", "test-clusterservicebroker"),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName: util.GenerateSHA("test-clusterservicebroker"),
+		}),
+		Fields: fields.Everything(),
 	}
 
 	actions := fakeCatalogClient.Actions()
@@ -483,8 +516,10 @@ func TestReconcileClusterServiceBrokerExistingClusterServiceClassDifferentBroker
 	assertNumberOfActions(t, actions, 3)
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.clusterServiceBrokerName", "test-clusterservicebroker"),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName: util.GenerateSHA("test-clusterservicebroker"),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[0], &v1beta1.ClusterServiceClass{}, listRestrictions)
 	assertList(t, actions[1], &v1beta1.ClusterServicePlan{}, listRestrictions)
@@ -535,8 +570,10 @@ func TestReconcileClusterServiceBrokerExistingClusterServicePlanDifferentClass(t
 	assertNumberOfActions(t, actions, 4)
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.clusterServiceBrokerName", "test-clusterservicebroker"),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName: util.GenerateSHA("test-clusterservicebroker"),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[0], &v1beta1.ClusterServiceClass{}, listRestrictions)
 	assertList(t, actions[1], &v1beta1.ClusterServicePlan{}, listRestrictions)
@@ -662,8 +699,10 @@ func TestReconcileClusterServiceBrokerDelete(t *testing.T) {
 			assertNumberOfActions(t, catalogActions, 7)
 
 			listRestrictions := clientgotesting.ListRestrictions{
-				Labels: labels.Everything(),
-				Fields: fields.OneTermEqualSelector("spec.clusterServiceBrokerName", broker.Name),
+				Labels: labels.SelectorFromSet(labels.Set{
+					v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName: util.GenerateSHA("test-clusterservicebroker"),
+				}),
+				Fields: fields.Everything(),
 			}
 			assertList(t, catalogActions[0], &v1beta1.ClusterServiceClass{}, listRestrictions)
 			assertList(t, catalogActions[1], &v1beta1.ClusterServicePlan{}, listRestrictions)
@@ -674,7 +713,7 @@ func TestReconcileClusterServiceBrokerDelete(t *testing.T) {
 
 			assertGet(t, catalogActions[5], broker)
 
-			updatedClusterServiceBroker = assertUpdateStatus(t, catalogActions[6], broker)
+			updatedClusterServiceBroker = assertUpdate(t, catalogActions[6], broker)
 			assertEmptyFinalizers(t, updatedClusterServiceBroker)
 
 			events := getRecordedEvents(testController)
@@ -774,8 +813,10 @@ func TestReconcileClusterServiceBrokerZeroServices(t *testing.T) {
 	assertNumberOfActions(t, actions, 3)
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.clusterServiceBrokerName", broker.Name),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName: util.GenerateSHA("test-clusterservicebroker"),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[0], &v1beta1.ClusterServiceClass{}, listRestrictions)
 	assertList(t, actions[1], &v1beta1.ClusterServicePlan{}, listRestrictions)
@@ -932,8 +973,10 @@ func TestReconcileClusterServiceBrokerWithReconcileError(t *testing.T) {
 	assertNumberOfActions(t, actions, 4)
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.clusterServiceBrokerName", broker.Name),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName: util.GenerateSHA("test-clusterservicebroker"),
+		}),
+		Fields: fields.Everything(),
 	}
 	assertList(t, actions[0], &v1beta1.ClusterServiceClass{}, listRestrictions)
 	assertList(t, actions[1], &v1beta1.ClusterServicePlan{}, listRestrictions)
@@ -945,7 +988,7 @@ func TestReconcileClusterServiceBrokerWithReconcileError(t *testing.T) {
 	if !ok {
 		t.Fatalf("couldn't convert to a ClusterServiceClass: %+v", createSCAction.GetObject())
 	}
-	if e, a := getTestClusterServiceClass(), createdSC; !reflect.DeepEqual(e, a) {
+	if e, a := getTestClusterServiceClassWithoutLabels(), createdSC; !reflect.DeepEqual(e, a) {
 		t.Fatalf("unexpected diff for created ClusterServiceClass: %v,\n\nEXPECTED: %+v\n\nACTUAL:  %+v", diff.ObjectReflectDiff(e, a), e, a)
 	}
 	updatedClusterServiceBroker := assertUpdateStatus(t, actions[3], broker)
@@ -977,11 +1020,18 @@ func TestReconcileClusterServiceBrokerSuccessOnFinalRetry(t *testing.T) {
 	startTime := metav1.NewTime(time.Now().Add(-7 * 24 * time.Hour))
 	broker.Status.OperationStartTime = &startTime
 
+	// simulate real update and return updated object,
+	// without that fake client will return empty ClusterServiceBrokers struct
+	fakeCatalogClient.AddReactor("update", "clusterservicebrokers", func(action clientgotesting.Action) (bool, runtime.Object, error) {
+		e := action.(clientgotesting.UpdateAction)
+		return true, e.GetObject(), nil
+	})
 	if err := reconcileClusterServiceBroker(t, testController, broker); err != nil {
 		t.Fatalf("This should not fail : %v", err)
 	}
 
 	brokerActions := fakeClusterServiceBrokerClient.Actions()
+
 	assertNumberOfBrokerActions(t, brokerActions, 1)
 	assertGetCatalog(t, brokerActions[0])
 
@@ -989,8 +1039,10 @@ func TestReconcileClusterServiceBrokerSuccessOnFinalRetry(t *testing.T) {
 	assertNumberOfActions(t, actions, 7)
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.clusterServiceBrokerName", broker.Name),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName: util.GenerateSHA("test-clusterservicebroker"),
+		}),
+		Fields: fields.Everything(),
 	}
 
 	// first action should be an update action to clear OperationStartTime
@@ -1087,8 +1139,10 @@ func TestReconcileClusterServiceBrokerWithStatusUpdateError(t *testing.T) {
 	assertNumberOfActions(t, actions, 6)
 
 	listRestrictions := clientgotesting.ListRestrictions{
-		Labels: labels.Everything(),
-		Fields: fields.OneTermEqualSelector("spec.clusterServiceBrokerName", broker.Name),
+		Labels: labels.SelectorFromSet(labels.Set{
+			v1beta1.GroupName + "/" + v1beta1.FilterSpecClusterServiceBrokerName: util.GenerateSHA("test-clusterservicebroker"),
+		}),
+		Fields: fields.Everything(),
 	}
 
 	assertList(t, actions[0], &v1beta1.ClusterServiceClass{}, listRestrictions)
