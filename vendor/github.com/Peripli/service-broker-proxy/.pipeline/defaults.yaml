@@ -1,0 +1,1138 @@
+#Project Setup
+general:
+  cfApiEndpoint: 'https://api.cf.sap.hana.ondemand.com'
+  cfDomain: 'cfapps.sap.hana.ondemand.com'
+  dockerRegistryProtocol: 'https'
+  fortifyApiEndpoint: '/api/v1'
+  fortifyServerUrl: 'https://fortify.mo.sap.corp/ssc'
+  fortifyFprUploadEndpoint: '/upload/resultFileUpload.html'
+  fortifyFprDownloadEndpoint: '/download/currentStateFprDownload.html'
+  fortifyReportDownloadEndpoint: '/transfer/reportDownload.html'
+  jenkinsKubernetes:
+    jnlpAgent: 'docker.wdf.sap.corp:50001/sap-production/jnlp-alpine:3.26.1-sap-02'
+  jiraApiUrl: 'https://sapjira.wdf.sap.corp/rest/api/2'
+  jiraServerUrl: 'https://sapjira.wdf.sap.corp'
+  githubApiUrl: 'https://github.wdf.sap.corp/api/v3'
+  githubServerUrl: 'https://github.wdf.sap.corp'
+  gitSshKeyCredentialsId: '' #needed to allow sshagent to run with local ssh key, see https://github.wdf.sap.corp/ContinuousDelivery/piper-library/pull/992/files#diff-b915177086c2389b01a8af4876016407L48
+  k8sHealthExecuteCheckRetries: 10
+  k8sHealthExecuteCheckSleepTimeInSeconds: 6
+  k8sHealthExecuteCheck: true
+  manualConfirmation: true
+  manualConfirmationTimeout: 720 # 1 month
+  nexusApiUrl: 'https://nexus.wdf.sap.corp:8443/stage/api'
+  productiveBranch: 'master'
+  siriusApiUrl: 'https://ifp.wdf.sap.corp/zprs/api/v1'
+  siriusUploadUrl: 'https://ifp.wdf.sap.corp/zprs/api/docs/saveDocumentInTask'
+  stashSettings: 'piper-stash-settings.yml'
+  stageConfigResource: 'piper-stage-config.yml'
+  xMakeBuildQuality: 'Milestone'
+  xMakeDevCredentialsId: 'xmakeDev'
+  xMakeNovaCredentialsId: 'xmakeNova'
+  orgToken: '6971b2eec2d3420bad0caf173ec629f6a3c7d3ba63f3445ab99ffdbf1acfb1d0'
+  pythonVersion: 'python3'
+  whitesourceAccessor: 'com.sap.piper.internal.integration.InternalWhitesource'
+  whitesourceServiceUrl: 'https://saas.whitesourcesoftware.com/api'
+  whitesourceInternalServiceUrl: 'http://mo-393ef744d.mo.sap.corp:8080/wsui/'
+
+#Steps Specific Configuration
+steps:
+  callIRIS:
+    dockerImage: 'docker.wdf.sap.corp:51148/test/iris:latest'
+    dockerWorkspace: '/home/root/scripts'
+    irisManifest: ''
+    irisManifestFile: 'IRISManifest.properties'
+    libraryFrameworkJenkinsName: 'iris-framework'
+    libraryFrameworkRepository: 'iris-framework'
+    libraryFrameworkOrganization: 'ProjectIRIS'
+    libraryContentBaseJenkinsName: 'iris-base'
+    libraryContentBaseRepository: 'iris-base'
+    libraryContentBaseOrganization: 'ProjectIRIS'
+    libraryContentJenkinsName: 'iris'
+    libraryContentRepository: 'iris'
+    libraryContentOrganization: 'ProjectIRIS'
+    useCaseVersion: ''
+    verbose: true
+    ITPCaller:
+      spcType: 'NZA'
+      customerITPParameter: {}
+      triggerOnly: false
+    ITPStatusGetter:
+      spcType: 'NZA'
+    ITPSynchronousCaller:
+      spcType: 'NZA'
+      customerITPParameter: {}
+      timeOut: 1800
+      triggerOnly: false
+  cloudFoundryDeploy:
+    cloudFoundry:
+      apiEndpoint: 'https://api.cf.sap.hana.ondemand.com'
+    mtaDeployPlugin:
+      dockerImage: 'docker.wdf.sap.corp:50000/cf-cli-mta-plugin/cf-cli-mta-plugin'
+      dockerWorkspace: '/home/piper'
+  deployMultipartAppToCloudFoundry:
+    deployType: 'standard'
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/cf-cli'
+    dockerWorkspace: '/home/piper'
+    modules: []
+  deployToCloudFoundry:
+    deployTool: 'cf_native'
+    deployType: 'standard'
+    mtaDeployParameters: '-f'
+    mtaExtensionDescriptor: ''
+    mtaPath: ''
+    smokeTestScript: 'blueGreenCheck.sh'
+    stashContent: []
+    app_deployer:
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/jenkins:2.60.3-20170912-1410'
+      dockerWorkspace: '/var/jenkins_home'
+    cf_native:
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/cf-cli'
+      dockerWorkspace: '/home/piper'
+    cf_native_staging:
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/cf-cli'
+      dockerWorkspace: '/home/piper'
+    mtaDeployPlugin:
+      dockerImage: 'docker.wdf.sap.corp:50000/cf-cli-mta-plugin/cf-cli-mta-plugin'
+      dockerWorkspace: '/home/piper'
+  deployToCloudFoundryWithIRIS:
+    run: false
+    cfManifest: {}
+    transferFile: 'exitIRISTenants.json'
+    verbose: false
+  deployToKubernetes:
+    helmDeployWaitSeconds: 300
+    helmEnvVars:
+      KUBECONFIG: '/home/piper/.kube/config'
+      HELM_HOME: '/home/piper/.helm'
+    helmInstallCommand: "helm upgrade ${config.helmDeploymentName} ${config.helmChartPath} --install --force --namespace ${config.k8sDeploymentNamespace} ${config.helmTillerNamespace?' --tiller-namespace '+config.helmTillerNamespace:''} --wait --timeout ${config.helmDeployWaitSeconds} ${config.helmDeploymentParameters?:''} ${config.kubeContext?'--kube-context ' + config.kubeContext:''}"
+    helmDeploymentParameters: '--set image.repository=${config.dockerRegistry}/${config.deployImageName},image.tag=${config.deployImageTag},secret.dockerconfigjson=${config.k8sDockerSecret}${config.ingressHostsString}'
+    createDockerRegistrySecret: true
+    stashContent:
+      - deployDescriptor
+    helm:
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/k8s'
+      dockerWorkspace: '/home/piper'
+    kubectl:
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/k8s'
+      dockerWorkspace: '/home/piper'
+  detectExecuteScan:
+    detect:
+      serverUrl: https://sap.blackducksoftware.com
+      scanProperties:
+        - '--blackduck.signature.scanner.memory=4096'
+        - '--blackduck.timeout=6000'
+        - '--blackduck.trust.cert=true'
+        - '--detect.policy.check.fail.on.severities=BLOCKER,CRITICAL,MAJOR'
+        - '--detect.project.version.distribution=SaaS'
+        - '--detect.report.timeout=4800'
+        - '--logging.level.com.synopsys.integration=DEBUG'
+  downloadArtifactsFromNexus:
+    artifactType: 'maven'
+    assemblyPath: 'assembly'
+    buildTool: 'maven'
+    fromStaging: false
+    nexusUrl: 'http://nexus.wdf.sap.corp:8081/'
+    promoteEndpoint: 'nexus/content/repositories/'
+    promoteRepository: 'deploy.${quality}s${npmSuffix}/'
+    stageEndpoint: 'stage/repository/'
+    # artifactType specific
+    dub:
+      buildDescriptorFile: 'dub.json'
+      group: 'com.sap.dlang'
+      packaging: 'tar.gz'
+    dockerbuild-releaseMetadata:
+      classifier: 'releaseMetadata'
+      packaging: 'zip'
+    #jave is Deprecated: replaced by maven
+    java:
+      buildDescriptorFile: 'pom.xml'
+    maven:
+      buildDescriptorFile: 'pom.xml'
+    maven-mta:
+      buildDescriptorFile: '${assemblyPath}/pom.xml'
+      packaging: 'mtar'
+    mta:
+      buildDescriptorFile: 'mta.yaml'
+      packaging: 'mtar'
+    npm:
+      buildDescriptorFile: 'package.json'
+      extractPackage: true
+      packaging: 'tgz'
+    python:
+      buildDescriptorFile: 'setup.py'
+      extractPackage: true
+      group: 'com.sap.pypi'
+      packaging: 'tar.gz'
+    sbt:
+      buildDescriptorFile: 'sbtDescriptor.json'
+    zip:
+      buildDescriptorFile: 'pom.xml'
+      extractPackage: true
+      packaging: 'zip'
+  executeBatsTests:
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/node'
+    dockerWorkspace: '/home/piper'
+    envVars: {}
+    outputFormat: 'junit' # tap, junit
+    testPath: 'src/test'
+    failOnError: false
+    repository: 'https://github.com/bats-core/bats-core.git'
+    stashContent:
+      - 'tests'
+    testPackage: 'piper-bats'
+  executeBuild:
+    buildType: 'xMakeStage'
+    xMakeDownloadBuildResult: true
+    xMakeJobNameTemplate: "${githubOrg}-${githubRepo}-SP-${quality}-common${shipmentType?'_'+shipmentType:''}"
+    xMakeJobParameters: []
+    xMakeShipmentType: 'indirectshipment'
+    dockerLocal:
+      containerBuildOptions: '--pull'
+    kaniko:
+      containerBuildOptions: '--no-push --skip-tls-verify-pull'
+      containerCommand: '/busybox/tail -f /dev/null'
+      containerShell: '/busybox/sh'
+      #workaround for https://github.com/GoogleContainerTools/kaniko/issues/645
+      #dockerImage: 'gcr.io/kaniko-project/executor:debug-v0.9.0'
+      dockerImage: docker.wdf.sap.corp:50000/piper/kaniko:latest
+      dockerOptions: "-u 0 --entrypoint=''"
+  executeCheckmarxScan:
+    checkmarxServerUrl: 'https://cx.wdf.sap.corp:443'
+    filterPattern: '!**/node_modules/**, !**/.xmake/**, !**/*_test.go, !**/vendor/**/*.go, **/*.html, **/*.xml, **/*.go, **/*.py, **/*.js, **/*.scala, **/*.ts'
+    incremental: true
+    fullScansScheduled: true
+    fullScanCycle: 5
+    avoidDuplicateProjectScans: false
+    generatePdfReport: true
+    vulnerabilityThresholdEnabled: true
+    vulnerabilityThresholdResult: 'FAILURE'
+    vulnerabilityThresholdHigh: 100
+    vulnerabilityThresholdMedium: 100
+    vulnerabilityThresholdLow: 10
+    vulnerabilityThresholdUnit: 'percentage'
+    validTypeScriptPresets:
+      '100131': 'SAP_Default_Typescript'
+      '100154': 'SAP_Default_TypeScript_JavaScript'
+  executeDasterScan:
+    oAuthGrantType: client_credentials
+    oAuthSource: uaa.resource
+    scanType: 'basicScan'
+    serviceUrl: 'https://daster.wdf.sap.corp/'
+    synchronous: true
+    deleteScan: true
+    thresholds:
+      fail:
+        high: 0
+  executeDocker:
+    stashContent: []
+    stashBackConfig:
+      excludes: 'nohup.out'
+  executeDockerOnKubernetes:
+    stashContent: []
+    stashBackConfig:
+      excludes: 'nohup.out'
+  executeFortifyAuditStatusCheck:
+    considerSuspicious: 'ON'
+    dateFormat: "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+    pollingMinutes: 10
+    deltaMinutes: 20
+    fortifyProjectName: '${group}-${artifact}'
+    fortifyProjectVersion: '${version}'
+    scanType: 'maven'
+    spotCheckMinimum: 1
+    verbose: false
+    reporting: true
+    reportType: 'PDF'
+    maven:
+      buildDescriptorFile: './pom.xml'
+    pip:
+      buildDescriptorFile: './setup.py'
+  executeFortifyScan:
+    pullRequestMessageRegex: '.*Merge pull request #(\d+) from.*'
+    pullRequestMessageRegexGroup: 1
+    maven:
+      buildDescriptorFile: './pom.xml'
+    pip:
+      buildDescriptorFile: './setup.py'
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/fortify'
+    dockerWorkspace: '/home/piper'
+    environment: 'xMake'
+    fortifyProjectName: '${group}-${artifact}'
+    fortifyProjectVersion: '${version}'
+    buildDescriptorExcludeList: []
+    mvnCustomArgs: ''
+    mvnSettingsFile: 'piper-settings.xml'
+    scanType: 'maven'
+    quickScan: false
+    memory: '-Xmx4G -Xms512M'
+    stashContent:
+      - 'buildDescriptor'
+      - 'deployDescriptor'
+      - 'tests'
+      - 'opensourceConfiguration'
+    updateRulePack: true
+    uploadResults: true
+    xMakeJobName: '${githubOrg}-${githubRepo}-OD-fortify-fortify'
+    xMakeServer: 'xmake-dev'
+    # pythonRequirementsFile: 'requirements.txt'
+    pythonAdditionalPath: './lib'
+    pythonInstallCommand: '${pip} install --user --index-url http://nexus.wdf.sap.corp:8081/nexus/content/groups/build.snapshots.pypi/simple/ --trusted-host nexus.wdf.sap.corp .'
+    pythonIncludes: './**/*'
+    pythonExcludes: '-exclude ./**/test/**/*'
+  executeGaugeTests:
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/gauge'
+    dockerWorkspace: '/home/piper'
+    failOnError: false
+    stashContent:
+      - 'buildDescriptor'
+      - 'tests'
+    testOptions: '-DspecsDir=specs'
+  executeHealthCheck:
+    healthEndpoint: ''
+  executeHubDetectScan:
+    blackDuckHubServerUrl: 'https://sap.blackducksoftware.com'
+    projectVersion: '1.0'
+    scanType: 'dep'
+    stashContent:
+      - 'buildDescriptor'
+      - 'checkmarx'
+    custom:
+      detectProperties: []
+    dep:
+      detectProperties:
+        - '--blackduck.hub.auto.import.cert=true'
+        - '--blackduck.hub.timeout=600000'
+        - '--detect.hub.signature.scanner.memory=4096'
+        - '--detect.policy.check=true'
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/golang'
+      dockerWorkspace: '/home/piper'
+  executeNewmanTests:
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/node'
+    dockerWorkspace: '/home/piper'
+    failOnError: true
+    newmanCollection: '**/*.postman_collection.json'
+    newmanEnvironment: ''
+    newmanGlobals: ''
+    newmanInstallCommand: 'npm install newman newman-reporter-html --global --quiet'
+    newmanRunCommand: "run '${config.newmanCollection}' --environment '${config.newmanEnvironment}' --globals '${config.newmanGlobals}' --reporters junit,html --reporter-junit-export 'target/newman/TEST-${collectionDisplayName}.xml' --reporter-html-export 'target/newman/TEST-${collectionDisplayName}.html'"
+    stashContent:
+      - 'buildDescriptor'
+      - 'tests'
+  executeNspScan:
+    buildDescriptorFile: './package.json'
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/node'
+    dockerWorkspace: '/home/piper'
+    scanType: 'npm'
+    stashContent:
+      - 'buildDescriptor'
+      - 'tests'
+      - 'opensourceConfiguration'
+    auditLevel: high
+    toJson: false
+  executeOnePageAcceptanceTests:
+    allowNoTests: true
+    buildTool: 'maven'
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/selenium'
+    dockerWorkspace: '/home/piper'
+    failOnError: false
+    modules: '.'
+    stashContent: []
+    stashName: 'opa5'
+    timeout: 5
+    maven:
+      dockerCommand: '/opt/selenium/start.sh mvn -B clean verify -Dwebdriver.chrome.driver=/opt/selenium/chromedriver'
+      dockerEnvVars:
+        DBUS_SESSION_BUS_ADDRESS: '/dev/null'
+    npm:
+      dockerCommand: '/opt/bin/start.sh npm install --quiet --prefix ${module} && npm run opa --prefix ${module}'
+      dockerEnvVars: {}
+  executeOpenSourceDependencyScan:
+    buildDescriptorExcludeList: []
+    protecodeActive:
+      - dub
+      - docker
+      - golang
+    vulasActive:
+      - java
+      - maven
+      - mta
+      - pip
+    whitesourceActive:
+      - golang
+    whitesourceActiveOld:
+      - dub
+      - mta
+      - npm
+      - sbt
+  executePerformanceJMeterTests:
+    dockerCommand: '/bin/bash /opt/selenium/start_mvn verify -Dtest.hostname=${config.testServerUrl} ${config.testOptions}'
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/performance'
+    dockerVolumeBind:
+      '/dev/shm': '/dev/shm'
+    dockerWorkspace: '/home/piper'
+    failOnError: false
+    jdroidUrl: 'https://jdroid.cfapps.sap.hana.ondemand.com'
+    stashContent:
+      - 'buildDescriptor'
+      - 'tests'
+    testOptions: ''
+    testTool: 'container'
+    container:
+      perfJMeterTestPath: './'
+    jdroid:
+      perfJMeterTestPath: ''
+  executePerformanceNGrinderTests:
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/ngrinder'
+    dockerWorkspace: '/home/piper'
+    stashContent:
+      - 'buildDescriptor'
+      - 'tests'
+  executePerformanceSingleUserTests:
+    dockerEnvVars: {}
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/performance'
+    dockerVolumeBind:
+      '/dev/shm': '/dev/shm'
+    failOnError: false
+    stashContent: []
+    testResultFile: 'browserApiResult.csv'
+    testTool: 'supa'
+    supa:
+      dockerCommand: "/bin/bash /opt/selenium/start_mvn test -Dtest=${config.testCase} -DargLine='-DPerfTestUrl=${config.testServerUrl}'"
+    browserApi:
+      dockerCommand: "/bin/bash /opt/selenium/start_mvn test -Dtest=${config.testCase} -DargLine='-DCSVFile=${config.testResultFile} -DPerfTestUrl=${config.testServerUrl}'"
+  executePerformanceUnitTests:
+    dockerCommand: 'mvn test'
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/maven'
+    dockerWorkspace: '/home/piper'
+    failOnError: false
+    stashContent:
+      - 'buildDescriptor'
+      - 'tests'
+  executePitTests:
+    buildDescriptorFile: './pom.xml'
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/maven'
+    dockerWorkspace: '/home/piper'
+    stashContent:
+      - 'buildDescriptor'
+      - 'tests'
+    runOnlyScheduled: false
+    coverageThreshold: 50
+    mutationThreshold: 50
+    pitHtml:
+      active: true
+      allowEmptyResults: true
+      archive: true
+      path: '**/target/pit-reports'
+      file: 'index.html'
+      name: 'PIT Report'
+  executePPMSComplianceCheck:
+    scanType: 'whitesource'
+  executePPMSWhitesourceComplianceCheck:
+    changeRequestFileName: 'piper_foss-changerequest.json'
+    ppmsBuildVersionEndpoint: '/sap/internal/ppms/api/changerequest/v1/cvbv'
+    ppmsChangeRequestEndpoint: '/sap/internal/ppms/api/changerequest/v1/cvpart'
+    ppmsChannelID: 'GTMC_10'
+    ppmsServerUrl: 'https://i7p.wdf.sap.corp'
+    reportFileName: 'piper_whitesource_ppms_report'
+    reportName: 'PPMS Compliance Check Report'
+    timeout: 0
+  executeProtecodeScan:
+    addSideBarLink: true
+    cleanupMode: 'binary'
+    protecodeServerUrl: 'https://protecode.c.eu-de-2.cloud.sap'
+    protecodeExcludeCVEs: []
+    protecodeFailOnSevereVulnerabilities: true
+    protecodeTimeoutMinutes: 60
+    reportFileName: 'protecode_report.pdf'
+    reuseExisting: false
+    scanType: 'docker'
+    useCallback: false
+    verbose: false
+  executeSonarScan:
+    dockerEnvVars: {}
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/sonar'
+    dockerWorkspace: '/home/piper'
+    # already set globally in https://sonarci.wdf.sap.corp:8443/sonar
+    #githubApiUrl: 'https://github.wdf.sap.corp/api/v3'
+    instance: 'SAP SonarQube'
+    options: "-Dsonar.projectVersion='${projectVersion}'"
+    stashContent:
+      - 'buildDescriptor'
+      - 'git'
+      - 'sonar'
+  executeSourceclearScan:
+    dockerWorkspace: '/home/piper'
+    scanType: 'sbt'
+    sourceClearProjectName: '${group}-${artifact}'
+    sourceClearProjectVersion: '${version}'
+    sourceClearScmRef: 'master'
+    sourceClearScmRefType: 'branch'
+    sourceClearScmUri: 'https://github.wdf.sap.corp/unknown_repo.git'
+    stashContent:
+      - 'buildDescriptor'
+      - 'git'
+      - 'opensourceConfiguration'
+      - 'tests'
+    toJson: false
+    maven:
+      buildDescriptorFile: './pom.xml'
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/maven'
+    npm:
+      buildDescriptorFile: './package.json'
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/node'
+    pip:
+      buildDescriptorFile: './setup.py'
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/node'
+    sbt:
+      buildDescriptorFile: './sbtDescriptor.json'
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/sbt'
+  executeVulasScan:
+    serverUrl: 'https://vulas.c.eu-de-2.cloud.sap'
+    backendEndpoint: '/backend'
+    svmServerUrl: 'https://svmprodw8563e4f1.int.sap.hana.ondemand.com'
+    svmEndpoint: '/SVM/services'
+    svmExemptionFileName: 'vulas-exemptionsFromSvm.properties'
+    space:
+      exportConfiguration: 'AGGREGATED'
+      public: true
+      owners: []
+    scanType: 'maven'
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/maven'
+    dockerWorkspace: '/home/piper'
+    mta:
+      buildDescriptorFile: './pom.xml'
+      stashContent:
+        - 'buildDescriptor'
+        - 'deployDescriptor'
+        - 'opensourceConfiguration'
+        - 'tests'
+    maven:
+      buildDescriptorFile: './pom.xml'
+      stashContent:
+        - 'buildDescriptor'
+        - 'deployDescriptor'
+        - 'opensourceConfiguration'
+        - 'tests'
+    pip:
+      buildDescriptorFile: './setup.py'
+      stashContent:
+        - 'buildDescriptor'
+        - 'opensourceConfiguration'
+        - 'tests'
+        - 'checkmarx'
+    mvnSettingsFile: 'piper-settings.xml'
+    pythonInstallCommand: '${pip} install --user --upgrade --index-url http://nexus.wdf.sap.corp:8081/nexus/content/groups/build.snapshots.pypi/simple/ --trusted-host nexus.wdf.sap.corp --no-cache-dir setuptools vulas-plugin-setuptools .'
+    pythonSources: []
+    vulasPurgeVersions: true
+    vulasPurgeVersionsKeepLast: 5
+    vulasNightlyCommand: "-T 1C -Dmaven.test.failure.ignore=true -Djacoco.skip=true ${vulasProperty} ${vulasPlugin}:clean compile ${vulasPlugin}:app ${vulasPlugin}:a2c ${vulasPlugin}:prepare-vulas-agent install ${vulasPlugin}:upload ${vulasPlugin}:t2c"
+    vulasCycleCommand: "-DskipTests ${vulasProperty} ${vulasPlugin}:clean compile ${vulasPlugin}:app install"
+    vulasProperty: '-Dvulas'
+    vulasPlugin: 'com.sap.research.security.vulas:plugin-maven'
+  executeWhitesourceScan:
+    buildDescriptorExcludeList: []
+    parallelLimit: 0
+    scanType: 'maven'
+    licensingVulnerabilities: true
+    securityVulnerabilities: false
+    reporting: true
+    vulnerabilityReportFileName: 'piper_whitesource_vulnerability_report'
+    vulnerabilityReportTitle: 'Whitesource Security Vulnerability Report'
+    docker:
+      buildDescriptorFile: './package.json'
+      configFilePath: './docker.metadata.json'
+      dockerImage: 'docker.wdf.sap.corp:50001/com-sap-prd-xmake/docker-java:17.06.1-8'
+      dindImage: 'docker.wdf.sap.corp:50001/com-sap-prd-xmake/docker-dind:17.06.1-9'
+      dockerWorkspace: '/home/piper'
+      agentDownloadUrl: 'http://nexus.wdf.sap.corp:8081/nexus/service/local/repositories/deploy.milestones/content/com/sap/prd/external/org/whitesource/docker-agent-cmd/1.0.0/docker-agent-cmd-1.0.0.jar'
+      stashContent:
+        - 'buildDescriptor'
+        - 'opensourceConfiguration'
+        - 'postStagedFiles'
+    unifiedAgent:
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/maven'
+      dockerWorkspace: '/home/piper'
+      agentFileName: 'wss-unified-agent.jar'
+      agentDownloadUrl: 'https://github.com/whitesource/unified-agent-distribution/releases/latest/download/${config.agentFileName}'
+      agentParameters: ''
+      configFilePath: './wss-unified-agent.config'
+      stashContent:
+        - 'buildDescriptor'
+        - 'opensourceConfiguration'
+        - 'checkmarx'
+    fileAgent:
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/maven'
+      dockerWorkspace: '/home/piper'
+      agentFileName: 'whitesource-fs-agent.jar'
+      agentDownloadUrl: 'https://github.com/whitesource/fs-agent-distribution/raw/master/standAlone/${config.agentFileName}'
+      agentParameters: ''
+      configFilePath: './whitesource-fs-agent.config'
+      stashContent:
+        - 'buildDescriptor'
+        - 'opensourceConfiguration'
+        - 'checkmarx'
+    maven:
+      buildDescriptorFile: './pom.xml'
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/maven'
+      dockerWorkspace: '/home/piper'
+      stashContent:
+        - 'buildDescriptor'
+        - 'tests'
+      pluginVersion: '19.5.1'
+      mvnCustomArgs: '-DskipTests=true install'
+    mta:
+      stashContent:
+        - 'buildDescriptor'
+        - 'opensourceConfiguration'
+        - 'tests'
+    npm:
+      buildDescriptorFile: './package.json'
+      configFilePath: './whitesource.config.json'
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/node'
+      dockerWorkspace: '/home/piper'
+      stashContent:
+        - 'buildDescriptor'
+        - 'opensourceConfiguration'
+      skipNpmDedupe: true
+    pip:
+      buildDescriptorFile: './setup.py'
+      configFilePath: './whitesource_config.py'
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/node'
+      dockerWorkspace: '/home/piper'
+      stashContent:
+        - 'buildDescriptor'
+        - 'opensourceConfiguration'
+    sbt:
+      buildDescriptorFile: './build.sbt'
+      configFilePath: './build.sbt'
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/sbt'
+      dockerWorkspace: '/home/piper'
+      whitesourceAgentUrl: 'http://mo-393ef744d.mo.sap.corp:8080/wsui/wspluginProxy.jsp'
+      stashContent:
+        - 'buildDescriptor'
+        - 'opensourceConfiguration'
+        - 'checkmarx'
+    verbose: false
+    timeout: 0
+  exitIRISGeneralPreExit:
+    run: false
+    callingScript: 'piperExits/exitIRISGeneralPreExit_Docker.groovy'
+    verbose: false
+    dockerImage: 'docker.wdf.sap.corp:51148/test/iris:latest'
+    dockerWorkspace: '/home/root/scripts'
+    oDataBusinessType: 'ZH421'
+    oDataFreeStyle: ''
+    oDataLifecycleStatus: 'LIVE'
+    oDataTenantRole: '04'
+    spc: 'NZA'
+    stashContent: []
+  hadolintExecute:
+    configurationUrl: 'https://github.wdf.sap.corp/raw/SGS/Hadolint-Dockerfile/master/.hadolint.yaml'
+  handlePipelineStepErrors:
+    failOnError: true
+    libraryDocumentationUrl: 'https://github.wdf.sap.corp/pages/ContinuousDelivery/piper-doc/'
+    mandatorySteps:
+      - executeBuild
+      - testsPublishResults
+      - checksPublishResults
+    stepTimeouts:
+      executeCheckmarxScan: 60
+      executeFortifyScan: 60
+      executeVulasScan: 60
+      executeProtecodeScan: 60
+  handleStepErrors:
+    allowBuildFailure: false
+    echoDetails: true
+    echoParameters: true
+  kanikoExecute:
+    customTlsCertificateLinks:
+      - http://aia.pki.co.sap.com/aia/SAPNetCA_G2.crt
+      - http://aia.pki.co.sap.com/aia/SAP%20Global%20Root%20CA.crt
+    #workaround for https://github.com/GoogleContainerTools/kaniko/issues/645
+    #dockerImage: 'gcr.io/kaniko-project/executor:debug-v0.9.0'
+    dockerImage: docker.wdf.sap.corp:50000/piper/kaniko:latest
+  manageCloudFoundryEnvironment:
+    cfCredentialsId: 'CF_CREDENTIAL'
+    command: 'setup-environment -y ${config.environmentDescriptorFile}'
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/cf-cli'
+    dockerWorkspace: '/home/piper'
+    noCreateServicePush: false
+    environmentDescriptorFile: 'environment.yml'
+    cloudFoundry:
+      serviceManifest: 'service-manifest.yml'
+    stashContent:
+      - 'deployDescriptor'
+  manageUaaService:
+    cfServicePlan: 'broker'
+    dockerImage: 'docker.wdf.sap.corp:50000/piper/cf-cli'
+    dockerWorkspace: '/home/piper'
+    stashContent:
+      - 'securityDescriptor'
+    xsSecurityFile: 'xs-security.json'
+  mtaBuild:
+    globalSettingsFile: 'https://nexusmil.wdf.sap.corp:8443/nexus/service/local/templates/settings/LeanDI/content'
+  publishCheckResults:
+    archive: false
+    aggregation:
+      active: true
+      thresholds:
+        fail:
+          high: '0'
+    tasks:
+      pattern: '**/*.java'
+      low: ''
+      normal: 'TODO,REVISE,XXX'
+      high: 'FIXME'
+      archive: true
+      active: false
+      thresholds:
+        fail:
+          high: '0'
+    pmd:
+      pattern: '**/target/pmd.xml'
+      archive: true
+      active: false
+      thresholds:
+        fail:
+          high: '0'
+    cpd:
+      pattern: '**/target/cpd.xml'
+      archive: true
+      active: false
+      thresholds:
+        fail:
+          high: '0'
+    findbugs:
+      pattern: '**/target/findbugsXml.xml, **/target/findbugs.xml'
+      archive: true
+      active: false
+      thresholds:
+        fail:
+          high: '0'
+    checkstyle:
+      pattern: '**/target/checkstyle-result.xml'
+      archive: true
+      active: false
+      thresholds:
+        fail:
+          high: '0'
+    eslint:
+      pattern: '**/target/eslint.checkstyle.xml'
+      archive: true
+      active: false
+      thresholds:
+        fail:
+          high: '0'
+    fiori:
+      pattern: '**/target/fiori-quality-report.xml'
+      archive: true
+      active: false
+      thresholds:
+        fail:
+          high: '0'
+    pylint:
+      pattern: '**/pylint.log'
+      archive: true
+      active: false
+      thresholds:
+        fail:
+          high: '0'
+  publishGithubRelease:
+    addClosedIssues: false
+    addDeltaToLastRelease: false
+    customFilterExtension: ''
+    excludeLabels:
+      - 'wontfix'
+      - 'duplicate'
+  publishTestResults:
+    failOnError: true
+    cobertura:
+      active: false
+      allowEmptyResults: true
+      archive: false
+      onlyStableBuilds: true
+      pattern: '**/target/coverage/**/cobertura-coverage.xml'
+    contiperf:
+      active: false
+      allowEmptyResults: true
+      archive: false
+      file: 'index.html'
+      name: 'ContiPerf Report'
+      path: '**/target/contiperf-report'
+    gauge:
+      active: false
+      allowEmptyResults: true
+      archive: false
+      file: 'index.html'
+      name: 'Gauge HTML Report'
+      path: 'reports/html-report'
+    html:
+      active: false
+      allowEmptyResults: true
+      archive: false
+      file: 'index.html'
+      name: ''
+      path: ''
+    jacoco:
+      active: false
+      allowEmptyResults: true
+      archive: false
+      exclude: ''
+      include: ''
+      pattern: '**/target/*.exec'
+      sources: '**/src/main/java'
+      classes: '**/classes'
+    junit:
+      active: false
+      allowEmptyResults: true
+      archive: false
+      pattern: '**/target/surefire-reports/*.xml'
+    jmeter:
+      analysisReport: true
+      dashboardReport: false
+      pattern: '**/*.jtl'
+      errorFailedThreshold: 20
+      errorUnstableThreshold: 10
+      errorUnstableResponseTimeThreshold: ''
+      relativeFailedThresholdPositive: 0
+      relativeFailedThresholdNegative: 0
+      relativeUnstableThresholdPositive: 0
+      relativeUnstableThresholdNegative: 0
+      modeOfThreshold: false
+      modeThroughput: false
+      nthBuildNumber: 0
+      configType: 'PRT'
+      compareBuildPrevious: true
+      allowEmptyResults: true
+      archive: false
+      active: false
+      updateResults: false
+    jmeterAnalysis:
+      active: false #overridden by jmeter.analysisReport
+      allowEmptyResults: true
+      archive: false
+      file: 'index.html'
+      name: 'JMeter Test'
+      path: '**/target/jmeter/results'
+    jmeterDashboard:
+      active: false #overridden by jmeter.dashboardReport
+      allowEmptyResults: true
+      archive: false
+      file: 'index.html'
+      name: 'JMeter Dashboard'
+      path: '**/target/jmeter/reports/*'
+    lcov:
+      active: false
+      allowEmptyResults: true
+      archive: false
+      file: 'index.html'
+      name: 'LCOV Coverage'
+      path: '**/target/coverage/lcov-report'
+    supa:
+      active: false
+      allowEmptyResults: true
+      archive: false
+      file: 'supa_result.html'
+      name: 'SUPA Test'
+      path: '**/target/supa'
+    supt:
+      active: false
+      allowEmptyResults: true
+      archive: false
+      file: '*.csv'
+      name: 'Single User Test'
+      path: ''
+  pushToDockerRegistry:
+    sourceRegistryProtocol: 'https'
+    tagLatest: false
+  restartableSteps:
+    sendMail: true
+    timeoutInSeconds: 900
+  sapCreateTraceabilityReport:
+    deliveryMappingFile: 'delivery.mapping'
+    failOnError: true
+    reportTitle: 'Full Software Requirement Test Report'
+    requirementMappingFile: 'requirement.mapping'
+    stashContent:
+      - 'traceabilityMapping'
+    terServerUrl: 'https://ter.tools.sap.corp'
+    terUploadEndpoint: '/v1/api/traceability/fc2/update/twb'
+    terValidation: true
+    terValidationEndpoint: '/v1/api/validation/fc2input'
+    checkAllRequirements: false
+  sapJiraWriteIssueList:
+    fileName: 'issueList.html'
+    reportTitle: 'Jira Issue List'
+  sapJiraWriteTaskStatus:
+    fileName: 'taskStatus.html'
+    reportTitle: 'Jira Task Status'
+  sendNotificationMail:
+    notificationAttachment: true
+    notifyCulprits: true
+    numLogLinesInBody: 100
+    wrapInNode: false
+  sendNotificationSlack:
+    color: "${buildStatus == 'SUCCESS'?'#008000':'#E60000'}"
+    defaultMessage: "${buildStatus}: Job <${env.BUILD_URL}|${URLDecoder.decode(env.JOB_NAME, java.nio.charset.StandardCharsets.UTF_8.name())} ${env.BUILD_DISPLAY_NAME}>"
+  sendNotificationMSTeams:
+    color: "${buildStatus == 'SUCCESS'?'#008000':'#E60000'}"
+    defaultMessage: "${buildStatus}: Job ${env.JOB_NAME} <${env.BUILD_URL}> <br/>Blue Ocean: <${env.RUN_DISPLAY_URL}> <br/>Last committers:<br/>${culpritCommitters}"
+    notifyCulprits: true
+  setupPipelineEnvironment:
+    buildDiscarder:
+      daysToKeep: -1
+      numToKeep: 10
+      artifactDaysToKeep: -1
+      artifactNumToKeep: -1
+    configFile: '.pipeline/config.properties'
+    configYmlFile: '.pipeline/config.yml'
+    githubApiUrl: 'https://github.wdf.sap.corp/api/v3'
+    gitHttpsUrl: 'https://github.wdf.sap.corp/${githubOrg}/${githubRepo}.git'
+    gitSshUrl: 'git@github.wdf.sap.corp:${githubOrg}/${githubRepo}.git'
+    nightlySchedule: 'H(0-59) H(18-23) * * *'
+    runNightly: false
+    relatedLibraries:
+    - 'piper-lib-os'
+    storeGithubStatistics: false
+  setVersion:
+    buildTool: 'maven'
+    commitVersion: true
+    tagPrefix: 'build_'
+    timestampTemplate: '%Y%m%d%H%M%S'
+    docker:
+      filePath: 'Dockerfile'
+      updateXmakeCfg: true
+      versioningTemplate: '${version}-${timestamp}${commitId?"_"+commitId:""}'
+    dub:
+      filePath: 'dub.json'
+      versioningTemplate: '${version}-${timestamp}${commitId?"+"+commitId:""}'
+    golang:
+      filePath: 'VERSION'
+      versioningTemplate: '${version}-${timestamp}${commitId?"+"+commitId:""}'
+    maven:
+      filePath: 'pom.xml'
+      versioningTemplate: '${version}-${timestamp}${commitId?"_"+commitId:""}'
+    mta:
+      filePath: 'mta.yaml'
+      versioningTemplate: '${version}-${timestamp}${commitId?"+"+commitId:""}'
+    npm:
+      filePath: 'package.json'
+      versioningTemplate: '${version}-${timestamp}${commitId?"+"+commitId:""}'
+    pip:
+      filePath: 'version.txt'
+      versioningTemplate: '${version}.${timestamp}${commitId?"."+commitId:""}'
+    sbt:
+      filePath: 'sbtDescriptor.json'
+      versioningTemplate: '${version}-${timestamp}${commitId?"+"+commitId:""}'
+    xmake:
+      filePath: ''
+      updateXmakeCfg: false
+      versioningTemplate: '${version}-${timestamp}${commitId?"+"+commitId:""}'
+  siriusUploadDocument:
+    confidential: false
+    siriusDocumentFamily: 'TEST'
+  slackSendNotification:
+    defaultMessage: "${buildStatus}: Job <${env.BUILD_URL}|${URLDecoder.decode(env.JOB_NAME, java.nio.charset.StandardCharsets.UTF_8.name())} ${env.BUILD_DISPLAY_NAME}>"
+  sonarExecuteScan:
+    customTlsCertificateLinks:
+      - http://aia.pki.co.sap.com/aia/SAPNetCA_G2.crt
+      - http://aia.pki.co.sap.com/aia/SAP%20Global%20Root%20CA.crt
+  stashFilesAfterBuild:
+    stashIncludes:
+      classFiles: '**/target/classes/**/*.class, **/target/test-classes/**/*.class'
+      postStagedFiles: 'docker.metadata.json'
+      sonar: '**/jacoco*.exec, **/sonar-project.properties'
+    stashExcludes:
+      classFiles: ''
+      postStagedFiles: ''
+      sonar: ''
+  pipelineStashFilesAfterBuild:
+    stashIncludes:
+      classFiles: '**/target/classes/**/*.class, **/target/test-classes/**/*.class'
+      postStagedFiles: 'docker.metadata.json'
+      sonar: '**/jacoco*.exec, **/sonar-project.properties'
+    stashExcludes:
+      classFiles: ''
+      postStagedFiles: ''
+      sonar: ''
+  stashFilesBeforeBuild:
+    stashIncludes:
+      buildDescriptor: '**/pom.xml, **/.mvn/**, **/assembly.xml, **/.swagger-codegen-ignore, **/requirements.txt, **/dub.json, **/package*.json, **/npm-shrinkwrap.json, **/sbtDescriptor.json, **/setup.py, **/mta*.y*ml, **/.npmrc, .xmake.cfg, Dockerfile, .hadolint.yaml, **/VERSION, **/version.txt, **/Gopkg.*, **/build.sbt, **/project/*'
+      deployDescriptor: '**/manifest*.y*ml, **/*.mtaext.y*ml, **/*.mtaext, **/xs-app.json, helm/**, **/*.y*ml, **/runtime.txt'
+      git: '**/.git/**'
+      opa5: '**/*.*'
+      opensourceConfiguration: '**/srcclr.yml, **/vulas-custom.properties, **/vulas-python.cfg, **/.nsprc, **/whitesource_config.py, **/wss-unified-agent.config, **/whitesource.config.json, **/whitesource-fs-agent.config, **/fortify-custom.properties, **/vendor/**/*'
+      pipelineConfigAndTests: '.pipeline/**'
+      securityDescriptor: '**/xs-security.json'
+      tests: '**/*.xml, **/*.json, **/src/**, **/test/**, **/node_modules/**, **/specs/**, **/env/**, **/*.js, **/*.cds'
+      zapFiles: '**/zap/scripts/**, **/zap/context/**'
+      traceabilityMapping: '**/*.mapping'
+      checkmarx: '**/*.js, **/*.scala, **/*.py, **/*.go, **/*.xml, **/*.html, **/*.d, **/*.di, **/*.ts'
+    stashExcludes:
+      buildDescriptor: '**/node_modules/**/package.json, **/.xmake/**/setup.py'
+      deployDescriptor: '.pipeline/*.*'
+      git: ''
+      opa5: ''
+      opensourceConfiguration: ''
+      pipelineConfigAndTests: ''
+      securityDescriptor: ''
+      tests: '**/pom.xml, **/dub.json, **/package.json, **/sbtDescriptor.json, **/whitesource.config.json'
+      zapFiles: ''
+      traceabilityMapping: ''
+      checkmarx: '**/*.mockserver.js, **/node_modules/**, **/*-preload.js'
+  pipelineStashFilesBeforeBuild:
+    stashIncludes:
+      buildDescriptor: '**/pom.xml, **/.mvn/**, **/assembly.xml, **/.swagger-codegen-ignore, **/requirements.txt, **/dub.json, **/package.json, **/sbtDescriptor.json, **/setup.py, **/mta*.y*ml, **/.npmrc, .xmake.cfg, Dockerfile, **/VERSION, **/version.txt, **/Gopkg.*, **/build.sbt, **/project/*, **/ui5.yaml, **/ui5.yml'
+      deployDescriptor: '**/manifest*.y*ml, **/*.mtaext.y*ml, **/*.mtaext, **/xs-app.json, helm/**, **/*.y*ml, **/runtime.txt'
+      git: '.git/**'
+      opa5: '**/*.*'
+      opensourceConfiguration: '**/srcclr.yml, **/vulas-custom.properties, **/vulas-python.cfg, **/.nsprc, **/whitesource_config.py, **/wss-unified-agent.config, **/whitesource.config.json, **/whitesource-fs-agent.config, **/fortify-custom.properties, **/vendor/**/*'
+      pipelineConfigAndTests: '.pipeline/**'
+      securityDescriptor: '**/xs-security.json'
+      tests: '**/*.xml, **/*.json, **/src/**, **/test/**, **/node_modules/**, **/specs/**, **/env/**, **/*.js, **/*.cds, **/*.html, **/*.css, **/*.properties'
+      zapFiles: '**/zap/scripts/**, **/zap/context/**'
+      traceabilityMapping: '**/*.mapping'
+      checkmarx: '**/*.js, **/*.scala, **/*.py, **/*.go, **/*.xml, **/*.html, **/*.d, **/*.di, **/*.ts'
+    stashExcludes:
+      buildDescriptor: '**/node_modules/**/package.json'
+      deployDescriptor: '.pipeline/*.*'
+      git: ''
+      opa5: ''
+      opensourceConfiguration: ''
+      pipelineConfigAndTests: ''
+      securityDescriptor: ''
+      tests: '**/pom.xml, **/dub.json, **/package.json, **/sbtDescriptor.json, **/whitesource.config.json'
+      zapFiles: ''
+      traceabilityMapping: ''
+      checkmarx: '**/*.mockserver.js, **/node_modules/**, **/*-preload.js'
+  testsPublishResults:
+    failOnError: true
+  triggerXMakeRemoteJob:
+    xMakeServer: 'xmake-dev'
+  whitesourceExecuteScan:
+    cvssSeverityLimit: 7
+    golang:
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/golang'
+      dockerWorkspace: '/home/piper'
+    pip:
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/node'
+      dockerWorkspace: '/home/piper'
+  writeInflux:
+    influxServer: ''
+    wrapInNode: false
+  executeZAPScan:
+    dockerImage: 'docker.wdf.sap.corp:50000/owasp/zap2docker-stable'
+    dockerWorkspace: '/zap/'
+    zapPort: '8090'
+    stashContent:
+      - zapFiles
+    addonInstallList:
+      - ascanrules
+      - pscanrules
+      - groovy
+      - spiderAjax
+    context:
+      name: ''
+      user:
+        name: ''
+        id:
+        credentialsId: ''
+        userParameterName: ''
+        passwordParameterName: ''
+        additionalCreationParameters: {}
+      forcedUserMode: false
+      authentication:
+        method: ''
+        methodConfiguration: {}
+        loggedInIndicator: ''
+        loggedOutIndicator: ''
+      sessionManagement:
+        method: ''
+        methodConfiguration: {}
+      authorization:
+        headerRegex: ''
+        bodyRegex: ''
+        statusCode: ''
+        logicalOperator: 'AND'
+    scanner:
+      scanMode: 'scan'
+      inScope: 'true'
+      recurse: 'true'
+      additionalParameters: ''
+      activeScan:
+        enabled: true
+        method: 'GET'
+        header: 'User-Agent: Mozilla/5.0 (Windows NT 6.3; WOW64; rv:39.0) Gecko/20100101 Firefox/39.0\nPragma: no-cache\nCache-Control: no-cache'
+        postData: ''
+      ajaxSpiderScan:
+        enabled: true
+      spiderScan:
+        enabled: true
+      passiveScan:
+        enabled: true
+        scanners: []
+    alertThreshold: -1
+    suppressedIssues: []
+    verbose: false
+  #defaults for stage wrapper
+  piperStageWrapper:
+    extensionLocation: '.pipeline/extensions/'
+    stageLocking: true
+    nodeLabel: ''
+    stashContent:
+      - 'pipelineConfigAndTests'
+    #default ordinals per stage
+    'Init':
+      ordinal: 1
+    'Pull-Request Voting':
+      ordinal: 5
+    'Central Build':
+      ordinal: 10
+    'Additional Unit Tests':
+      ordinal: 20
+    Integration:
+      ordinal: 30
+    Acceptance:
+      ordinal: 40
+    Security:
+      ordinal: 50
+    Performance:
+      ordinal: 60
+    'IPScan and PPMS':
+      ordinal: 70
+    Promote:
+      ordinal: 80
+    Release:
+      ordinal: 90
+
+  #defaults for stage steps
+  sapPiperStageInit:
+    pullRequestStageName: 'Pull-Request Voting'
+    stepMappings:
+      fortify: 'executeFortifyScan'
+      karma: 'karmaExecuteTests'
+      opa5: 'karmaExecuteTests'
+      ppms: 'executePPMSComplianceCheck'
+      whitesource: 'whitesourceExecuteScan'
+      checkmarx: 'executeCheckmarxScan'
+    labelPrefix: 'pr_'
+  sapPiperStagePRVoting:
+    containerBuildOptions: ''
+    maven:
+      dockerCommand: 'mvn --batch-mode clean verify'
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/maven'
+      dockerWorkspace: '/home/piper'
+    mta:
+      dockerCommand: 'java -jar /usr/lib/mta-cli/mta-cli.jar --build-target CF build'
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/mta'
+      dockerWorkspace: '/home/piper'
+    npm:
+      dockerCommand: 'npm install && npm test'
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/node'
+      dockerWorkspace: '/home/piper'
+    sbt:
+      dockerCommand: 'sbt clean assembly'
+      dockerImage: 'docker.wdf.sap.corp:50000/piper/sbt'
+      dockerWorkspace: '/home/piper'
+    useCloudMbt: false
