@@ -1,5 +1,0 @@
-apiVersion: v1
-appVersion: "0.5.1"
-description: A Helm chart for Service Manager for Kubernetes
-name: service-manager
-version: 0.3.0
