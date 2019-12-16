@@ -22,3 +22,6 @@ kubeconfig*
 
 # virtualgo
 .virtualgo
+
+# vendor
+/vendor

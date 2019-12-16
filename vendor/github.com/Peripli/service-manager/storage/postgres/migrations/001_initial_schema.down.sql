@@ -1,6 +1,0 @@
-BEGIN;
-
-DROP TABLE IF EXISTS platforms;
-DROP TABLE IF EXISTS brokers;
-
-COMMIT;
