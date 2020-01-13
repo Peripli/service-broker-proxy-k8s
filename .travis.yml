@@ -6,7 +6,7 @@ go:
 # set tag for helm chart
 env:
   global:
-    - HELM_URL=https://storage.googleapis.com/kubernetes-helm/helm-v2.11.0-linux-amd64.tar.gz
+    - HELM_URL=https://get.helm.sh/helm-v3.0.2-linux-amd64.tar.gz
 
 before_install:
    - go get -u github.com/golang/dep/cmd/dep
@@ -44,7 +44,7 @@ before_deploy:
 
   # Create helm-chart
   - mkdir out
-  - helm package --app-version ${TRAVIS_TAG:-"master"} -d ./out charts/service-broker-proxy-k8s --save=false
+  - helm package --app-version ${TRAVIS_TAG:-"master"} --version ${TRAVIS_TAG:-"0.0.0"} -d ./out charts/service-broker-proxy-k8s
 
 deploy:
   provider: releases
