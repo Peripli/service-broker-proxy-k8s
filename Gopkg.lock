@@ -24,8 +24,8 @@
   version = "v1.0.1"
 
 [[projects]]
-  branch = "security_builder"
-  digest = "1:b664809b09d219e269ab4e824f4059c0699889fc762057ea5f70a51c105bab5e"
+  branch = "master"
+  digest = "1:7cfc93ca86f82d268bf49d09a979198ae2fe46c1e5b671653fe5044e929e21f8"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
     "pkg/authn",
@@ -38,11 +38,11 @@
     "pkg/sm",
   ]
   pruneopts = ""
-  revision = "ed76816a02a48bc73a601fc2761f1c50d1b54ff1"
+  revision = "18460ca073e331d717e2e8d7a20322d9482d33d6"
 
 [[projects]]
-  branch = "decouple_sec_builder"
-  digest = "1:6cd9148eaf9328a0b787a5667cf750a2cb1e8225c0b00257e7951f2ebf58e936"
+  branch = "master"
+  digest = "1:17d62e605936ced4b3ac8a13504632b03f1bd1afa4cca811b0ca291614c85de2"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -81,15 +81,15 @@
     "storage/postgres/notification_connection",
   ]
   pruneopts = ""
-  revision = "28887a164309428d9d52426d554c822f871498e6"
+  revision = "e64b05359b4a6cb8c42584a2f25910d62fcbbd40"
 
 [[projects]]
-  digest = "1:d006584293547a5a28116ac4e02e250a07911e59b3db7fb1b7ab93c25721cdcb"
+  digest = "1:101e675d20cd73146d014a9846fdb7e4c3bf987f5aba442c8a5f351db763858d"
   name = "github.com/antlr/antlr4"
   packages = ["runtime/Go/antlr"]
   pruneopts = ""
-  revision = "be58ebffde8e29c154192c019608f0a5b8e6a064"
-  version = "4.7.2"
+  revision = "d569f917954406e599d780c009224aa14f1920de"
+  version = "4.8"
 
 [[projects]]
   digest = "1:7361b225f87c640365f3b00b1b42bc2ab7b923c9f933ac8873d3ff3c08753165"
@@ -360,7 +360,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:217cc1d27a250acf0f4191f10203880a9881f813a4744a496d8d54cb0a6cc112"
+  digest = "1:7c199f90e47d34b64b31b75f078a7548eb0041497b2dec4d4bf273308554e33a"
   name = "github.com/lib/pq"
   packages = [
     ".",
@@ -368,7 +368,7 @@
     "scram",
   ]
   pruneopts = ""
-  revision = "d6fd2025777896bf42bbb81fa748af573ad799f4"
+  revision = "9eb3fc897d6fd97dd4aad3d0404b54e2f7cc56be"
 
 [[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
