@@ -7,6 +7,9 @@ go:
 env:
   global:
     - HELM_URL=https://get.helm.sh/helm-v3.0.2-linux-amd64.tar.gz
+    - CHART_NAME="service-broker-proxy-k8s-${TRAVIS_TAG:-\"0.0.0\"}"
+    - CHART_TGZ_NAME="${CHART_NAME}.tgz"
+    - CHART_URL="https://github.com/Peripli/service-broker-proxy-k8s/releases/download/${TRAVIS_TAG:-\"0.0.0\"}/${CHART_TGZ_NAME}"
 
 before_install:
    - go get -u github.com/golang/dep/cmd/dep
@@ -45,6 +48,9 @@ before_deploy:
   # Create helm-chart
   - mkdir out
   - helm package --app-version ${TRAVIS_TAG:-"master"} --version ${TRAVIS_TAG:-"0.0.0"} -d ./out charts/service-broker-proxy-k8s
+  - helm repo index ./out
+  - sed -i "s|${CHART_TGZ_NAME}|${CHART_URL}|g" ./out/index.yaml
+  - mv ./out/index.yaml ./out/${CHART_NAME}.yaml
 
 deploy:
   provider: releases
