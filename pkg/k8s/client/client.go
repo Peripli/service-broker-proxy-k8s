@@ -67,6 +67,7 @@ func (sca *ServiceCatalogAPI) SyncClusterServiceBroker(name string, retries int)
 	}, retries)
 }
 
+// UpdateClusterServiceBrokerCredentials updates broker's credentials secret
 func (sca *ServiceCatalogAPI) UpdateClusterServiceBrokerCredentials(secret *v1core.Secret) (*v1core.Secret, error) {
 	s, err := sca.K8sClient.CoreV1().Secrets(secret.Namespace).Get(secret.Name, v1.GetOptions{})
 	if err != nil || s == nil { // secret does not exists
@@ -90,6 +91,7 @@ func (sca *ServiceCatalogAPI) UpdateClusterServiceBrokerCredentials(secret *v1co
 	return sca.K8sClient.CoreV1().Secrets(secret.Namespace).Patch(secret.Name, types.JSONPatchType, bodyBytes)
 }
 
+// CreateSecret creates a secret for broker's credentials
 func (sca *ServiceCatalogAPI) CreateSecret(secret *v1core.Secret) (*v1core.Secret, error) {
 	return sca.K8sClient.CoreV1().Secrets(secret.Namespace).Create(secret)
 }
