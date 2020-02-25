@@ -2,7 +2,9 @@ package client
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
+	v1core "k8s.io/api/core/v1"
 	"testing"
 
 	"github.com/Peripli/service-broker-proxy/pkg/sbproxy"
@@ -57,7 +59,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				TLSClientConfig: rest.TLSClientConfig{},
 			}, nil
 		}
-		clientConfig.Secret.Name = "secretName"
 		clientConfig.Secret.Namespace = "secretNamespace"
 		clientConfig.K8sClientCreateFunc = config.NewSvcatSDK
 
@@ -82,7 +83,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				settings.K8S = config.DefaultClientConfiguration()
 				_, err := NewClient(settings)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(Equal("properties of K8S secret configuration for broker registration missing"))
+				Expect(err.Error()).To(Equal("namespace of K8S secret configuration for broker registration missing"))
 			})
 		})
 
@@ -138,6 +139,15 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				requestBroker := &platform.CreateServiceBrokerRequest{
 					Name:      "fake-broker",
 					BrokerURL: "http://fake.broker.url",
+					Username:  "admin",
+					Password:  "admin",
+				}
+
+				k8sApi.CreateSecretStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
+					Expect(secret2.Name).To(Equal(requestBroker.Name))
+					Expect(string(secret2.Data["username"])).To(Equal(base64.StdEncoding.EncodeToString([]byte(requestBroker.Username))))
+					Expect(string(secret2.Data["password"])).To(Equal(base64.StdEncoding.EncodeToString([]byte(requestBroker.Password))))
+					return secret2, nil
 				}
 				createdBroker, err := platformClient.CreateBroker(ctx, requestBroker)
 
@@ -152,6 +162,9 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			It("returns error", func() {
 				platformClient := newDefaultPlatformClient()
 
+				k8sApi.CreateSecretStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
+					return secret2, nil
+				}
 				k8sApi.CreateClusterServiceBrokerStub = func(broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
 					return nil, errors.New("error from service-catalog")
 				}
@@ -324,7 +337,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 				k8sApi.UpdateClusterServiceBrokerStub = func(broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
 					// Return a new fake clusterservicebroker with the three attributes relevant for the OSBAPI guid, name and broker url.
-					// UID cannot be modified, name and url can be modified
+					// UID and name cannot be modified, url can be modified
 					return &v1beta1.ClusterServiceBroker{
 						ObjectMeta: v1.ObjectMeta{
 							Name: broker.Name + "-updated",
@@ -342,6 +355,15 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					GUID:      "1234",
 					Name:      "fake-broker",
 					BrokerURL: "http://fake.broker.url",
+					Username: "admin",
+					Password: "admin",
+				}
+
+				k8sApi.UpdateClusterServiceBrokerCredentialsStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
+					Expect(secret2.Name).To(Equal(requestBroker.Name))
+					Expect(string(secret2.Data["username"])).To(Equal(base64.StdEncoding.EncodeToString([]byte(requestBroker.Username))))
+					Expect(string(secret2.Data["password"])).To(Equal(base64.StdEncoding.EncodeToString([]byte(requestBroker.Password))))
+					return secret2, nil
 				}
 
 				broker, err := platformClient.UpdateBroker(ctx, requestBroker)
@@ -357,6 +379,9 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			It("returns the error", func() {
 				platformClient := newDefaultPlatformClient()
 
+				k8sApi.UpdateClusterServiceBrokerCredentialsStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
+					return secret2, nil
+				}
 				k8sApi.UpdateClusterServiceBrokerStub = func(broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
 					return nil, errors.New("error updating clusterservicebroker")
 				}
@@ -376,12 +401,20 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			It("returns nil", func() {
 				platformClient := newDefaultPlatformClient()
 
-				requestBroker := &platform.ServiceBroker{
+				requestBroker := &platform.UpdateServiceBrokerRequest{
 					GUID:      "1234",
 					Name:      "fake-broker",
 					BrokerURL: "http://fake.broker.url",
+					Username: "admin",
+					Password: "admin",
 				}
 
+				k8sApi.UpdateClusterServiceBrokerCredentialsStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
+					Expect(secret2.Name).To(Equal(requestBroker.Name))
+					Expect(string(secret2.Data["username"])).To(Equal(base64.StdEncoding.EncodeToString([]byte(requestBroker.Username))))
+					Expect(string(secret2.Data["password"])).To(Equal(base64.StdEncoding.EncodeToString([]byte(requestBroker.Password))))
+					return secret2, nil
+				}
 				k8sApi.SyncClusterServiceBrokerStub = func(name string, retries int) error {
 					return nil
 				}
@@ -396,7 +429,10 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			It("returns the error", func() {
 				platformClient := newDefaultPlatformClient()
 
-				requestBroker := &platform.ServiceBroker{}
+				requestBroker := &platform.UpdateServiceBrokerRequest{}
+				k8sApi.UpdateClusterServiceBrokerCredentialsStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
+					return secret2, nil
+				}
 				k8sApi.SyncClusterServiceBrokerStub = func(name string, retries int) error {
 					return errors.New("error syncing service broker")
 				}
