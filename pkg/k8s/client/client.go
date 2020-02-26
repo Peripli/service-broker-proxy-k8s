@@ -65,9 +65,8 @@ func (sca *ServiceCatalogAPI) UpdateClusterServiceBrokerCredentials(secret *v1co
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return sca.CreateSecret(secret)
-		} else {
-			return nil, err
 		}
+		return nil, err
 	}
 
 	return sca.K8sClient.CoreV1().Secrets(secret.Namespace).Update(secret)
@@ -183,7 +182,7 @@ func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateSe
 	secret := newServiceBrokerCredentialsSecret(pc.secretNamespace, r.Name, r.Username, r.Password)
 	secret, err := pc.platformAPI.UpdateClusterServiceBrokerCredentials(secret)
 	if err != nil {
-		return nil, fmt.Errorf("error updating broker credentials secret %v",err)
+		return nil, fmt.Errorf("error updating broker credentials secret %v", err)
 	}
 	// Only broker url and secret-references are updateable
 	broker := newServiceBroker(r.Name, r.BrokerURL, &v1beta1.ObjectReference{
@@ -208,7 +207,7 @@ func (pc *PlatformClient) Fetch(ctx context.Context, r *platform.UpdateServiceBr
 	secret := newServiceBrokerCredentialsSecret(pc.secretNamespace, r.Name, r.Username, r.Password)
 	_, err := pc.platformAPI.UpdateClusterServiceBrokerCredentials(secret)
 	if err != nil {
-		return fmt.Errorf("error updating broker credentials secret %v",err)
+		return fmt.Errorf("error updating broker credentials secret %v", err)
 	}
 	return pc.platformAPI.SyncClusterServiceBroker(r.Name, resyncBrokerRetryCount)
 }
@@ -235,7 +234,7 @@ func newServiceBrokerCredentialsSecret(namespace, name, username, password strin
 	return &v1core.Secret{
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: namespace,
-			Name: name,
+			Name:      name,
 		},
 		Data: map[string][]byte{
 			"password": []byte(password),

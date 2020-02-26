@@ -354,8 +354,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					GUID:      "1234",
 					Name:      "fake-broker",
 					BrokerURL: "http://fake.broker.url",
-					Username: "admin",
-					Password: "admin",
+					Username:  "admin",
+					Password:  "admin",
 				}
 
 				k8sApi.UpdateClusterServiceBrokerCredentialsStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
@@ -404,8 +404,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					GUID:      "1234",
 					Name:      "fake-broker",
 					BrokerURL: "http://fake.broker.url",
-					Username: "admin",
-					Password: "admin",
+					Username:  "admin",
+					Password:  "admin",
 				}
 
 				k8sApi.UpdateClusterServiceBrokerCredentialsStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
