@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	v1core "k8s.io/api/core/v1"
 	"testing"
@@ -145,8 +144,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 				k8sApi.CreateSecretStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
 					Expect(secret2.Name).To(Equal(requestBroker.Name))
-					Expect(string(secret2.Data["username"])).To(Equal(base64.StdEncoding.EncodeToString([]byte(requestBroker.Username))))
-					Expect(string(secret2.Data["password"])).To(Equal(base64.StdEncoding.EncodeToString([]byte(requestBroker.Password))))
+					Expect(string(secret2.Data["username"])).To(Equal(requestBroker.Username))
+					Expect(string(secret2.Data["password"])).To(Equal(requestBroker.Password))
 					return secret2, nil
 				}
 				createdBroker, err := platformClient.CreateBroker(ctx, requestBroker)
@@ -361,8 +360,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 				k8sApi.UpdateClusterServiceBrokerCredentialsStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
 					Expect(secret2.Name).To(Equal(requestBroker.Name))
-					Expect(string(secret2.Data["username"])).To(Equal(base64.StdEncoding.EncodeToString([]byte(requestBroker.Username))))
-					Expect(string(secret2.Data["password"])).To(Equal(base64.StdEncoding.EncodeToString([]byte(requestBroker.Password))))
+					Expect(string(secret2.Data["username"])).To(Equal(requestBroker.Username))
+					Expect(string(secret2.Data["password"])).To(Equal(requestBroker.Password))
 					return secret2, nil
 				}
 
@@ -411,8 +410,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 				k8sApi.UpdateClusterServiceBrokerCredentialsStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
 					Expect(secret2.Name).To(Equal(requestBroker.Name))
-					Expect(string(secret2.Data["username"])).To(Equal(base64.StdEncoding.EncodeToString([]byte(requestBroker.Username))))
-					Expect(string(secret2.Data["password"])).To(Equal(base64.StdEncoding.EncodeToString([]byte(requestBroker.Password))))
+					Expect(string(secret2.Data["username"])).To(Equal(requestBroker.Username))
+					Expect(string(secret2.Data["password"])).To(Equal(requestBroker.Password))
 					return secret2, nil
 				}
 				k8sApi.SyncClusterServiceBrokerStub = func(name string, retries int) error {
