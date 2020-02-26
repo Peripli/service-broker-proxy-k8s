@@ -25,7 +25,7 @@
 
 [[projects]]
   branch = "credentials_api"
-  digest = "1:d982a16d60bc2d74ec2db79b78c37709543d9db1982466b0d01592cc709c5336"
+  digest = "1:eac706a454ba0fb739b83943d44899b8b2469bd55fba1f6d2f1e49d284ecf4b2"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
     "pkg/authn",
@@ -39,11 +39,11 @@
     "pkg/util",
   ]
   pruneopts = ""
-  revision = "45036dbfde68b211c0636c4b745875b6eb7d867f"
+  revision = "86e6685b0c630cf2f143900680ac044622360cb3"
 
 [[projects]]
   branch = "credentials_api"
-  digest = "1:2bb5f4e0685b8f07316b7f613146d6cbb51b8003405a26d89d4a0a64cbcc767b"
+  digest = "1:4d0570b367efda679ee95a00e57f24f0d5e34d18425ad2f3acee4321f787e84f"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -84,7 +84,7 @@
     "storage/postgres/notification_connection",
   ]
   pruneopts = ""
-  revision = "2547c2a989ba7018668650d2add39697f2e6a706"
+  revision = "38f772b5373cc53921256d5df26b9e441372dd11"
 
 [[projects]]
   digest = "1:fc70ddbcaf8a43101a79cb0a19f8fe6a2792a5280b90e083140de008139f0db0"
@@ -588,7 +588,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2a8386d97f7bc734777058ba3770386a5d799c0014902aff6b231687652d17ea"
+  digest = "1:c82ef1bc456ecce96af2346d001877ce9801b54c6f8df54b6a5ea68e3fa65fb4"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -602,7 +602,7 @@
     "idna",
   ]
   pruneopts = ""
-  revision = "491c5fce7268704a88d3437db4ad973f8b8a57de"
+  revision = "0de0cce0169b09b364e001f108dc0399ea8630b3"
 
 [[projects]]
   branch = "master"
@@ -964,7 +964,6 @@
     "github.com/spf13/pflag",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
-    "k8s.io/apimachinery/pkg/types",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/tools/clientcmd",

@@ -3,11 +3,10 @@ package client
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/api"
 	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/config"
 	servicecatalog "github.com/kubernetes-sigs/service-catalog/pkg/svcat/service-catalog"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
@@ -63,12 +62,11 @@ func (sca *ServiceCatalogAPI) SyncClusterServiceBroker(name string, retries int)
 func (sca *ServiceCatalogAPI) UpdateClusterServiceBrokerCredentials(secret *v1core.Secret) (*v1core.Secret, error) {
 	_, err := sca.K8sClient.CoreV1().Secrets(secret.Namespace).Get(secret.Name, v1.GetOptions{})
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		if errors.IsNotFound(err) {
 			return sca.CreateSecret(secret)
 		}
 		return nil, err
 	}
-
 	return sca.K8sClient.CoreV1().Secrets(secret.Namespace).Update(secret)
 }
 
