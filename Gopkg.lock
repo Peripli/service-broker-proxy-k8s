@@ -25,7 +25,7 @@
 
 [[projects]]
   branch = "credentials_api"
-  digest = "1:eac706a454ba0fb739b83943d44899b8b2469bd55fba1f6d2f1e49d284ecf4b2"
+  digest = "1:62de694203510b95b813b6335769091a1d4d09390f0fa2b5e410eeb524e6345f"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
     "pkg/authn",
@@ -39,11 +39,11 @@
     "pkg/util",
   ]
   pruneopts = ""
-  revision = "86e6685b0c630cf2f143900680ac044622360cb3"
+  revision = "e4ce6febf1ed601001e0efd62e40178d85ace683"
 
 [[projects]]
   branch = "credentials_api"
-  digest = "1:4d0570b367efda679ee95a00e57f24f0d5e34d18425ad2f3acee4321f787e84f"
+  digest = "1:0619ccbf9c407c5773d8b430b2e2009b71db711d227df6d6a9afbd3f72338d43"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -84,7 +84,7 @@
     "storage/postgres/notification_connection",
   ]
   pruneopts = ""
-  revision = "38f772b5373cc53921256d5df26b9e441372dd11"
+  revision = "5b461686feb8915845cc9c6a8728d671d4f6272e"
 
 [[projects]]
   digest = "1:fc70ddbcaf8a43101a79cb0a19f8fe6a2792a5280b90e083140de008139f0db0"
@@ -191,7 +191,7 @@
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
-  digest = "1:232da37b3204bcdb01af3df45982d154798e191b4d94357191d164e254070771"
+  digest = "1:387627c55b54e4c11ebc64cd772dd7503d96fcb86c893c33399b63aef6c387da"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -201,8 +201,8 @@
     "ptypes/timestamp",
   ]
   pruneopts = ""
-  revision = "d23c5127dc24889085f8ccea5c9d560a57a879d8"
-  version = "v1.3.3"
+  revision = "5d5b4c10bd43f85e63bd9e4a3fa9b1ea2ef88af2"
+  version = "v1.3.4"
 
 [[projects]]
   digest = "1:16ecf9e89b8b1310d9566a53484c31c5241bb47c32162eba780b46c0dfb58fef"
@@ -848,7 +848,7 @@
 
 [[projects]]
   branch = "release-12.0"
-  digest = "1:ab47212a95fc352366de9c09920fc12da8fbcaf3661a5c23eeef4ffbde752a27"
+  digest = "1:3a22563a38d1fa03a11d67e84ac615286abceec3b06cbdc4be097939ca95d423"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -912,7 +912,7 @@
     "util/keyutil",
   ]
   pruneopts = ""
-  revision = "7f576abe0ebe5c2193c1005cf07d9263f33907d9"
+  revision = "076fbc5c36a7a149000e62f4b29e4dfca99143c4"
 
 [[projects]]
   digest = "1:7ce71844fcaaabcbe09a392902edb5790ddca3a7070ae8d20830dc6dbe2751af"
@@ -924,14 +924,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:cb75c82b15f7a4f5cd836855a4461e95804c5f71fc32b89cb12fdf9ec5b26efb"
+  digest = "1:30c1f2ee64ec7f5e9a6bb962f6d99e46fb510346cbe88b8edaeb9bb5633fa2c6"
   name = "k8s.io/utils"
   packages = [
     "integer",
     "pointer",
   ]
   pruneopts = ""
-  revision = "861946025e3491219eaccb1bf693e23df70c2fa8"
+  revision = "f9c14454073b22c698bbe5e19fe6c20c4651e326"
 
 [[projects]]
   digest = "1:a24c9ac4cb9e3c67edc0a37a1d828e3fbb92a7e9e12bb84f9c0e781aa42f71b0"
@@ -963,6 +963,7 @@
     "github.com/onsi/gomega",
     "github.com/spf13/pflag",
     "k8s.io/api/core/v1",
+    "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/rest",

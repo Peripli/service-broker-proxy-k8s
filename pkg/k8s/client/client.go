@@ -177,15 +177,16 @@ func (pc *PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteSe
 
 // UpdateBroker updates a service broker in the kubernetes service-catalog.
 func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	secret := newServiceBrokerCredentialsSecret(pc.secretNamespace, r.Name, r.Username, r.Password)
-	secret, err := pc.platformAPI.UpdateClusterServiceBrokerCredentials(secret)
-	if err != nil {
-		return nil, fmt.Errorf("error updating broker credentials secret %v", err)
+	if r.Username != "" && r.Password != "" {
+		if err := pc.updateBrokerPlatformSecret(r); err != nil {
+			return nil, err
+		}
 	}
+
 	// Only broker url and secret-references are updateable
 	broker := newServiceBroker(r.Name, r.BrokerURL, &v1beta1.ObjectReference{
-		Name:      secret.Name,
-		Namespace: secret.Namespace,
+		Name:      r.Name,
+		Namespace: pc.secretNamespace,
 	})
 
 	updatedBroker, err := pc.platformAPI.UpdateClusterServiceBroker(broker)
@@ -202,12 +203,22 @@ func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateSe
 // Fetch the new catalog information from reach service-broker registered in kubernetes,
 // so that it is visible in the kubernetes service-catalog.
 func (pc *PlatformClient) Fetch(ctx context.Context, r *platform.UpdateServiceBrokerRequest) error {
+	if r.Username != "" && r.Password != "" {
+		if err := pc.updateBrokerPlatformSecret(r); err != nil {
+			return err
+		}
+	}
+	return pc.platformAPI.SyncClusterServiceBroker(r.Name, resyncBrokerRetryCount)
+}
+
+func (pc *PlatformClient) updateBrokerPlatformSecret(r *platform.UpdateServiceBrokerRequest) error {
 	secret := newServiceBrokerCredentialsSecret(pc.secretNamespace, r.Name, r.Username, r.Password)
 	_, err := pc.platformAPI.UpdateClusterServiceBrokerCredentials(secret)
 	if err != nil {
 		return fmt.Errorf("error updating broker credentials secret %v", err)
 	}
-	return pc.platformAPI.SyncClusterServiceBroker(r.Name, resyncBrokerRetryCount)
+
+	return nil
 }
 
 func newServiceBroker(name string, url string, secret *v1beta1.ObjectReference) *v1beta1.ClusterServiceBroker {
