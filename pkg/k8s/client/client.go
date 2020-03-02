@@ -75,6 +75,11 @@ func (sca *ServiceCatalogAPI) CreateSecret(secret *v1core.Secret) (*v1core.Secre
 	return sca.K8sClient.CoreV1().Secrets(secret.Namespace).Create(secret)
 }
 
+// DeleteSecret deletes broker credentials secret
+func (sca *ServiceCatalogAPI) DeleteSecret(namespace, name string) error {
+	return sca.K8sClient.CoreV1().Secrets(namespace).Delete(name, &v1.DeleteOptions{})
+}
+
 // PlatformClient implements all broker, visibility and catalog specific operations for kubernetes
 type PlatformClient struct {
 	platformAPI     api.KubernetesAPI
@@ -172,6 +177,9 @@ func (pc *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateSe
 
 // DeleteBroker deletes an existing broker in from kubernetes service-catalog.
 func (pc *PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteServiceBrokerRequest) error {
+	if err := pc.platformAPI.DeleteSecret(pc.secretNamespace, r.Name); err != nil {
+		return fmt.Errorf("error deleting broker credentials secret: %v", err)
+	}
 	return pc.platformAPI.DeleteClusterServiceBroker(r.Name, &v1.DeleteOptions{})
 }
 

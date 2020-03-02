@@ -49,6 +49,18 @@ type FakeKubernetesAPI struct {
 	deleteClusterServiceBrokerReturnsOnCall map[int]struct {
 		result1 error
 	}
+	DeleteSecretStub        func(string, string) error
+	deleteSecretMutex       sync.RWMutex
+	deleteSecretArgsForCall []struct {
+		arg1 string
+		arg2 string
+	}
+	deleteSecretReturns struct {
+		result1 error
+	}
+	deleteSecretReturnsOnCall map[int]struct {
+		result1 error
+	}
 	RetrieveClusterServiceBrokerByNameStub        func(string) (*v1beta1.ClusterServiceBroker, error)
 	retrieveClusterServiceBrokerByNameMutex       sync.RWMutex
 	retrieveClusterServiceBrokerByNameArgsForCall []struct {
@@ -299,6 +311,67 @@ func (fake *FakeKubernetesAPI) DeleteClusterServiceBrokerReturnsOnCall(i int, re
 		})
 	}
 	fake.deleteClusterServiceBrokerReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeKubernetesAPI) DeleteSecret(arg1 string, arg2 string) error {
+	fake.deleteSecretMutex.Lock()
+	ret, specificReturn := fake.deleteSecretReturnsOnCall[len(fake.deleteSecretArgsForCall)]
+	fake.deleteSecretArgsForCall = append(fake.deleteSecretArgsForCall, struct {
+		arg1 string
+		arg2 string
+	}{arg1, arg2})
+	fake.recordInvocation("DeleteSecret", []interface{}{arg1, arg2})
+	fake.deleteSecretMutex.Unlock()
+	if fake.DeleteSecretStub != nil {
+		return fake.DeleteSecretStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.deleteSecretReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeKubernetesAPI) DeleteSecretCallCount() int {
+	fake.deleteSecretMutex.RLock()
+	defer fake.deleteSecretMutex.RUnlock()
+	return len(fake.deleteSecretArgsForCall)
+}
+
+func (fake *FakeKubernetesAPI) DeleteSecretCalls(stub func(string, string) error) {
+	fake.deleteSecretMutex.Lock()
+	defer fake.deleteSecretMutex.Unlock()
+	fake.DeleteSecretStub = stub
+}
+
+func (fake *FakeKubernetesAPI) DeleteSecretArgsForCall(i int) (string, string) {
+	fake.deleteSecretMutex.RLock()
+	defer fake.deleteSecretMutex.RUnlock()
+	argsForCall := fake.deleteSecretArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeKubernetesAPI) DeleteSecretReturns(result1 error) {
+	fake.deleteSecretMutex.Lock()
+	defer fake.deleteSecretMutex.Unlock()
+	fake.DeleteSecretStub = nil
+	fake.deleteSecretReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeKubernetesAPI) DeleteSecretReturnsOnCall(i int, result1 error) {
+	fake.deleteSecretMutex.Lock()
+	defer fake.deleteSecretMutex.Unlock()
+	fake.DeleteSecretStub = nil
+	if fake.deleteSecretReturnsOnCall == nil {
+		fake.deleteSecretReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.deleteSecretReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -617,6 +690,8 @@ func (fake *FakeKubernetesAPI) Invocations() map[string][][]interface{} {
 	defer fake.createSecretMutex.RUnlock()
 	fake.deleteClusterServiceBrokerMutex.RLock()
 	defer fake.deleteClusterServiceBrokerMutex.RUnlock()
+	fake.deleteSecretMutex.RLock()
+	defer fake.deleteSecretMutex.RUnlock()
 	fake.retrieveClusterServiceBrokerByNameMutex.RLock()
 	defer fake.retrieveClusterServiceBrokerByNameMutex.RUnlock()
 	fake.retrieveClusterServiceBrokersMutex.RLock()

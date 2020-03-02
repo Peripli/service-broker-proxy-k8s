@@ -25,7 +25,7 @@
 
 [[projects]]
   branch = "credentials_api"
-  digest = "1:62de694203510b95b813b6335769091a1d4d09390f0fa2b5e410eeb524e6345f"
+  digest = "1:671ff17e6c8eec652292d9a3c7be6b64946a659470dd023e46f7977e4ddb3a20"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
     "pkg/authn",
@@ -39,11 +39,11 @@
     "pkg/util",
   ]
   pruneopts = ""
-  revision = "e4ce6febf1ed601001e0efd62e40178d85ace683"
+  revision = "dd8ce48b5025e75f7206bfd6805f1f4094189f29"
 
 [[projects]]
   branch = "credentials_api"
-  digest = "1:0619ccbf9c407c5773d8b430b2e2009b71db711d227df6d6a9afbd3f72338d43"
+  digest = "1:72c7321de79971d61cb3789d19fe5282ffcb7210d915ce75df788de1f8e7ab1b"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -84,7 +84,7 @@
     "storage/postgres/notification_connection",
   ]
   pruneopts = ""
-  revision = "5b461686feb8915845cc9c6a8728d671d4f6272e"
+  revision = "5893920c43a5b80ff3f0302dea5078e5ac88276f"
 
 [[projects]]
   digest = "1:fc70ddbcaf8a43101a79cb0a19f8fe6a2792a5280b90e083140de008139f0db0"
@@ -540,12 +540,12 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:134e39b140ccee46e9ba57d61e6877dc21824539c873039a48058a11920477d9"
+  digest = "1:029181b60f6ea672544d102f81d7d9508a45a70e17ce8a649535959e0249d56b"
   name = "github.com/tidwall/gjson"
   packages = ["."]
   pruneopts = ""
-  revision = "0360deb6d803e8c271363ce5f6c85d6cd843a3a0"
-  version = "v1.5.0"
+  revision = "f042915ca17de35980544c91ab2c8ceb73b682f2"
+  version = "v1.6.0"
 
 [[projects]]
   digest = "1:72511ec1089fee111c995492d1d390a38ac7ab888aabdb1188985f2a1719c599"
@@ -588,7 +588,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c82ef1bc456ecce96af2346d001877ce9801b54c6f8df54b6a5ea68e3fa65fb4"
+  digest = "1:9ac4dae84a6c14d4d0458d27a8c46fca553cfba156fe0c87f99c50d22034c7e3"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -602,7 +602,7 @@
     "idna",
   ]
   pruneopts = ""
-  revision = "0de0cce0169b09b364e001f108dc0399ea8630b3"
+  revision = "244492dfa37ae2ce87222fd06250a03160745faa"
 
 [[projects]]
   branch = "master"
@@ -617,14 +617,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bae0e7b547066e4b4f79e2c47e8c3270095fe0cd1b55ae02dff78c37726ea709"
+  digest = "1:4003f52ee7e2f3b9c5bb2fdbdf88a68c245fbff7c5ab6566406bf4184deb4076"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "d5e6a3e2c0ae16fc7480523ebcb7fd4dd3215489"
+  revision = "5d559ad92b82f3696a2a2f23108ac03758aabedb"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -924,14 +924,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:30c1f2ee64ec7f5e9a6bb962f6d99e46fb510346cbe88b8edaeb9bb5633fa2c6"
+  digest = "1:853ba697692391be512bf7449b577e24239d152c794a892079d35474f9784403"
   name = "k8s.io/utils"
   packages = [
     "integer",
     "pointer",
   ]
   pruneopts = ""
-  revision = "f9c14454073b22c698bbe5e19fe6c20c4651e326"
+  revision = "0a110f9eb7ab662220ed640640f50c4be9b6b485"
 
 [[projects]]
   digest = "1:a24c9ac4cb9e3c67edc0a37a1d828e3fbb92a7e9e12bb84f9c0e781aa42f71b0"
