@@ -10,7 +10,7 @@
 
 [[constraint]]
   name = "github.com/Peripli/service-broker-proxy"
-  version = "0.8.2"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/onsi/ginkgo"

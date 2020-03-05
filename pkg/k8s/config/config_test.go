@@ -29,7 +29,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				settings.Sm.URL = "url"
 				settings.Reconcile.LegacyURL = "legacy_url"
 				settings.Reconcile.URL = "reconcile_url"
-				settings.K8S.Secret.Name = "abc"
 				settings.K8S.Secret.Namespace = "abc"
 			})
 
@@ -50,7 +49,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 			Context("when a K8S setting is missing", func() {
 				It("should return error", func() {
-					settings.K8S.Secret.Name = ""
+					settings.K8S.Secret.Namespace = ""
 					err := settings.Validate()
 					Expect(err).To(HaveOccurred())
 				})
@@ -64,7 +63,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 			BeforeEach(func() {
 				config = DefaultClientConfiguration()
-				config.Secret.Name = "abc"
 				config.Secret.Namespace = "abc"
 			})
 
@@ -120,21 +118,12 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				})
 			})
 
-			Context("when secret Name is missing", func() {
-				It("should fail", func() {
-					config.Secret.Name = ""
-					err := config.Validate()
-					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(Equal("properties of K8S secret configuration for broker registration missing"))
-				})
-			})
-
 			Context("when secret Namespace is missing", func() {
 				It("should fail", func() {
 					config.Secret.Namespace = ""
 					err := config.Validate()
 					Expect(err).To(HaveOccurred())
-					Expect(err.Error()).To(Equal("properties of K8S secret configuration for broker registration missing"))
+					Expect(err.Error()).To(Equal("namespace of K8S secret configuration for broker registration missing"))
 				})
 			})
 

@@ -89,13 +89,12 @@ func (r *LibraryConfig) Validate() error {
 // SecretRef reference to secret used for broker registration
 type SecretRef struct {
 	Namespace string
-	Name      string
 }
 
 // Validate validates the registration details and returns appropriate errors in case it is invalid
 func (r *SecretRef) Validate() error {
-	if r.Name == "" || r.Namespace == "" {
-		return errors.New("properties of K8S secret configuration for broker registration missing")
+	if r.Namespace == "" {
+		return errors.New("namespace of K8S secret configuration for broker registration missing")
 	}
 	return nil
 }

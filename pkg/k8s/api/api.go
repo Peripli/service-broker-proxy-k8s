@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
+	v1core "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -20,4 +21,10 @@ type KubernetesAPI interface {
 	UpdateClusterServiceBroker(broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error)
 	// SyncClusterServiceBroker synchronize a cluster-wide visible service broker
 	SyncClusterServiceBroker(name string, retries int) error
+	// UpdateClusterServiceBrokerCredentials updates broker's credentials secret
+	UpdateClusterServiceBrokerCredentials(secret *v1core.Secret) (*v1core.Secret, error)
+	// CreateSecret creates a secret for broker's credentials
+	CreateSecret(secret *v1core.Secret) (*v1core.Secret, error)
+	// DeleteSecret deletes broker credentials secret
+	DeleteSecret(namespace,name string) error
 }

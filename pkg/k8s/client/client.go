@@ -3,13 +3,14 @@ package client
 import (
 	"context"
 	"fmt"
-
 	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/api"
 	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/config"
 	servicecatalog "github.com/kubernetes-sigs/service-catalog/pkg/svcat/service-catalog"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
+	v1core "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -57,10 +58,32 @@ func (sca *ServiceCatalogAPI) SyncClusterServiceBroker(name string, retries int)
 	}, retries)
 }
 
+// UpdateClusterServiceBrokerCredentials updates broker's credentials secret
+func (sca *ServiceCatalogAPI) UpdateClusterServiceBrokerCredentials(secret *v1core.Secret) (*v1core.Secret, error) {
+	_, err := sca.K8sClient.CoreV1().Secrets(secret.Namespace).Get(secret.Name, v1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return sca.CreateSecret(secret)
+		}
+		return nil, err
+	}
+	return sca.K8sClient.CoreV1().Secrets(secret.Namespace).Update(secret)
+}
+
+// CreateSecret creates a secret for broker's credentials
+func (sca *ServiceCatalogAPI) CreateSecret(secret *v1core.Secret) (*v1core.Secret, error) {
+	return sca.K8sClient.CoreV1().Secrets(secret.Namespace).Create(secret)
+}
+
+// DeleteSecret deletes broker credentials secret
+func (sca *ServiceCatalogAPI) DeleteSecret(namespace, name string) error {
+	return sca.K8sClient.CoreV1().Secrets(namespace).Delete(name, &v1.DeleteOptions{})
+}
+
 // PlatformClient implements all broker, visibility and catalog specific operations for kubernetes
 type PlatformClient struct {
-	platformAPI  api.KubernetesAPI
-	regSecretRef *v1beta1.ObjectReference
+	platformAPI     api.KubernetesAPI
+	secretNamespace string
 }
 
 var _ platform.Client = &PlatformClient{}
@@ -75,11 +98,8 @@ func NewClient(settings *config.Settings) (*PlatformClient, error) {
 		return nil, err
 	}
 	return &PlatformClient{
-		platformAPI: NewDefaultKubernetesAPI(svcatSDK),
-		regSecretRef: &v1beta1.ObjectReference{
-			Namespace: settings.K8S.Secret.Namespace,
-			Name:      settings.K8S.Secret.Name,
-		},
+		platformAPI:     NewDefaultKubernetesAPI(svcatSDK),
+		secretNamespace: settings.K8S.Secret.Namespace,
 	}, nil
 }
 
@@ -132,7 +152,16 @@ func (pc *PlatformClient) GetBrokerByName(ctx context.Context, name string) (*pl
 
 // CreateBroker registers a new broker in kubernetes service-catalog.
 func (pc *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	broker := newServiceBroker(r.Name, r.BrokerURL, pc.regSecretRef)
+	secret := newServiceBrokerCredentialsSecret(pc.secretNamespace, r.Name, r.Username, r.Password)
+	secret, err := pc.platformAPI.CreateSecret(secret)
+	if err != nil {
+		return nil, fmt.Errorf("error creating secret: %v", err)
+	}
+
+	broker := newServiceBroker(r.Name, r.BrokerURL, &v1beta1.ObjectReference{
+		Name:      secret.Name,
+		Namespace: secret.Namespace,
+	})
 	broker.Spec.CommonServiceBrokerSpec.RelistBehavior = "Manual"
 
 	csb, err := pc.platformAPI.CreateClusterServiceBroker(broker)
@@ -148,13 +177,25 @@ func (pc *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateSe
 
 // DeleteBroker deletes an existing broker in from kubernetes service-catalog.
 func (pc *PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteServiceBrokerRequest) error {
+	if err := pc.platformAPI.DeleteSecret(pc.secretNamespace, r.Name); err != nil {
+		return fmt.Errorf("error deleting broker credentials secret: %v", err)
+	}
 	return pc.platformAPI.DeleteClusterServiceBroker(r.Name, &v1.DeleteOptions{})
 }
 
 // UpdateBroker updates a service broker in the kubernetes service-catalog.
 func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	// Name and broker url are updateable
-	broker := newServiceBroker(r.Name, r.BrokerURL, pc.regSecretRef)
+	if r.Username != "" && r.Password != "" {
+		if err := pc.updateBrokerPlatformSecret(r); err != nil {
+			return nil, err
+		}
+	}
+
+	// Only broker url and secret-references are updateable
+	broker := newServiceBroker(r.Name, r.BrokerURL, &v1beta1.ObjectReference{
+		Name:      r.Name,
+		Namespace: pc.secretNamespace,
+	})
 
 	updatedBroker, err := pc.platformAPI.UpdateClusterServiceBroker(broker)
 	if err != nil {
@@ -169,8 +210,23 @@ func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateSe
 
 // Fetch the new catalog information from reach service-broker registered in kubernetes,
 // so that it is visible in the kubernetes service-catalog.
-func (pc *PlatformClient) Fetch(ctx context.Context, serviceBroker *platform.ServiceBroker) error {
-	return pc.platformAPI.SyncClusterServiceBroker(serviceBroker.Name, resyncBrokerRetryCount)
+func (pc *PlatformClient) Fetch(ctx context.Context, r *platform.UpdateServiceBrokerRequest) error {
+	if r.Username != "" && r.Password != "" {
+		if err := pc.updateBrokerPlatformSecret(r); err != nil {
+			return err
+		}
+	}
+	return pc.platformAPI.SyncClusterServiceBroker(r.Name, resyncBrokerRetryCount)
+}
+
+func (pc *PlatformClient) updateBrokerPlatformSecret(r *platform.UpdateServiceBrokerRequest) error {
+	secret := newServiceBrokerCredentialsSecret(pc.secretNamespace, r.Name, r.Username, r.Password)
+	_, err := pc.platformAPI.UpdateClusterServiceBrokerCredentials(secret)
+	if err != nil {
+		return fmt.Errorf("error updating broker credentials secret %v", err)
+	}
+
+	return nil
 }
 
 func newServiceBroker(name string, url string, secret *v1beta1.ObjectReference) *v1beta1.ClusterServiceBroker {
@@ -191,6 +247,19 @@ func newServiceBroker(name string, url string, secret *v1beta1.ObjectReference) 
 	}
 }
 
+func newServiceBrokerCredentialsSecret(namespace, name, username, password string) *v1core.Secret {
+	return &v1core.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+		Data: map[string][]byte{
+			"password": []byte(password),
+			"username": []byte(username),
+		},
+	}
+}
+
 // GetVisibilitiesByBrokers get currently available visibilities in the platform for specific broker names
 func (pc *PlatformClient) GetVisibilitiesByBrokers(ctx context.Context, brokers []string) ([]*platform.Visibility, error) {
 	// This will cause all brokers to re-fetch their catalogs
@@ -204,14 +273,10 @@ func (pc *PlatformClient) VisibilityScopeLabelKey() string {
 
 // EnableAccessForPlan enables the access for the specified plan
 func (pc *PlatformClient) EnableAccessForPlan(ctx context.Context, request *platform.ModifyPlanAccessRequest) error {
-	return pc.Fetch(ctx, &platform.ServiceBroker{
-		Name: request.BrokerName,
-	})
+	return pc.platformAPI.SyncClusterServiceBroker(request.BrokerName, resyncBrokerRetryCount)
 }
 
 // DisableAccessForPlan disables the access for the specified plan
 func (pc *PlatformClient) DisableAccessForPlan(ctx context.Context, request *platform.ModifyPlanAccessRequest) error {
-	return pc.Fetch(ctx, &platform.ServiceBroker{
-		Name: request.BrokerName,
-	})
+	return pc.platformAPI.SyncClusterServiceBroker(request.BrokerName, resyncBrokerRetryCount)
 }
