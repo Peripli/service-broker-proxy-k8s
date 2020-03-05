@@ -25,7 +25,7 @@
 
 [[projects]]
   branch = "credentials_api"
-  digest = "1:671ff17e6c8eec652292d9a3c7be6b64946a659470dd023e46f7977e4ddb3a20"
+  digest = "1:55d9942c95f57687c380cef410dd553c7bd7f5791889614fabb113f384870e46"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
     "pkg/authn",
@@ -39,11 +39,11 @@
     "pkg/util",
   ]
   pruneopts = ""
-  revision = "dd8ce48b5025e75f7206bfd6805f1f4094189f29"
+  revision = "4770ac95a41cfe051a21e0d6c7e84277e7ee0b8b"
 
 [[projects]]
   branch = "credentials_api"
-  digest = "1:72c7321de79971d61cb3789d19fe5282ffcb7210d915ce75df788de1f8e7ab1b"
+  digest = "1:2a113a224497cdd1eb61b060e9bed85344dac8242964702a198a34fe44abc8a2"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -84,7 +84,7 @@
     "storage/postgres/notification_connection",
   ]
   pruneopts = ""
-  revision = "5893920c43a5b80ff3f0302dea5078e5ac88276f"
+  revision = "bdf05a05160f974a7c11d52e78ca0ba4cc791c3a"
 
 [[projects]]
   digest = "1:fc70ddbcaf8a43101a79cb0a19f8fe6a2792a5280b90e083140de008139f0db0"
@@ -573,7 +573,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2eda274020f8dfe2b4e66c55e0f86e17b9545fb0bad431b2ea520668b7c77f7b"
+  digest = "1:a5ecec7a7007b0af5622967f39375001299ca9559c8028617bbf846ac37bb398"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
@@ -584,7 +584,7 @@
     "ssh/terminal",
   ]
   pruneopts = ""
-  revision = "2aa609cf4a9d7d1126360de73b55b6002f9e052a"
+  revision = "78000ba7a073cafc0278790f6bce552a0f25850e"
 
 [[projects]]
   branch = "master"
@@ -617,14 +617,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4003f52ee7e2f3b9c5bb2fdbdf88a68c245fbff7c5ab6566406bf4184deb4076"
+  digest = "1:d7d983fd8850aa2312ec3e963aa2710cc1adef5ded6dfdf7d4d8130c216a9430"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "5d559ad92b82f3696a2a2f23108ac03758aabedb"
+  revision = "5c8b2ff67527cb88b770f693cebf3799036d8bc0"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
