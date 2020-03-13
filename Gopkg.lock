@@ -24,8 +24,7 @@
   version = "v1.0.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:493e00dd267e026db8e95d59f5e7efd65330dc9c217f03298adcdf073ea5dd62"
+  digest = "1:e2d7671a81383b2769e8a7b1e37f89de6fe9c8d84c636e898be39d09a395e16d"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
     "pkg/authn",
@@ -39,11 +38,11 @@
     "pkg/util",
   ]
   pruneopts = ""
-  revision = "73dc3549b290de19d63cb5fe5bb5c2c7e27a51be"
+  revision = "d01d407381c348babd4671b285e5144d7f267554"
+  version = "v0.9.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:eae8ef8c7c3f10e35f5e0c9b324d1fafc9dbb159fe652aa6d5882db8da382b7b"
+  digest = "1:44a9cc9419b2e86946325546c6c26eb167ad31c2b17f7d8171709276dd2ca877"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -84,7 +83,8 @@
     "storage/postgres/notification_connection",
   ]
   pruneopts = ""
-  revision = "ce5f8bcd34bc599ab032640382197723163ad47d"
+  revision = "8e292c9120fe9c5c2f5357ad024e4332176e386f"
+  version = "v0.11.0"
 
 [[projects]]
   digest = "1:fc70ddbcaf8a43101a79cb0a19f8fe6a2792a5280b90e083140de008139f0db0"
@@ -125,12 +125,12 @@
   version = "v1.0"
 
 [[projects]]
-  digest = "1:eb53021a8aa3f599d29c7102e65026242bdedce998a54837dc67f14b6a97c5fd"
+  digest = "1:e47ef65c4d3a37884ab29fb4b5c31e826c8fba04caf81da45607d3fba022f7d7"
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
   pruneopts = ""
-  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
-  version = "v1.4.7"
+  revision = "45d7d09e39ef4ac08d493309fa031790c15bfe8a"
+  version = "v1.4.9"
 
 [[projects]]
   digest = "1:9ab1b1c637d7c8f49e39d8538a650d7eb2137b076790cff69d160823b505964c"
@@ -191,7 +191,7 @@
   revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
 
 [[projects]]
-  digest = "1:387627c55b54e4c11ebc64cd772dd7503d96fcb86c893c33399b63aef6c387da"
+  digest = "1:415591ae88c430905b72ffef1d19380bd7feda96dd08eb5cd45a23e5dc04f397"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -201,8 +201,8 @@
     "ptypes/timestamp",
   ]
   pruneopts = ""
-  revision = "5d5b4c10bd43f85e63bd9e4a3fa9b1ea2ef88af2"
-  version = "v1.3.4"
+  revision = "84668698ea25b64748563aa20726db66a6b8d299"
+  version = "v1.3.5"
 
 [[projects]]
   digest = "1:16ecf9e89b8b1310d9566a53484c31c5241bb47c32162eba780b46c0dfb58fef"
@@ -573,7 +573,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:a5ecec7a7007b0af5622967f39375001299ca9559c8028617bbf846ac37bb398"
+  digest = "1:0cb9af7d99926126ac7414b3d3e7e42b96d4b03ebba66972ac984e94c47e606e"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
@@ -584,7 +584,7 @@
     "ssh/terminal",
   ]
   pruneopts = ""
-  revision = "78000ba7a073cafc0278790f6bce552a0f25850e"
+  revision = "f7b00557c8c46a1ea4b035cae84f52028c2c0564"
 
 [[projects]]
   branch = "master"
@@ -699,13 +699,13 @@
   version = "v1.6.5"
 
 [[projects]]
-  digest = "1:eb53021a8aa3f599d29c7102e65026242bdedce998a54837dc67f14b6a97c5fd"
+  digest = "1:e47ef65c4d3a37884ab29fb4b5c31e826c8fba04caf81da45607d3fba022f7d7"
   name = "gopkg.in/fsnotify.v1"
   packages = ["."]
   pruneopts = ""
-  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
+  revision = "45d7d09e39ef4ac08d493309fa031790c15bfe8a"
   source = "https://github.com/fsnotify/fsnotify.git"
-  version = "v1.4.7"
+  version = "v1.4.9"
 
 [[projects]]
   digest = "1:75fb3fcfc73a8c723efde7777b40e8e8ff9babf30d8c56160d01beffea8a95a6"
