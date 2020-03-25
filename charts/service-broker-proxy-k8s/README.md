@@ -52,7 +52,7 @@ The following table lists some of the configurable parameters of the service bro
 Parameter | Description | Default
 --------- | ----------- | -------
 `image.repository` | image repository |`quay.io/service-manager/sb-proxy-k8s`
-`image.tag` | tag of image | `master`
+`image.tag` | tag of image | `<chart_version>`
 `image.pullsecret` | name of the secret containing pull secrets |
 `config.sm.url` | service manager url | `http://service-manager.dev.cfdev.sh`
 `sm.user` | username for service manager | `admin`
