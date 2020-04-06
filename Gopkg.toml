@@ -25,6 +25,10 @@
   name = "gopkg.in/fsnotify.v1"
   source = "https://github.com/fsnotify/fsnotify.git"
 
+[[override]]
+  name = "github.com/hashicorp/go-multierror"
+  version = "=v1.0.0"
+
 # Specify kubernetes dependency versions
 [[override]]
   branch = "release-1.15"
