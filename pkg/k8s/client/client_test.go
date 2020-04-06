@@ -136,6 +136,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				}
 
 				requestBroker := &platform.CreateServiceBrokerRequest{
+					ID:        "id-in-sm",
 					Name:      "fake-broker",
 					BrokerURL: "http://fake.broker.url",
 					Username:  "admin",
@@ -143,7 +144,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				}
 
 				k8sApi.CreateSecretStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
-					Expect(secret2.Name).To(Equal(requestBroker.Name))
+					Expect(secret2.Name).To(Equal(requestBroker.ID))
 					Expect(string(secret2.Data["username"])).To(Equal(requestBroker.Username))
 					Expect(string(secret2.Data["password"])).To(Equal(requestBroker.Password))
 					return secret2, nil
@@ -187,6 +188,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				}
 
 				requestBroker := &platform.DeleteServiceBrokerRequest{
+					ID:   "id-in-sm",
 					GUID: "1234",
 					Name: "fake-broker",
 				}
@@ -351,6 +353,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				}
 
 				requestBroker := &platform.UpdateServiceBrokerRequest{
+					ID:        "id-in-sm",
 					GUID:      "1234",
 					Name:      "fake-broker",
 					BrokerURL: "http://fake.broker.url",
@@ -359,7 +362,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				}
 
 				k8sApi.UpdateClusterServiceBrokerCredentialsStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
-					Expect(secret2.Name).To(Equal(requestBroker.Name))
+					Expect(secret2.Name).To(Equal(requestBroker.ID))
 					Expect(string(secret2.Data["username"])).To(Equal(requestBroker.Username))
 					Expect(string(secret2.Data["password"])).To(Equal(requestBroker.Password))
 					return secret2, nil
@@ -401,6 +404,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				platformClient := newDefaultPlatformClient()
 
 				requestBroker := &platform.UpdateServiceBrokerRequest{
+					ID:        "id-in-sm",
 					GUID:      "1234",
 					Name:      "fake-broker",
 					BrokerURL: "http://fake.broker.url",
@@ -409,7 +413,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 				}
 
 				k8sApi.UpdateClusterServiceBrokerCredentialsStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
-					Expect(secret2.Name).To(Equal(requestBroker.Name))
+					Expect(secret2.Name).To(Equal(requestBroker.ID))
 					Expect(string(secret2.Data["username"])).To(Equal(requestBroker.Username))
 					Expect(string(secret2.Data["password"])).To(Equal(requestBroker.Password))
 					return secret2, nil

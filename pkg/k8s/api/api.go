@@ -26,5 +26,5 @@ type KubernetesAPI interface {
 	// CreateSecret creates a secret for broker's credentials
 	CreateSecret(secret *v1core.Secret) (*v1core.Secret, error)
 	// DeleteSecret deletes broker credentials secret
-	DeleteSecret(namespace,name string) error
+	DeleteSecret(namespace, name string) error
 }

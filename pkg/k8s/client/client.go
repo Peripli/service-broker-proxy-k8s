@@ -152,7 +152,7 @@ func (pc *PlatformClient) GetBrokerByName(ctx context.Context, name string) (*pl
 
 // CreateBroker registers a new broker in kubernetes service-catalog.
 func (pc *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	secret := newServiceBrokerCredentialsSecret(pc.secretNamespace, r.Name, r.Username, r.Password)
+	secret := newServiceBrokerCredentialsSecret(pc.secretNamespace, r.ID, r.Username, r.Password)
 	secret, err := pc.platformAPI.CreateSecret(secret)
 	if err != nil {
 		return nil, fmt.Errorf("error creating secret: %v", err)
@@ -177,7 +177,7 @@ func (pc *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateSe
 
 // DeleteBroker deletes an existing broker in from kubernetes service-catalog.
 func (pc *PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteServiceBrokerRequest) error {
-	if err := pc.platformAPI.DeleteSecret(pc.secretNamespace, r.Name); err != nil {
+	if err := pc.platformAPI.DeleteSecret(pc.secretNamespace, r.ID); err != nil {
 		return fmt.Errorf("error deleting broker credentials secret: %v", err)
 	}
 	return pc.platformAPI.DeleteClusterServiceBroker(r.Name, &v1.DeleteOptions{})
@@ -193,7 +193,7 @@ func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateSe
 
 	// Only broker url and secret-references are updateable
 	broker := newServiceBroker(r.Name, r.BrokerURL, &v1beta1.ObjectReference{
-		Name:      r.Name,
+		Name:      r.ID,
 		Namespace: pc.secretNamespace,
 	})
 
@@ -220,7 +220,7 @@ func (pc *PlatformClient) Fetch(ctx context.Context, r *platform.UpdateServiceBr
 }
 
 func (pc *PlatformClient) updateBrokerPlatformSecret(r *platform.UpdateServiceBrokerRequest) error {
-	secret := newServiceBrokerCredentialsSecret(pc.secretNamespace, r.Name, r.Username, r.Password)
+	secret := newServiceBrokerCredentialsSecret(pc.secretNamespace, r.ID, r.Username, r.Password)
 	_, err := pc.platformAPI.UpdateClusterServiceBrokerCredentials(secret)
 	if err != nil {
 		return fmt.Errorf("error updating broker credentials secret %v", err)
