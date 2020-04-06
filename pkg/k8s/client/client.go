@@ -152,15 +152,13 @@ func (pc *PlatformClient) GetBrokerByName(ctx context.Context, name string) (*pl
 
 // CreateBroker registers a new broker in kubernetes service-catalog.
 func (pc *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	secret := newServiceBrokerCredentialsSecret(pc.secretNamespace, r.ID, r.Username, r.Password)
-	secret, err := pc.platformAPI.CreateSecret(secret)
-	if err != nil {
-		return nil, fmt.Errorf("error creating secret: %v", err)
+	if err := pc.updateBrokerPlatformSecret(r.ID, r.Username, r.Password); err != nil {
+		return nil, err
 	}
 
 	broker := newServiceBroker(r.Name, r.BrokerURL, &v1beta1.ObjectReference{
-		Name:      secret.Name,
-		Namespace: secret.Namespace,
+		Name:      r.ID,
+		Namespace: pc.secretNamespace,
 	})
 	broker.Spec.CommonServiceBrokerSpec.RelistBehavior = "Manual"
 
@@ -186,7 +184,7 @@ func (pc *PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteSe
 // UpdateBroker updates a service broker in the kubernetes service-catalog.
 func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
 	if r.Username != "" && r.Password != "" {
-		if err := pc.updateBrokerPlatformSecret(r); err != nil {
+		if err := pc.updateBrokerPlatformSecret(r.ID, r.Username, r.Password); err != nil {
 			return nil, err
 		}
 	}
@@ -212,15 +210,15 @@ func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateSe
 // so that it is visible in the kubernetes service-catalog.
 func (pc *PlatformClient) Fetch(ctx context.Context, r *platform.UpdateServiceBrokerRequest) error {
 	if r.Username != "" && r.Password != "" {
-		if err := pc.updateBrokerPlatformSecret(r); err != nil {
+		if err := pc.updateBrokerPlatformSecret(r.ID, r.Username, r.Password); err != nil {
 			return err
 		}
 	}
 	return pc.platformAPI.SyncClusterServiceBroker(r.Name, resyncBrokerRetryCount)
 }
 
-func (pc *PlatformClient) updateBrokerPlatformSecret(r *platform.UpdateServiceBrokerRequest) error {
-	secret := newServiceBrokerCredentialsSecret(pc.secretNamespace, r.ID, r.Username, r.Password)
+func (pc *PlatformClient) updateBrokerPlatformSecret(name, username, password string) error {
+	secret := newServiceBrokerCredentialsSecret(pc.secretNamespace, name, username, password)
 	_, err := pc.platformAPI.UpdateClusterServiceBrokerCredentials(secret)
 	if err != nil {
 		return fmt.Errorf("error updating broker credentials secret %v", err)
