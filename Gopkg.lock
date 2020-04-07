@@ -24,8 +24,8 @@
   version = "v1.0.1"
 
 [[projects]]
-  branch = "broker-id"
-  digest = "1:1c8f37358fdf01ce41ac3c7ca814b9df7d32a8443eed89937d7918fe156d4424"
+  branch = "master"
+  digest = "1:b640c5693f331091ce6b0ec3499487ccf9ad130945c502177ada9a42b2e2e9aa"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
     "pkg/authn",
@@ -39,7 +39,7 @@
     "pkg/util",
   ]
   pruneopts = ""
-  revision = "3f3038740ab9ad1e4f6c797375d21ea7e708f194"
+  revision = "e9a56086c0f1867d2e617c558080587bd9d9c723"
 
 [[projects]]
   digest = "1:3e02f6987e92c4cd3cf42e0f9964ae6d8253e3fe438281f1c2c64d117f96df2a"
@@ -575,7 +575,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:87f26a874514f0601797b8986a02fcadd409fe969fa6a3cb76f32f8925a12788"
+  digest = "1:f345913043f51e1a06b2c0679b75ab262717035482bb33b0081da4e35b5425f0"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
@@ -586,7 +586,7 @@
     "ssh/terminal",
   ]
   pruneopts = ""
-  revision = "baeed622b8d86045ff442b324772b0ad306a2b3f"
+  revision = "056763e48d71961566155f089ac0f02f1dda9b5a"
 
 [[projects]]
   branch = "master"
@@ -619,14 +619,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:302602fcab149fcabe87033154a17eed8b94a1c410bbf5fc752c1c4bf522be8f"
+  digest = "1:defbc51e3033647a7eaa5430425543ae8b3802c834bf02facb7464175fa5afc2"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "c3d80250170dec19bf61949c81233cede5ddaf61"
+  revision = "e3b113bbe6a423737ae98f42118ce9366e112e12"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
