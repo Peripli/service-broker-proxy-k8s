@@ -24,7 +24,8 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:e2d7671a81383b2769e8a7b1e37f89de6fe9c8d84c636e898be39d09a395e16d"
+  branch = "master"
+  digest = "1:b640c5693f331091ce6b0ec3499487ccf9ad130945c502177ada9a42b2e2e9aa"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
     "pkg/authn",
@@ -38,11 +39,10 @@
     "pkg/util",
   ]
   pruneopts = ""
-  revision = "d01d407381c348babd4671b285e5144d7f267554"
-  version = "v0.9.0"
+  revision = "e9a56086c0f1867d2e617c558080587bd9d9c723"
 
 [[projects]]
-  digest = "1:44a9cc9419b2e86946325546c6c26eb167ad31c2b17f7d8171709276dd2ca877"
+  digest = "1:3e02f6987e92c4cd3cf42e0f9964ae6d8253e3fe438281f1c2c64d117f96df2a"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -55,6 +55,8 @@
     "api/profile",
     "config",
     "operations",
+    "operations/opcontext",
+    "pkg/client",
     "pkg/env",
     "pkg/health",
     "pkg/httpclient",
@@ -83,8 +85,8 @@
     "storage/postgres/notification_connection",
   ]
   pruneopts = ""
-  revision = "8e292c9120fe9c5c2f5357ad024e4332176e386f"
-  version = "v0.11.0"
+  revision = "8a1cc3932b41629a7c455a8daec2ad5d508c7e53"
+  version = "v0.12.1"
 
 [[projects]]
   digest = "1:fc70ddbcaf8a43101a79cb0a19f8fe6a2792a5280b90e083140de008139f0db0"
@@ -241,12 +243,12 @@
   version = "v1.6.1"
 
 [[projects]]
-  digest = "1:03168f6041f164c06dc6acaaab4ed3ad1c6088b717c365cec892b35c80f4ffc7"
+  digest = "1:5122b0b5a933bd0e16b887aa7844933c8a09fb5ba9b5f5651253cb5336c6462a"
   name = "github.com/gorilla/websocket"
   packages = ["."]
   pruneopts = ""
-  revision = "c3e18be99d19e6b3e8f1559eea2c161a665c4b6b"
-  version = "v1.4.1"
+  revision = "b65e62901fc1c0d968042419e74789f6af455eb9"
+  version = "v1.4.2"
 
 [[projects]]
   digest = "1:8e3bd93036b4a925fe2250d3e4f38f21cadb8ef623561cd80c3c50c114b13201"
@@ -298,16 +300,16 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:6906c992632a66c125bd44e68a7abc354d9eda683e451b5c2d9b1614d15d4f18"
+  digest = "1:99b3e0d0cb2faa726a72f1914c6b14ff9315099a8bda9e12287da38d3aea1fab"
   name = "github.com/imdario/mergo"
   packages = ["."]
   pruneopts = ""
-  revision = "1afb36080aec31e0d1528973ebe6721b191b0369"
-  version = "v0.3.8"
+  revision = "66f88b4ae75f5edcc556623b96ff32c06360fbb7"
+  version = "v0.3.9"
 
 [[projects]]
   branch = "master"
-  digest = "1:297afeed9b0ee762603171c13bf39c6e1065476861a6402f8b59fe21aced55b6"
+  digest = "1:2d3afd390e67f17f5a3d5cca477e831a179b0cb69756a9b20e2fd60cb15e794d"
   name = "github.com/jmoiron/sqlx"
   packages = [
     ".",
@@ -315,7 +317,7 @@
     "types",
   ]
   pruneopts = ""
-  revision = "2ba0fc60eb4a54030f3a6d73ff0a047349c7eeca"
+  revision = "ee514944af4b0d1b90212831674e03df1b850998"
 
 [[projects]]
   digest = "1:fb8bce9822eac1e2aeee6c2621cf25c6dec8f8f5f50a09a4a894d7932bfb2106"
@@ -363,7 +365,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7c199f90e47d34b64b31b75f078a7548eb0041497b2dec4d4bf273308554e33a"
+  digest = "1:613a8b2b7654b9f9970c33d297297cf2138a115fb2c7cb60c27b8bc8433819b0"
   name = "github.com/lib/pq"
   packages = [
     ".",
@@ -371,7 +373,7 @@
     "scram",
   ]
   pruneopts = ""
-  revision = "9eb3fc897d6fd97dd4aad3d0404b54e2f7cc56be"
+  revision = "356e267cd3f45ee1303b7d8765e3583cb949950e"
 
 [[projects]]
   digest = "1:ae39921edb7f801f7ce1b6b5484f9715a1dd2b52cb645daef095cd10fd6ee774"
@@ -382,12 +384,12 @@
   version = "v1.8.1"
 
 [[projects]]
-  digest = "1:bcc46a0fbd9e933087bef394871256b5c60269575bb661935874729c65bbbf60"
+  digest = "1:86f67b49e58b1a5b175f73eab2f91299080fd5bb10ee39d9c6373f4f5cdf238f"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
   pruneopts = ""
-  revision = "3536a929edddb9a5b34bd6861dc4a9647cb459fe"
-  version = "v1.1.2"
+  revision = "694aaefbc689be1915c2ef39e880409057931a94"
+  version = "v1.2.2"
 
 [[projects]]
   digest = "1:0c0ff2a89c1bb0d01887e1dac043ad7efbf3ec77482ef058ac423d13497e16fd"
@@ -462,12 +464,12 @@
   version = "v1.9.0"
 
 [[projects]]
-  digest = "1:5f347ea0b4656f17f0ddffae1419dafaac4bc6ed57c92d58cadc7452f8a9ac3f"
+  digest = "1:dbd3b76878498e6720d4f3c801e165f2982d6b4889d54e8d0ff5ea5173149874"
   name = "github.com/pelletier/go-toml"
   packages = ["."]
   pruneopts = ""
-  revision = "903d9455db9ff1d7ac1ab199062eca7266dd11a3"
-  version = "v1.6.0"
+  revision = "8e8d2a6aad23fcaa64716c5fa6975ec3abbf8281"
+  version = "v1.7.0"
 
 [[projects]]
   digest = "1:1d7e1867c49a6dd9856598ef7c3123604ea3daabf5b83f303ff457bcbc410b1d"
@@ -564,16 +566,16 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:04a1f04f50d734222dc3da57368771a1d6a4e4c7418d19e17285d7c1d1936939"
+  digest = "1:b749bf81c4c595c1218489d2fa4d90e4a953a5fd11420722a2f57c0c5beecb92"
   name = "github.com/tidwall/sjson"
   packages = ["."]
   pruneopts = ""
-  revision = "25fb082a20e29e83fb7b7ef5f5919166aad1f084"
-  version = "v1.0.4"
+  revision = "11cb24d8421de3e1bb5c5efb066a03037150568d"
+  version = "v1.1.1"
 
 [[projects]]
   branch = "master"
-  digest = "1:0cb9af7d99926126ac7414b3d3e7e42b96d4b03ebba66972ac984e94c47e606e"
+  digest = "1:f345913043f51e1a06b2c0679b75ab262717035482bb33b0081da4e35b5425f0"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
@@ -584,11 +586,11 @@
     "ssh/terminal",
   ]
   pruneopts = ""
-  revision = "f7b00557c8c46a1ea4b035cae84f52028c2c0564"
+  revision = "056763e48d71961566155f089ac0f02f1dda9b5a"
 
 [[projects]]
   branch = "master"
-  digest = "1:9ac4dae84a6c14d4d0458d27a8c46fca553cfba156fe0c87f99c50d22034c7e3"
+  digest = "1:5ee8059477435bc4ec344bfa2ba129566bd0bc8137d98af9ec9aa4ba8e5f1e4e"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -602,7 +604,7 @@
     "idna",
   ]
   pruneopts = ""
-  revision = "244492dfa37ae2ce87222fd06250a03160745faa"
+  revision = "d3edc9973b7eb1fb302b0ff2c62357091cea9a30"
 
 [[projects]]
   branch = "master"
@@ -617,14 +619,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d7d983fd8850aa2312ec3e963aa2710cc1adef5ded6dfdf7d4d8130c216a9430"
+  digest = "1:defbc51e3033647a7eaa5430425543ae8b3802c834bf02facb7464175fa5afc2"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "5c8b2ff67527cb88b770f693cebf3799036d8bc0"
+  revision = "e3b113bbe6a423737ae98f42118ce9366e112e12"
 
 [[projects]]
   digest = "1:740b51a55815493a8d0f2b1e0d0ae48fe48953bf7eaf3fcc4198823bf67768c0"
@@ -790,7 +792,7 @@
 
 [[projects]]
   branch = "release-1.15"
-  digest = "1:ff8f080be67884abfb581a56e410f6e53d4de1deacc36c89e9e3ed931026770f"
+  digest = "1:671e2e6c1c82f0d0dd3c8b8319de11c2a29c62f885375e137278e8cb089539cb"
   name = "k8s.io/apiextensions-apiserver"
   packages = [
     "pkg/apis/apiextensions",
@@ -800,7 +802,7 @@
     "pkg/client/clientset/clientset/typed/apiextensions/v1beta1",
   ]
   pruneopts = ""
-  revision = "01db4fb1241762aed7d3de6755cab3eff4033346"
+  revision = "8546efc3bc759a12cb1f7d9697f05dd867fec2c7"
 
 [[projects]]
   branch = "release-1.15"
@@ -924,14 +926,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:853ba697692391be512bf7449b577e24239d152c794a892079d35474f9784403"
+  digest = "1:d601a2869684c0c48555d9dbcd00e814b1164f12c0a97162d3d25125d816e692"
   name = "k8s.io/utils"
   packages = [
     "integer",
     "pointer",
   ]
   pruneopts = ""
-  revision = "0a110f9eb7ab662220ed640640f50c4be9b6b485"
+  revision = "6496210b90e852b26b227eaedea39b286063fae6"
 
 [[projects]]
   digest = "1:a24c9ac4cb9e3c67edc0a37a1d828e3fbb92a7e9e12bb84f9c0e781aa42f71b0"

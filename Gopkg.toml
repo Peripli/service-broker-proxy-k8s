@@ -10,7 +10,7 @@
 
 [[constraint]]
   name = "github.com/Peripli/service-broker-proxy"
-  version = "=0.9.0"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/onsi/ginkgo"
@@ -24,6 +24,10 @@
 [[override]]
   name = "gopkg.in/fsnotify.v1"
   source = "https://github.com/fsnotify/fsnotify.git"
+
+[[override]]
+  name = "github.com/hashicorp/go-multierror"
+  version = "=v1.0.0"
 
 # Specify kubernetes dependency versions
 [[override]]
