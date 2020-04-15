@@ -33,21 +33,21 @@ config:
     url:
   server:
     port: 8081
-    request_timeout: 6000ms
-    shutdown_timeout: 6000ms
+    request_timeout: 2m
+    shutdown_timeout: 6s
   log:
     level: info
     format: text
   sm:
     url: http://service-manager.dev.cfdev.sh
     osb_api_path: /v1/osb
-    request_timeout: 6000ms
+    request_timeout: 2m
     skip_ssl_validation: false
   producer:
-    resync_period: 1h
+    resync_period: 12h
   k8s:
     client:
-      timeout: 30000ms
+      timeout: 30s
   authn:
     user: admin
     password: admin
