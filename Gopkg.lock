@@ -24,8 +24,7 @@
   version = "v1.0.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:b640c5693f331091ce6b0ec3499487ccf9ad130945c502177ada9a42b2e2e9aa"
+  digest = "1:760ecdbebf095d663e4819bc3c7f48397d2363152584bc0a0527a707901c27c8"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
     "pkg/authn",
@@ -39,10 +38,11 @@
     "pkg/util",
   ]
   pruneopts = ""
-  revision = "e9a56086c0f1867d2e617c558080587bd9d9c723"
+  revision = "83acc2e77829666a84d038868ad463c60d143b73"
+  version = "v0.9.3"
 
 [[projects]]
-  digest = "1:3e02f6987e92c4cd3cf42e0f9964ae6d8253e3fe438281f1c2c64d117f96df2a"
+  digest = "1:bef6e0e96085af0fb916ced930d60058476249eceaedc0315da6ec7973e4761d"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -85,8 +85,8 @@
     "storage/postgres/notification_connection",
   ]
   pruneopts = ""
-  revision = "8a1cc3932b41629a7c455a8daec2ad5d508c7e53"
-  version = "v0.12.1"
+  revision = "18d7a6f37a954073b7dafc601225a793d6cb6d40"
+  version = "v0.13.0"
 
 [[projects]]
   digest = "1:fc70ddbcaf8a43101a79cb0a19f8fe6a2792a5280b90e083140de008139f0db0"
