@@ -94,23 +94,17 @@ func (sca *ServiceCatalogAPI) DeleteSecret(namespace, name string) error {
 
 
 func (sca *ServiceCatalogAPI) setBrokerInProgress(name string) bool {
+	sca.lock.Lock()
+	defer sca.lock.Unlock()
 	if _, ok := sca.brokersInProgress[name]; !ok {
-		sca.lock.Lock()
 		sca.brokersInProgress[name] = true
-		sca.lock.Unlock()
 		return true
 	}
 	return false;
 }
 
-func (sca *ServiceCatalogAPI) unsetBrokerInProgress(name string) bool {
-	if _, ok := sca.brokersInProgress[name]; ok {
-		sca.lock.Lock()
-		delete(sca.brokersInProgress, name)
-		sca.lock.Unlock()
-		return true
-	}
-	return false;
+func (sca *ServiceCatalogAPI) unsetBrokerInProgress(name string) {
+	delete(sca.brokersInProgress, name)
 }
 
 // PlatformClient implements all broker, visibility and catalog specific operations for kubernetes
