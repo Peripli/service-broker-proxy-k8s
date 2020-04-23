@@ -61,10 +61,10 @@ func (sca *ServiceCatalogAPI) UpdateClusterServiceBroker(broker *v1beta1.Cluster
 // SyncClusterServiceBroker synchronizes a cluster service broker including its catalog
 func (sca *ServiceCatalogAPI) SyncClusterServiceBroker(name string, retries int) error {
 	if sca.setBrokerInProgress(name) {
+		defer sca.unsetBrokerInProgress(name)
 		err := sca.Sync(name, servicecatalog.ScopeOptions{
 			Scope: servicecatalog.ClusterScope,
 		}, retries)
-		sca.unsetBrokerInProgress(name)
 		return err
 	}
 	return fmt.Errorf("broker %s already syncing", name)
