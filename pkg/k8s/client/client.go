@@ -7,6 +7,7 @@ import (
 	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/config"
 	servicecatalog "github.com/kubernetes-sigs/service-catalog/pkg/svcat/service-catalog"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"sync"
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
 	"github.com/kubernetes-sigs/service-catalog/pkg/apis/servicecatalog/v1beta1"
@@ -18,12 +19,18 @@ const resyncBrokerRetryCount = 3
 
 // NewDefaultKubernetesAPI returns default kubernetes api interface
 func NewDefaultKubernetesAPI(cli *servicecatalog.SDK) *ServiceCatalogAPI {
-	return &ServiceCatalogAPI{cli}
+	return &ServiceCatalogAPI{
+		SDK:cli,
+		brokersInProgress: make(map[string]bool),
+		lock: &sync.Mutex{},
+	}
 }
 
 // ServiceCatalogAPI uses service catalog SDK to interact with the kubernetes resources
 type ServiceCatalogAPI struct {
 	*servicecatalog.SDK
+	brokersInProgress map[string]bool
+	lock *sync.Mutex
 }
 
 // CreateClusterServiceBroker creates a cluster service broker
@@ -53,9 +60,14 @@ func (sca *ServiceCatalogAPI) UpdateClusterServiceBroker(broker *v1beta1.Cluster
 
 // SyncClusterServiceBroker synchronizes a cluster service broker including its catalog
 func (sca *ServiceCatalogAPI) SyncClusterServiceBroker(name string, retries int) error {
-	return sca.Sync(name, servicecatalog.ScopeOptions{
-		Scope: servicecatalog.ClusterScope,
-	}, retries)
+	if sca.setBrokerInProgress(name) {
+		err := sca.Sync(name, servicecatalog.ScopeOptions{
+			Scope: servicecatalog.ClusterScope,
+		}, retries)
+		sca.unsetBrokerInProgress(name)
+		return err
+	}
+	return fmt.Errorf("broker %s already syncing", name)
 }
 
 // UpdateClusterServiceBrokerCredentials updates broker's credentials secret
@@ -78,6 +90,27 @@ func (sca *ServiceCatalogAPI) CreateSecret(secret *v1core.Secret) (*v1core.Secre
 // DeleteSecret deletes broker credentials secret
 func (sca *ServiceCatalogAPI) DeleteSecret(namespace, name string) error {
 	return sca.K8sClient.CoreV1().Secrets(namespace).Delete(name, &v1.DeleteOptions{})
+}
+
+
+func (sca *ServiceCatalogAPI) setBrokerInProgress(name string) bool {
+	if _, ok := sca.brokersInProgress[name]; !ok {
+		sca.lock.Lock()
+		sca.brokersInProgress[name] = true
+		sca.lock.Unlock()
+		return true
+	}
+	return false;
+}
+
+func (sca *ServiceCatalogAPI) unsetBrokerInProgress(name string) bool {
+	if _, ok := sca.brokersInProgress[name]; ok {
+		sca.lock.Lock()
+		delete(sca.brokersInProgress, name)
+		sca.lock.Unlock()
+		return true
+	}
+	return false;
 }
 
 // PlatformClient implements all broker, visibility and catalog specific operations for kubernetes
