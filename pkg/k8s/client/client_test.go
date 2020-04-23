@@ -469,12 +469,26 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 	})
 
 	Describe("DisableAccessForPlan", func() {
+
 		It("should call Fetch", func() {
 			platformClient := newDefaultPlatformClient()
 			k8sApi.SyncClusterServiceBrokerStub = func(name string, retries int) error {
 				return expectedError
 			}
 			Expect(platformClient.DisableAccessForPlan(ctx, &platform.ModifyPlanAccessRequest{})).To(Equal(expectedError))
+		})
+	})
+
+	Describe("Concurrent Modification", func() {
+		It("visibility for the same broker", func() {
+			NewClient(settings)
+			platformClient, err := NewClient(settings)
+			Expect(err).ToNot(HaveOccurred())
+			scat := platformClient.platformAPI.(*ServiceCatalogAPI)
+			scat.setBrokerInProgress("test")
+			expectedError := platformClient.platformAPI.SyncClusterServiceBroker("test", 1)
+			Expect(expectedError.Error()).To(Equal("broker test already syncing"))
+			scat.unsetBrokerInProgress("test")
 		})
 	})
 })
