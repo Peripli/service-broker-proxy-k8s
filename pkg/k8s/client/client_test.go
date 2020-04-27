@@ -487,7 +487,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			scat := platformClient.platformAPI.(*ServiceCatalogAPI)
 			scat.setBrokerInProgress("test")
 			expectedError := platformClient.platformAPI.SyncClusterServiceBroker("test", 1)
-			Expect(expectedError.Error()).To(Equal("broker test already syncing"))
+			Expect(expectedError).NotTo(HaveOccurred())
 			scat.unsetBrokerInProgress("test")
 		})
 	})

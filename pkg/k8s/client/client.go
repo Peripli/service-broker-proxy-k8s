@@ -67,7 +67,7 @@ func (sca *ServiceCatalogAPI) SyncClusterServiceBroker(name string, retries int)
 		}, retries)
 		return err
 	}
-	return fmt.Errorf("broker %s already syncing", name)
+	return nil
 }
 
 // UpdateClusterServiceBrokerCredentials updates broker's credentials secret
