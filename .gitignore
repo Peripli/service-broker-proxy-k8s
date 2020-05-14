@@ -25,3 +25,6 @@ kubeconfig*
 
 # vendor
 /vendor
+
+# Pipeline specific
+.pipeline/
