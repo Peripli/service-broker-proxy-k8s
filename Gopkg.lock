@@ -24,7 +24,7 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:4e250cec49d99b17fffcff4b44e928787bf603c1e09c0132ff01e217b6d3988f"
+  digest = "1:a9038396ad1196fb78a26a43f073f6c66005bf7923aae371b72956c660a8786b"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
     "pkg/authn",
@@ -38,11 +38,11 @@
     "pkg/util",
   ]
   pruneopts = ""
-  revision = "46e9bc3c10bd7cb8966e142559d24d7c433d3e4b"
-  version = "v0.9.5"
+  revision = "aa8d0fa44134ab65f6a82223cb1cfe36b940f440"
+  version = "v0.10.0"
 
 [[projects]]
-  digest = "1:25ad6d1223bd99e3d9ac437f35a53ab9b508b4b12562a909bb556209fce8e3e0"
+  digest = "1:7b7bae3462654a33ac9f1fa3496637bb90344c10f80096e7a7e601018631ddfa"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -74,6 +74,7 @@
     "pkg/server",
     "pkg/sm",
     "pkg/types",
+    "pkg/types/cascade",
     "pkg/util",
     "pkg/util/slice",
     "pkg/web",
@@ -86,7 +87,8 @@
     "storage/service_plans",
   ]
   pruneopts = ""
-  revision = "0.13.3"
+  revision = "e82055cd99aa853f58b2203d8cfcfdd4d629e4de"
+  version = "v0.14.0"
 
 [[projects]]
   digest = "1:fc70ddbcaf8a43101a79cb0a19f8fe6a2792a5280b90e083140de008139f0db0"
