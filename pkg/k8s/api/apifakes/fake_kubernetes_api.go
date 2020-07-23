@@ -24,6 +24,20 @@ type FakeKubernetesAPI struct {
 		result1 *v1beta1.ClusterServiceBroker
 		result2 error
 	}
+	CreateNamespaceServiceBrokerStub        func(*v1beta1.ServiceBroker, string) (*v1beta1.ServiceBroker, error)
+	createNamespaceServiceBrokerMutex       sync.RWMutex
+	createNamespaceServiceBrokerArgsForCall []struct {
+		arg1 *v1beta1.ServiceBroker
+		arg2 string
+	}
+	createNamespaceServiceBrokerReturns struct {
+		result1 *v1beta1.ServiceBroker
+		result2 error
+	}
+	createNamespaceServiceBrokerReturnsOnCall map[int]struct {
+		result1 *v1beta1.ServiceBroker
+		result2 error
+	}
 	CreateSecretStub        func(*v1.Secret) (*v1.Secret, error)
 	createSecretMutex       sync.RWMutex
 	createSecretArgsForCall []struct {
@@ -47,6 +61,19 @@ type FakeKubernetesAPI struct {
 		result1 error
 	}
 	deleteClusterServiceBrokerReturnsOnCall map[int]struct {
+		result1 error
+	}
+	DeleteNamespaceServiceBrokerStub        func(string, string, *v1a.DeleteOptions) error
+	deleteNamespaceServiceBrokerMutex       sync.RWMutex
+	deleteNamespaceServiceBrokerArgsForCall []struct {
+		arg1 string
+		arg2 string
+		arg3 *v1a.DeleteOptions
+	}
+	deleteNamespaceServiceBrokerReturns struct {
+		result1 error
+	}
+	deleteNamespaceServiceBrokerReturnsOnCall map[int]struct {
 		result1 error
 	}
 	DeleteSecretStub        func(string, string) error
@@ -86,6 +113,33 @@ type FakeKubernetesAPI struct {
 		result1 *v1beta1.ClusterServiceBrokerList
 		result2 error
 	}
+	RetrieveNamespaceServiceBrokerByNameStub        func(string, string) (*v1beta1.ServiceBroker, error)
+	retrieveNamespaceServiceBrokerByNameMutex       sync.RWMutex
+	retrieveNamespaceServiceBrokerByNameArgsForCall []struct {
+		arg1 string
+		arg2 string
+	}
+	retrieveNamespaceServiceBrokerByNameReturns struct {
+		result1 *v1beta1.ServiceBroker
+		result2 error
+	}
+	retrieveNamespaceServiceBrokerByNameReturnsOnCall map[int]struct {
+		result1 *v1beta1.ServiceBroker
+		result2 error
+	}
+	RetrieveNamespaceServiceBrokersStub        func(string) (*v1beta1.ServiceBrokerList, error)
+	retrieveNamespaceServiceBrokersMutex       sync.RWMutex
+	retrieveNamespaceServiceBrokersArgsForCall []struct {
+		arg1 string
+	}
+	retrieveNamespaceServiceBrokersReturns struct {
+		result1 *v1beta1.ServiceBrokerList
+		result2 error
+	}
+	retrieveNamespaceServiceBrokersReturnsOnCall map[int]struct {
+		result1 *v1beta1.ServiceBrokerList
+		result2 error
+	}
 	SyncClusterServiceBrokerStub        func(string, int) error
 	syncClusterServiceBrokerMutex       sync.RWMutex
 	syncClusterServiceBrokerArgsForCall []struct {
@@ -96,6 +150,19 @@ type FakeKubernetesAPI struct {
 		result1 error
 	}
 	syncClusterServiceBrokerReturnsOnCall map[int]struct {
+		result1 error
+	}
+	SyncNamespaceServiceBrokerStub        func(string, string, int) error
+	syncNamespaceServiceBrokerMutex       sync.RWMutex
+	syncNamespaceServiceBrokerArgsForCall []struct {
+		arg1 string
+		arg2 string
+		arg3 int
+	}
+	syncNamespaceServiceBrokerReturns struct {
+		result1 error
+	}
+	syncNamespaceServiceBrokerReturnsOnCall map[int]struct {
 		result1 error
 	}
 	UpdateClusterServiceBrokerStub        func(*v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error)
@@ -111,16 +178,30 @@ type FakeKubernetesAPI struct {
 		result1 *v1beta1.ClusterServiceBroker
 		result2 error
 	}
-	UpdateClusterServiceBrokerCredentialsStub        func(*v1.Secret) (*v1.Secret, error)
-	updateClusterServiceBrokerCredentialsMutex       sync.RWMutex
-	updateClusterServiceBrokerCredentialsArgsForCall []struct {
+	UpdateNamespaceServiceBrokerStub        func(*v1beta1.ServiceBroker, string) (*v1beta1.ServiceBroker, error)
+	updateNamespaceServiceBrokerMutex       sync.RWMutex
+	updateNamespaceServiceBrokerArgsForCall []struct {
+		arg1 *v1beta1.ServiceBroker
+		arg2 string
+	}
+	updateNamespaceServiceBrokerReturns struct {
+		result1 *v1beta1.ServiceBroker
+		result2 error
+	}
+	updateNamespaceServiceBrokerReturnsOnCall map[int]struct {
+		result1 *v1beta1.ServiceBroker
+		result2 error
+	}
+	UpdateServiceBrokerCredentialsStub        func(*v1.Secret) (*v1.Secret, error)
+	updateServiceBrokerCredentialsMutex       sync.RWMutex
+	updateServiceBrokerCredentialsArgsForCall []struct {
 		arg1 *v1.Secret
 	}
-	updateClusterServiceBrokerCredentialsReturns struct {
+	updateServiceBrokerCredentialsReturns struct {
 		result1 *v1.Secret
 		result2 error
 	}
-	updateClusterServiceBrokerCredentialsReturnsOnCall map[int]struct {
+	updateServiceBrokerCredentialsReturnsOnCall map[int]struct {
 		result1 *v1.Secret
 		result2 error
 	}
@@ -187,6 +268,70 @@ func (fake *FakeKubernetesAPI) CreateClusterServiceBrokerReturnsOnCall(i int, re
 	}
 	fake.createClusterServiceBrokerReturnsOnCall[i] = struct {
 		result1 *v1beta1.ClusterServiceBroker
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeKubernetesAPI) CreateNamespaceServiceBroker(arg1 *v1beta1.ServiceBroker, arg2 string) (*v1beta1.ServiceBroker, error) {
+	fake.createNamespaceServiceBrokerMutex.Lock()
+	ret, specificReturn := fake.createNamespaceServiceBrokerReturnsOnCall[len(fake.createNamespaceServiceBrokerArgsForCall)]
+	fake.createNamespaceServiceBrokerArgsForCall = append(fake.createNamespaceServiceBrokerArgsForCall, struct {
+		arg1 *v1beta1.ServiceBroker
+		arg2 string
+	}{arg1, arg2})
+	fake.recordInvocation("CreateNamespaceServiceBroker", []interface{}{arg1, arg2})
+	fake.createNamespaceServiceBrokerMutex.Unlock()
+	if fake.CreateNamespaceServiceBrokerStub != nil {
+		return fake.CreateNamespaceServiceBrokerStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.createNamespaceServiceBrokerReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeKubernetesAPI) CreateNamespaceServiceBrokerCallCount() int {
+	fake.createNamespaceServiceBrokerMutex.RLock()
+	defer fake.createNamespaceServiceBrokerMutex.RUnlock()
+	return len(fake.createNamespaceServiceBrokerArgsForCall)
+}
+
+func (fake *FakeKubernetesAPI) CreateNamespaceServiceBrokerCalls(stub func(*v1beta1.ServiceBroker, string) (*v1beta1.ServiceBroker, error)) {
+	fake.createNamespaceServiceBrokerMutex.Lock()
+	defer fake.createNamespaceServiceBrokerMutex.Unlock()
+	fake.CreateNamespaceServiceBrokerStub = stub
+}
+
+func (fake *FakeKubernetesAPI) CreateNamespaceServiceBrokerArgsForCall(i int) (*v1beta1.ServiceBroker, string) {
+	fake.createNamespaceServiceBrokerMutex.RLock()
+	defer fake.createNamespaceServiceBrokerMutex.RUnlock()
+	argsForCall := fake.createNamespaceServiceBrokerArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeKubernetesAPI) CreateNamespaceServiceBrokerReturns(result1 *v1beta1.ServiceBroker, result2 error) {
+	fake.createNamespaceServiceBrokerMutex.Lock()
+	defer fake.createNamespaceServiceBrokerMutex.Unlock()
+	fake.CreateNamespaceServiceBrokerStub = nil
+	fake.createNamespaceServiceBrokerReturns = struct {
+		result1 *v1beta1.ServiceBroker
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeKubernetesAPI) CreateNamespaceServiceBrokerReturnsOnCall(i int, result1 *v1beta1.ServiceBroker, result2 error) {
+	fake.createNamespaceServiceBrokerMutex.Lock()
+	defer fake.createNamespaceServiceBrokerMutex.Unlock()
+	fake.CreateNamespaceServiceBrokerStub = nil
+	if fake.createNamespaceServiceBrokerReturnsOnCall == nil {
+		fake.createNamespaceServiceBrokerReturnsOnCall = make(map[int]struct {
+			result1 *v1beta1.ServiceBroker
+			result2 error
+		})
+	}
+	fake.createNamespaceServiceBrokerReturnsOnCall[i] = struct {
+		result1 *v1beta1.ServiceBroker
 		result2 error
 	}{result1, result2}
 }
@@ -311,6 +456,68 @@ func (fake *FakeKubernetesAPI) DeleteClusterServiceBrokerReturnsOnCall(i int, re
 		})
 	}
 	fake.deleteClusterServiceBrokerReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeKubernetesAPI) DeleteNamespaceServiceBroker(arg1 string, arg2 string, arg3 *v1a.DeleteOptions) error {
+	fake.deleteNamespaceServiceBrokerMutex.Lock()
+	ret, specificReturn := fake.deleteNamespaceServiceBrokerReturnsOnCall[len(fake.deleteNamespaceServiceBrokerArgsForCall)]
+	fake.deleteNamespaceServiceBrokerArgsForCall = append(fake.deleteNamespaceServiceBrokerArgsForCall, struct {
+		arg1 string
+		arg2 string
+		arg3 *v1a.DeleteOptions
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("DeleteNamespaceServiceBroker", []interface{}{arg1, arg2, arg3})
+	fake.deleteNamespaceServiceBrokerMutex.Unlock()
+	if fake.DeleteNamespaceServiceBrokerStub != nil {
+		return fake.DeleteNamespaceServiceBrokerStub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.deleteNamespaceServiceBrokerReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeKubernetesAPI) DeleteNamespaceServiceBrokerCallCount() int {
+	fake.deleteNamespaceServiceBrokerMutex.RLock()
+	defer fake.deleteNamespaceServiceBrokerMutex.RUnlock()
+	return len(fake.deleteNamespaceServiceBrokerArgsForCall)
+}
+
+func (fake *FakeKubernetesAPI) DeleteNamespaceServiceBrokerCalls(stub func(string, string, *v1a.DeleteOptions) error) {
+	fake.deleteNamespaceServiceBrokerMutex.Lock()
+	defer fake.deleteNamespaceServiceBrokerMutex.Unlock()
+	fake.DeleteNamespaceServiceBrokerStub = stub
+}
+
+func (fake *FakeKubernetesAPI) DeleteNamespaceServiceBrokerArgsForCall(i int) (string, string, *v1a.DeleteOptions) {
+	fake.deleteNamespaceServiceBrokerMutex.RLock()
+	defer fake.deleteNamespaceServiceBrokerMutex.RUnlock()
+	argsForCall := fake.deleteNamespaceServiceBrokerArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeKubernetesAPI) DeleteNamespaceServiceBrokerReturns(result1 error) {
+	fake.deleteNamespaceServiceBrokerMutex.Lock()
+	defer fake.deleteNamespaceServiceBrokerMutex.Unlock()
+	fake.DeleteNamespaceServiceBrokerStub = nil
+	fake.deleteNamespaceServiceBrokerReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeKubernetesAPI) DeleteNamespaceServiceBrokerReturnsOnCall(i int, result1 error) {
+	fake.deleteNamespaceServiceBrokerMutex.Lock()
+	defer fake.deleteNamespaceServiceBrokerMutex.Unlock()
+	fake.DeleteNamespaceServiceBrokerStub = nil
+	if fake.deleteNamespaceServiceBrokerReturnsOnCall == nil {
+		fake.deleteNamespaceServiceBrokerReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.deleteNamespaceServiceBrokerReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -494,6 +701,133 @@ func (fake *FakeKubernetesAPI) RetrieveClusterServiceBrokersReturnsOnCall(i int,
 	}{result1, result2}
 }
 
+func (fake *FakeKubernetesAPI) RetrieveNamespaceServiceBrokerByName(arg1 string, arg2 string) (*v1beta1.ServiceBroker, error) {
+	fake.retrieveNamespaceServiceBrokerByNameMutex.Lock()
+	ret, specificReturn := fake.retrieveNamespaceServiceBrokerByNameReturnsOnCall[len(fake.retrieveNamespaceServiceBrokerByNameArgsForCall)]
+	fake.retrieveNamespaceServiceBrokerByNameArgsForCall = append(fake.retrieveNamespaceServiceBrokerByNameArgsForCall, struct {
+		arg1 string
+		arg2 string
+	}{arg1, arg2})
+	fake.recordInvocation("RetrieveNamespaceServiceBrokerByName", []interface{}{arg1, arg2})
+	fake.retrieveNamespaceServiceBrokerByNameMutex.Unlock()
+	if fake.RetrieveNamespaceServiceBrokerByNameStub != nil {
+		return fake.RetrieveNamespaceServiceBrokerByNameStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.retrieveNamespaceServiceBrokerByNameReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeKubernetesAPI) RetrieveNamespaceServiceBrokerByNameCallCount() int {
+	fake.retrieveNamespaceServiceBrokerByNameMutex.RLock()
+	defer fake.retrieveNamespaceServiceBrokerByNameMutex.RUnlock()
+	return len(fake.retrieveNamespaceServiceBrokerByNameArgsForCall)
+}
+
+func (fake *FakeKubernetesAPI) RetrieveNamespaceServiceBrokerByNameCalls(stub func(string, string) (*v1beta1.ServiceBroker, error)) {
+	fake.retrieveNamespaceServiceBrokerByNameMutex.Lock()
+	defer fake.retrieveNamespaceServiceBrokerByNameMutex.Unlock()
+	fake.RetrieveNamespaceServiceBrokerByNameStub = stub
+}
+
+func (fake *FakeKubernetesAPI) RetrieveNamespaceServiceBrokerByNameArgsForCall(i int) (string, string) {
+	fake.retrieveNamespaceServiceBrokerByNameMutex.RLock()
+	defer fake.retrieveNamespaceServiceBrokerByNameMutex.RUnlock()
+	argsForCall := fake.retrieveNamespaceServiceBrokerByNameArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeKubernetesAPI) RetrieveNamespaceServiceBrokerByNameReturns(result1 *v1beta1.ServiceBroker, result2 error) {
+	fake.retrieveNamespaceServiceBrokerByNameMutex.Lock()
+	defer fake.retrieveNamespaceServiceBrokerByNameMutex.Unlock()
+	fake.RetrieveNamespaceServiceBrokerByNameStub = nil
+	fake.retrieveNamespaceServiceBrokerByNameReturns = struct {
+		result1 *v1beta1.ServiceBroker
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeKubernetesAPI) RetrieveNamespaceServiceBrokerByNameReturnsOnCall(i int, result1 *v1beta1.ServiceBroker, result2 error) {
+	fake.retrieveNamespaceServiceBrokerByNameMutex.Lock()
+	defer fake.retrieveNamespaceServiceBrokerByNameMutex.Unlock()
+	fake.RetrieveNamespaceServiceBrokerByNameStub = nil
+	if fake.retrieveNamespaceServiceBrokerByNameReturnsOnCall == nil {
+		fake.retrieveNamespaceServiceBrokerByNameReturnsOnCall = make(map[int]struct {
+			result1 *v1beta1.ServiceBroker
+			result2 error
+		})
+	}
+	fake.retrieveNamespaceServiceBrokerByNameReturnsOnCall[i] = struct {
+		result1 *v1beta1.ServiceBroker
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeKubernetesAPI) RetrieveNamespaceServiceBrokers(arg1 string) (*v1beta1.ServiceBrokerList, error) {
+	fake.retrieveNamespaceServiceBrokersMutex.Lock()
+	ret, specificReturn := fake.retrieveNamespaceServiceBrokersReturnsOnCall[len(fake.retrieveNamespaceServiceBrokersArgsForCall)]
+	fake.retrieveNamespaceServiceBrokersArgsForCall = append(fake.retrieveNamespaceServiceBrokersArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("RetrieveNamespaceServiceBrokers", []interface{}{arg1})
+	fake.retrieveNamespaceServiceBrokersMutex.Unlock()
+	if fake.RetrieveNamespaceServiceBrokersStub != nil {
+		return fake.RetrieveNamespaceServiceBrokersStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.retrieveNamespaceServiceBrokersReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeKubernetesAPI) RetrieveNamespaceServiceBrokersCallCount() int {
+	fake.retrieveNamespaceServiceBrokersMutex.RLock()
+	defer fake.retrieveNamespaceServiceBrokersMutex.RUnlock()
+	return len(fake.retrieveNamespaceServiceBrokersArgsForCall)
+}
+
+func (fake *FakeKubernetesAPI) RetrieveNamespaceServiceBrokersCalls(stub func(string) (*v1beta1.ServiceBrokerList, error)) {
+	fake.retrieveNamespaceServiceBrokersMutex.Lock()
+	defer fake.retrieveNamespaceServiceBrokersMutex.Unlock()
+	fake.RetrieveNamespaceServiceBrokersStub = stub
+}
+
+func (fake *FakeKubernetesAPI) RetrieveNamespaceServiceBrokersArgsForCall(i int) string {
+	fake.retrieveNamespaceServiceBrokersMutex.RLock()
+	defer fake.retrieveNamespaceServiceBrokersMutex.RUnlock()
+	argsForCall := fake.retrieveNamespaceServiceBrokersArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FakeKubernetesAPI) RetrieveNamespaceServiceBrokersReturns(result1 *v1beta1.ServiceBrokerList, result2 error) {
+	fake.retrieveNamespaceServiceBrokersMutex.Lock()
+	defer fake.retrieveNamespaceServiceBrokersMutex.Unlock()
+	fake.RetrieveNamespaceServiceBrokersStub = nil
+	fake.retrieveNamespaceServiceBrokersReturns = struct {
+		result1 *v1beta1.ServiceBrokerList
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeKubernetesAPI) RetrieveNamespaceServiceBrokersReturnsOnCall(i int, result1 *v1beta1.ServiceBrokerList, result2 error) {
+	fake.retrieveNamespaceServiceBrokersMutex.Lock()
+	defer fake.retrieveNamespaceServiceBrokersMutex.Unlock()
+	fake.RetrieveNamespaceServiceBrokersStub = nil
+	if fake.retrieveNamespaceServiceBrokersReturnsOnCall == nil {
+		fake.retrieveNamespaceServiceBrokersReturnsOnCall = make(map[int]struct {
+			result1 *v1beta1.ServiceBrokerList
+			result2 error
+		})
+	}
+	fake.retrieveNamespaceServiceBrokersReturnsOnCall[i] = struct {
+		result1 *v1beta1.ServiceBrokerList
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FakeKubernetesAPI) SyncClusterServiceBroker(arg1 string, arg2 int) error {
 	fake.syncClusterServiceBrokerMutex.Lock()
 	ret, specificReturn := fake.syncClusterServiceBrokerReturnsOnCall[len(fake.syncClusterServiceBrokerArgsForCall)]
@@ -551,6 +885,68 @@ func (fake *FakeKubernetesAPI) SyncClusterServiceBrokerReturnsOnCall(i int, resu
 		})
 	}
 	fake.syncClusterServiceBrokerReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeKubernetesAPI) SyncNamespaceServiceBroker(arg1 string, arg2 string, arg3 int) error {
+	fake.syncNamespaceServiceBrokerMutex.Lock()
+	ret, specificReturn := fake.syncNamespaceServiceBrokerReturnsOnCall[len(fake.syncNamespaceServiceBrokerArgsForCall)]
+	fake.syncNamespaceServiceBrokerArgsForCall = append(fake.syncNamespaceServiceBrokerArgsForCall, struct {
+		arg1 string
+		arg2 string
+		arg3 int
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("SyncNamespaceServiceBroker", []interface{}{arg1, arg2, arg3})
+	fake.syncNamespaceServiceBrokerMutex.Unlock()
+	if fake.SyncNamespaceServiceBrokerStub != nil {
+		return fake.SyncNamespaceServiceBrokerStub(arg1, arg2, arg3)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.syncNamespaceServiceBrokerReturns
+	return fakeReturns.result1
+}
+
+func (fake *FakeKubernetesAPI) SyncNamespaceServiceBrokerCallCount() int {
+	fake.syncNamespaceServiceBrokerMutex.RLock()
+	defer fake.syncNamespaceServiceBrokerMutex.RUnlock()
+	return len(fake.syncNamespaceServiceBrokerArgsForCall)
+}
+
+func (fake *FakeKubernetesAPI) SyncNamespaceServiceBrokerCalls(stub func(string, string, int) error) {
+	fake.syncNamespaceServiceBrokerMutex.Lock()
+	defer fake.syncNamespaceServiceBrokerMutex.Unlock()
+	fake.SyncNamespaceServiceBrokerStub = stub
+}
+
+func (fake *FakeKubernetesAPI) SyncNamespaceServiceBrokerArgsForCall(i int) (string, string, int) {
+	fake.syncNamespaceServiceBrokerMutex.RLock()
+	defer fake.syncNamespaceServiceBrokerMutex.RUnlock()
+	argsForCall := fake.syncNamespaceServiceBrokerArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
+func (fake *FakeKubernetesAPI) SyncNamespaceServiceBrokerReturns(result1 error) {
+	fake.syncNamespaceServiceBrokerMutex.Lock()
+	defer fake.syncNamespaceServiceBrokerMutex.Unlock()
+	fake.SyncNamespaceServiceBrokerStub = nil
+	fake.syncNamespaceServiceBrokerReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeKubernetesAPI) SyncNamespaceServiceBrokerReturnsOnCall(i int, result1 error) {
+	fake.syncNamespaceServiceBrokerMutex.Lock()
+	defer fake.syncNamespaceServiceBrokerMutex.Unlock()
+	fake.SyncNamespaceServiceBrokerStub = nil
+	if fake.syncNamespaceServiceBrokerReturnsOnCall == nil {
+		fake.syncNamespaceServiceBrokerReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.syncNamespaceServiceBrokerReturnsOnCall[i] = struct {
 		result1 error
 	}{result1}
 }
@@ -618,64 +1014,128 @@ func (fake *FakeKubernetesAPI) UpdateClusterServiceBrokerReturnsOnCall(i int, re
 	}{result1, result2}
 }
 
-func (fake *FakeKubernetesAPI) UpdateClusterServiceBrokerCredentials(arg1 *v1.Secret) (*v1.Secret, error) {
-	fake.updateClusterServiceBrokerCredentialsMutex.Lock()
-	ret, specificReturn := fake.updateClusterServiceBrokerCredentialsReturnsOnCall[len(fake.updateClusterServiceBrokerCredentialsArgsForCall)]
-	fake.updateClusterServiceBrokerCredentialsArgsForCall = append(fake.updateClusterServiceBrokerCredentialsArgsForCall, struct {
-		arg1 *v1.Secret
-	}{arg1})
-	fake.recordInvocation("UpdateClusterServiceBrokerCredentials", []interface{}{arg1})
-	fake.updateClusterServiceBrokerCredentialsMutex.Unlock()
-	if fake.UpdateClusterServiceBrokerCredentialsStub != nil {
-		return fake.UpdateClusterServiceBrokerCredentialsStub(arg1)
+func (fake *FakeKubernetesAPI) UpdateNamespaceServiceBroker(arg1 *v1beta1.ServiceBroker, arg2 string) (*v1beta1.ServiceBroker, error) {
+	fake.updateNamespaceServiceBrokerMutex.Lock()
+	ret, specificReturn := fake.updateNamespaceServiceBrokerReturnsOnCall[len(fake.updateNamespaceServiceBrokerArgsForCall)]
+	fake.updateNamespaceServiceBrokerArgsForCall = append(fake.updateNamespaceServiceBrokerArgsForCall, struct {
+		arg1 *v1beta1.ServiceBroker
+		arg2 string
+	}{arg1, arg2})
+	fake.recordInvocation("UpdateNamespaceServiceBroker", []interface{}{arg1, arg2})
+	fake.updateNamespaceServiceBrokerMutex.Unlock()
+	if fake.UpdateNamespaceServiceBrokerStub != nil {
+		return fake.UpdateNamespaceServiceBrokerStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.updateClusterServiceBrokerCredentialsReturns
+	fakeReturns := fake.updateNamespaceServiceBrokerReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *FakeKubernetesAPI) UpdateClusterServiceBrokerCredentialsCallCount() int {
-	fake.updateClusterServiceBrokerCredentialsMutex.RLock()
-	defer fake.updateClusterServiceBrokerCredentialsMutex.RUnlock()
-	return len(fake.updateClusterServiceBrokerCredentialsArgsForCall)
+func (fake *FakeKubernetesAPI) UpdateNamespaceServiceBrokerCallCount() int {
+	fake.updateNamespaceServiceBrokerMutex.RLock()
+	defer fake.updateNamespaceServiceBrokerMutex.RUnlock()
+	return len(fake.updateNamespaceServiceBrokerArgsForCall)
 }
 
-func (fake *FakeKubernetesAPI) UpdateClusterServiceBrokerCredentialsCalls(stub func(*v1.Secret) (*v1.Secret, error)) {
-	fake.updateClusterServiceBrokerCredentialsMutex.Lock()
-	defer fake.updateClusterServiceBrokerCredentialsMutex.Unlock()
-	fake.UpdateClusterServiceBrokerCredentialsStub = stub
+func (fake *FakeKubernetesAPI) UpdateNamespaceServiceBrokerCalls(stub func(*v1beta1.ServiceBroker, string) (*v1beta1.ServiceBroker, error)) {
+	fake.updateNamespaceServiceBrokerMutex.Lock()
+	defer fake.updateNamespaceServiceBrokerMutex.Unlock()
+	fake.UpdateNamespaceServiceBrokerStub = stub
 }
 
-func (fake *FakeKubernetesAPI) UpdateClusterServiceBrokerCredentialsArgsForCall(i int) *v1.Secret {
-	fake.updateClusterServiceBrokerCredentialsMutex.RLock()
-	defer fake.updateClusterServiceBrokerCredentialsMutex.RUnlock()
-	argsForCall := fake.updateClusterServiceBrokerCredentialsArgsForCall[i]
+func (fake *FakeKubernetesAPI) UpdateNamespaceServiceBrokerArgsForCall(i int) (*v1beta1.ServiceBroker, string) {
+	fake.updateNamespaceServiceBrokerMutex.RLock()
+	defer fake.updateNamespaceServiceBrokerMutex.RUnlock()
+	argsForCall := fake.updateNamespaceServiceBrokerArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *FakeKubernetesAPI) UpdateNamespaceServiceBrokerReturns(result1 *v1beta1.ServiceBroker, result2 error) {
+	fake.updateNamespaceServiceBrokerMutex.Lock()
+	defer fake.updateNamespaceServiceBrokerMutex.Unlock()
+	fake.UpdateNamespaceServiceBrokerStub = nil
+	fake.updateNamespaceServiceBrokerReturns = struct {
+		result1 *v1beta1.ServiceBroker
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeKubernetesAPI) UpdateNamespaceServiceBrokerReturnsOnCall(i int, result1 *v1beta1.ServiceBroker, result2 error) {
+	fake.updateNamespaceServiceBrokerMutex.Lock()
+	defer fake.updateNamespaceServiceBrokerMutex.Unlock()
+	fake.UpdateNamespaceServiceBrokerStub = nil
+	if fake.updateNamespaceServiceBrokerReturnsOnCall == nil {
+		fake.updateNamespaceServiceBrokerReturnsOnCall = make(map[int]struct {
+			result1 *v1beta1.ServiceBroker
+			result2 error
+		})
+	}
+	fake.updateNamespaceServiceBrokerReturnsOnCall[i] = struct {
+		result1 *v1beta1.ServiceBroker
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FakeKubernetesAPI) UpdateServiceBrokerCredentials(arg1 *v1.Secret) (*v1.Secret, error) {
+	fake.updateServiceBrokerCredentialsMutex.Lock()
+	ret, specificReturn := fake.updateServiceBrokerCredentialsReturnsOnCall[len(fake.updateServiceBrokerCredentialsArgsForCall)]
+	fake.updateServiceBrokerCredentialsArgsForCall = append(fake.updateServiceBrokerCredentialsArgsForCall, struct {
+		arg1 *v1.Secret
+	}{arg1})
+	fake.recordInvocation("UpdateServiceBrokerCredentials", []interface{}{arg1})
+	fake.updateServiceBrokerCredentialsMutex.Unlock()
+	if fake.UpdateServiceBrokerCredentialsStub != nil {
+		return fake.UpdateServiceBrokerCredentialsStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.updateServiceBrokerCredentialsReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FakeKubernetesAPI) UpdateServiceBrokerCredentialsCallCount() int {
+	fake.updateServiceBrokerCredentialsMutex.RLock()
+	defer fake.updateServiceBrokerCredentialsMutex.RUnlock()
+	return len(fake.updateServiceBrokerCredentialsArgsForCall)
+}
+
+func (fake *FakeKubernetesAPI) UpdateServiceBrokerCredentialsCalls(stub func(*v1.Secret) (*v1.Secret, error)) {
+	fake.updateServiceBrokerCredentialsMutex.Lock()
+	defer fake.updateServiceBrokerCredentialsMutex.Unlock()
+	fake.UpdateServiceBrokerCredentialsStub = stub
+}
+
+func (fake *FakeKubernetesAPI) UpdateServiceBrokerCredentialsArgsForCall(i int) *v1.Secret {
+	fake.updateServiceBrokerCredentialsMutex.RLock()
+	defer fake.updateServiceBrokerCredentialsMutex.RUnlock()
+	argsForCall := fake.updateServiceBrokerCredentialsArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *FakeKubernetesAPI) UpdateClusterServiceBrokerCredentialsReturns(result1 *v1.Secret, result2 error) {
-	fake.updateClusterServiceBrokerCredentialsMutex.Lock()
-	defer fake.updateClusterServiceBrokerCredentialsMutex.Unlock()
-	fake.UpdateClusterServiceBrokerCredentialsStub = nil
-	fake.updateClusterServiceBrokerCredentialsReturns = struct {
+func (fake *FakeKubernetesAPI) UpdateServiceBrokerCredentialsReturns(result1 *v1.Secret, result2 error) {
+	fake.updateServiceBrokerCredentialsMutex.Lock()
+	defer fake.updateServiceBrokerCredentialsMutex.Unlock()
+	fake.UpdateServiceBrokerCredentialsStub = nil
+	fake.updateServiceBrokerCredentialsReturns = struct {
 		result1 *v1.Secret
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeKubernetesAPI) UpdateClusterServiceBrokerCredentialsReturnsOnCall(i int, result1 *v1.Secret, result2 error) {
-	fake.updateClusterServiceBrokerCredentialsMutex.Lock()
-	defer fake.updateClusterServiceBrokerCredentialsMutex.Unlock()
-	fake.UpdateClusterServiceBrokerCredentialsStub = nil
-	if fake.updateClusterServiceBrokerCredentialsReturnsOnCall == nil {
-		fake.updateClusterServiceBrokerCredentialsReturnsOnCall = make(map[int]struct {
+func (fake *FakeKubernetesAPI) UpdateServiceBrokerCredentialsReturnsOnCall(i int, result1 *v1.Secret, result2 error) {
+	fake.updateServiceBrokerCredentialsMutex.Lock()
+	defer fake.updateServiceBrokerCredentialsMutex.Unlock()
+	fake.UpdateServiceBrokerCredentialsStub = nil
+	if fake.updateServiceBrokerCredentialsReturnsOnCall == nil {
+		fake.updateServiceBrokerCredentialsReturnsOnCall = make(map[int]struct {
 			result1 *v1.Secret
 			result2 error
 		})
 	}
-	fake.updateClusterServiceBrokerCredentialsReturnsOnCall[i] = struct {
+	fake.updateServiceBrokerCredentialsReturnsOnCall[i] = struct {
 		result1 *v1.Secret
 		result2 error
 	}{result1, result2}
@@ -686,22 +1146,34 @@ func (fake *FakeKubernetesAPI) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.createClusterServiceBrokerMutex.RLock()
 	defer fake.createClusterServiceBrokerMutex.RUnlock()
+	fake.createNamespaceServiceBrokerMutex.RLock()
+	defer fake.createNamespaceServiceBrokerMutex.RUnlock()
 	fake.createSecretMutex.RLock()
 	defer fake.createSecretMutex.RUnlock()
 	fake.deleteClusterServiceBrokerMutex.RLock()
 	defer fake.deleteClusterServiceBrokerMutex.RUnlock()
+	fake.deleteNamespaceServiceBrokerMutex.RLock()
+	defer fake.deleteNamespaceServiceBrokerMutex.RUnlock()
 	fake.deleteSecretMutex.RLock()
 	defer fake.deleteSecretMutex.RUnlock()
 	fake.retrieveClusterServiceBrokerByNameMutex.RLock()
 	defer fake.retrieveClusterServiceBrokerByNameMutex.RUnlock()
 	fake.retrieveClusterServiceBrokersMutex.RLock()
 	defer fake.retrieveClusterServiceBrokersMutex.RUnlock()
+	fake.retrieveNamespaceServiceBrokerByNameMutex.RLock()
+	defer fake.retrieveNamespaceServiceBrokerByNameMutex.RUnlock()
+	fake.retrieveNamespaceServiceBrokersMutex.RLock()
+	defer fake.retrieveNamespaceServiceBrokersMutex.RUnlock()
 	fake.syncClusterServiceBrokerMutex.RLock()
 	defer fake.syncClusterServiceBrokerMutex.RUnlock()
+	fake.syncNamespaceServiceBrokerMutex.RLock()
+	defer fake.syncNamespaceServiceBrokerMutex.RUnlock()
 	fake.updateClusterServiceBrokerMutex.RLock()
 	defer fake.updateClusterServiceBrokerMutex.RUnlock()
-	fake.updateClusterServiceBrokerCredentialsMutex.RLock()
-	defer fake.updateClusterServiceBrokerCredentialsMutex.RUnlock()
+	fake.updateNamespaceServiceBrokerMutex.RLock()
+	defer fake.updateNamespaceServiceBrokerMutex.RUnlock()
+	fake.updateServiceBrokerCredentialsMutex.RLock()
+	defer fake.updateServiceBrokerCredentialsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

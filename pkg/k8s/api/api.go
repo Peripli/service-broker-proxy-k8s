@@ -21,8 +21,22 @@ type KubernetesAPI interface {
 	UpdateClusterServiceBroker(broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error)
 	// SyncClusterServiceBroker synchronize a cluster-wide visible service broker
 	SyncClusterServiceBroker(name string, retries int) error
-	// UpdateClusterServiceBrokerCredentials updates broker's credentials secret
-	UpdateClusterServiceBrokerCredentials(secret *v1core.Secret) (*v1core.Secret, error)
+
+	// CreateNamespaceServiceBroker creates namespace service broker
+	CreateNamespaceServiceBroker(broker *v1beta1.ServiceBroker, namespace string) (*v1beta1.ServiceBroker, error)
+	// DeleteNamespaceServiceBroker deletes a service broker in a namespace
+	DeleteNamespaceServiceBroker(name string, namespace string, options *v1.DeleteOptions) error
+	// RetrieveNamespaceServiceBrokers gets all service brokers in a namespace
+	RetrieveNamespaceServiceBrokers(namespace string) (*v1beta1.ServiceBrokerList, error)
+	// RetrieveNamespaceServiceBrokerByName gets a service broker in a namespace
+	RetrieveNamespaceServiceBrokerByName(name, namespace string) (*v1beta1.ServiceBroker, error)
+	// UpdateNamespaceServiceBroker updates a service broker in a namespace
+	UpdateNamespaceServiceBroker(broker *v1beta1.ServiceBroker, namespace string) (*v1beta1.ServiceBroker, error)
+	// SyncNamespaceServiceBroker synchronize a service broker in a namespace
+	SyncNamespaceServiceBroker(name, namespace string, retries int) error
+
+	// UpdateServiceBrokerCredentials updates broker's credentials secret
+	UpdateServiceBrokerCredentials(secret *v1core.Secret) (*v1core.Secret, error)
 	// CreateSecret creates a secret for broker's credentials
 	CreateSecret(secret *v1core.Secret) (*v1core.Secret, error)
 	// DeleteSecret deletes broker credentials secret
