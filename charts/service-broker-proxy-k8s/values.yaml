@@ -24,7 +24,7 @@ sm:
   password: admin
 
 # targetNamespace is the namespace in which service brokers will be registered, if not set service brokers will be registered in cluster scope
-target￿￿Namespace:
+targetNamespace:
 
 ##
 # Security context
