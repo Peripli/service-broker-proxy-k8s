@@ -32,7 +32,6 @@ type ServiceCatalogAPI struct {
 	*servicecatalog.SDK
 	brokersInProgress map[string]bool
 	lock              *sync.Mutex
-	targetNamespace   string
 }
 
 // CreateNamespaceServiceBroker creates namespace service broker
@@ -153,7 +152,7 @@ type PlatformClient struct {
 	targetNamespace string
 }
 
-type BrokersByUID map[types.UID]servicecatalog.Broker
+type brokersByUID map[types.UID]servicecatalog.Broker
 
 var _ platform.Client = &PlatformClient{}
 
@@ -191,7 +190,7 @@ func (pc *PlatformClient) Visibility() platform.VisibilityClient {
 // GetBrokers returns all service-brokers currently registered in kubernetes service-catalog.
 func (pc *PlatformClient) GetBrokers(ctx context.Context) ([]*platform.ServiceBroker, error) {
 	var clientBrokers = make([]*platform.ServiceBroker, 0)
-	var brokers BrokersByUID
+	var brokers brokersByUID
 
 	if pc.isClusterScoped() {
 		clusterBrokers, err := pc.platformAPI.RetrieveClusterServiceBrokers()
@@ -297,12 +296,13 @@ func (pc *PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteSe
 			return fmt.Errorf("error deleting broker credentials secret: %v", err)
 		}
 		return pc.platformAPI.DeleteClusterServiceBroker(r.Name, &v1.DeleteOptions{})
-	} else {
-		if err := pc.platformAPI.DeleteSecret(pc.targetNamespace, r.ID); err != nil {
-			return fmt.Errorf("error deleting broker credentials secret in namespace %s: %v", pc.targetNamespace, err)
-		}
-		return pc.platformAPI.DeleteNamespaceServiceBroker(r.Name, pc.targetNamespace, &v1.DeleteOptions{})
 	}
+
+	if err := pc.platformAPI.DeleteSecret(pc.targetNamespace, r.ID); err != nil {
+		return fmt.Errorf("error deleting broker credentials secret in namespace %s: %v", pc.targetNamespace, err)
+	}
+	return pc.platformAPI.DeleteNamespaceServiceBroker(r.Name, pc.targetNamespace, &v1.DeleteOptions{})
+
 }
 
 // UpdateBroker updates a service broker in the kubernetes service-catalog.
@@ -361,9 +361,9 @@ func (pc *PlatformClient) Fetch(ctx context.Context, r *platform.UpdateServiceBr
 
 	if pc.isClusterScoped() {
 		return pc.platformAPI.SyncClusterServiceBroker(r.Name, resyncBrokerRetryCount)
-	} else {
-		return pc.platformAPI.SyncNamespaceServiceBroker(r.Name, pc.targetNamespace, resyncBrokerRetryCount)
 	}
+
+	return pc.platformAPI.SyncNamespaceServiceBroker(r.Name, pc.targetNamespace, resyncBrokerRetryCount)
 }
 
 func (pc *PlatformClient) updateBrokerPlatformSecret(name, username, password string) error {
@@ -383,8 +383,8 @@ func (pc *PlatformClient) updateBrokerPlatformSecret(name, username, password st
 	return nil
 }
 
-func clusterBrokersToBrokers(clusterBrokers *v1beta1.ClusterServiceBrokerList) BrokersByUID {
-	brokers := make(BrokersByUID, len(clusterBrokers.Items))
+func clusterBrokersToBrokers(clusterBrokers *v1beta1.ClusterServiceBrokerList) brokersByUID {
+	brokers := make(brokersByUID, len(clusterBrokers.Items))
 
 	for _, clusterBroker := range clusterBrokers.Items {
 		brokers[clusterBroker.ObjectMeta.UID] = &clusterBroker
@@ -393,8 +393,8 @@ func clusterBrokersToBrokers(clusterBrokers *v1beta1.ClusterServiceBrokerList) B
 	return brokers
 }
 
-func namespaceBrokersToBrokers(namespaceBrokers *v1beta1.ServiceBrokerList) BrokersByUID {
-	brokers := make(BrokersByUID, len(namespaceBrokers.Items))
+func namespaceBrokersToBrokers(namespaceBrokers *v1beta1.ServiceBrokerList) brokersByUID {
+	brokers := make(brokersByUID, len(namespaceBrokers.Items))
 
 	for _, clusterBroker := range namespaceBrokers.Items {
 		brokers[clusterBroker.ObjectMeta.UID] = &clusterBroker
@@ -471,16 +471,16 @@ func (pc *PlatformClient) VisibilityScopeLabelKey() string {
 func (pc *PlatformClient) EnableAccessForPlan(ctx context.Context, request *platform.ModifyPlanAccessRequest) error {
 	if pc.isClusterScoped() {
 		return pc.platformAPI.SyncClusterServiceBroker(request.BrokerName, resyncBrokerRetryCount)
-	} else {
-		return pc.platformAPI.SyncNamespaceServiceBroker(request.BrokerName, pc.targetNamespace, resyncBrokerRetryCount)
 	}
+
+	return pc.platformAPI.SyncNamespaceServiceBroker(request.BrokerName, pc.targetNamespace, resyncBrokerRetryCount)
 }
 
 // DisableAccessForPlan disables the access for the specified plan
 func (pc *PlatformClient) DisableAccessForPlan(ctx context.Context, request *platform.ModifyPlanAccessRequest) error {
 	if pc.isClusterScoped() {
 		return pc.platformAPI.SyncClusterServiceBroker(request.BrokerName, resyncBrokerRetryCount)
-	} else {
-		return pc.platformAPI.SyncNamespaceServiceBroker(request.BrokerName, pc.targetNamespace, resyncBrokerRetryCount)
 	}
+
+	return pc.platformAPI.SyncNamespaceServiceBroker(request.BrokerName, pc.targetNamespace, resyncBrokerRetryCount)
 }
