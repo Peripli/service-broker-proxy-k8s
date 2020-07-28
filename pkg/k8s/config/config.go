@@ -45,6 +45,7 @@ type ClientConfiguration struct {
 	ClientSettings      *LibraryConfig                                    `mapstructure:"client"`
 	Secret              *SecretRef                                        `mapstructure:"secret"`
 	K8sClientCreateFunc func(*LibraryConfig) (*servicecatalog.SDK, error) `mapstructure:"-"`
+	TargetNamespace     string                                            `mapstructure:"target_namespace"`
 }
 
 // Validate validates the configuration and returns appropriate errors in case it is invalid

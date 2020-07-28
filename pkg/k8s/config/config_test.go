@@ -63,11 +63,20 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 			BeforeEach(func() {
 				config = DefaultClientConfiguration()
+				config.TargetNamespace = "some-namespace"
 				config.Secret.Namespace = "abc"
 			})
 
 			Context("when all properties available", func() {
 				It("should return nil", func() {
+					err := config.Validate()
+					Expect(err).ToNot(HaveOccurred())
+				})
+			})
+
+			Context("when TargetNamespace is missing", func() {
+				It("should return nil", func() {
+					config.TargetNamespace = ""
 					err := config.Validate()
 					Expect(err).ToNot(HaveOccurred())
 				})

@@ -10,7 +10,11 @@ metadata:
 rules:
 - apiGroups: ["servicecatalog.k8s.io"]
   resources:
+  {{- if .Values.targetNamespace }}
+  - servicebrokers
+  {{- else}}
   - clusterservicebrokers
+  {{- end}}
   verbs:
   - "*"
 
@@ -71,3 +75,47 @@ subjects:
 - kind: ServiceAccount
   name: {{ template "service-broker-proxy.fullname" . }}
   namespace: {{ .Release.Namespace }}
+
+{{- if .Values.targetNamespace }}
+{{- if ne .Values.targetNamespace .Release.Namespace }}
+
+---
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  namespace: {{ .Values.targetNamespace }}
+  name: {{ template "service-broker-proxy.fullname" . }}-regsecretviewer
+  labels:
+    app: {{ template "service-broker-proxy.name" . }}
+    chart: {{ template "service-broker-proxy.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "delete", "update", "patch"]
+
+---
+
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ template "service-broker-proxy.fullname" . }}
+  namespace: {{ .Values.targetNamespace }}
+  labels:
+    app: {{ template "service-broker-proxy.name" . }}
+    chart: {{ template "service-broker-proxy.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+roleRef:
+  kind: Role
+  name: {{ template "service-broker-proxy.fullname" . }}-regsecretviewer
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: {{ template "service-broker-proxy.fullname" . }}
+    namespace: {{ .Release.Namespace }}
+
+{{- end}}
+{{- end}}

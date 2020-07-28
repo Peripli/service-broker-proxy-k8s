@@ -45,6 +45,8 @@ spec:
           value: {{ template "service-broker-proxy.fullname" . }}-regsecret
         - name: K8S_SECRET_NAMESPACE
           value: {{ .Release.Namespace }}
+        - name: K8S_TARGET_NAMESPACE
+          value: {{ .Values.targetNamespace }}
         - name: SM_USER
           valueFrom:
             secretKeyRef:

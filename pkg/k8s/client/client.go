@@ -7,6 +7,7 @@ import (
 	"github.com/Peripli/service-broker-proxy-k8s/pkg/k8s/config"
 	servicecatalog "github.com/kubernetes-sigs/service-catalog/pkg/svcat/service-catalog"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"sync"
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
@@ -20,9 +21,9 @@ const resyncBrokerRetryCount = 3
 // NewDefaultKubernetesAPI returns default kubernetes api interface
 func NewDefaultKubernetesAPI(cli *servicecatalog.SDK) *ServiceCatalogAPI {
 	return &ServiceCatalogAPI{
-		SDK:cli,
+		SDK:               cli,
 		brokersInProgress: make(map[string]bool),
-		lock: &sync.Mutex{},
+		lock:              &sync.Mutex{},
 	}
 }
 
@@ -30,7 +31,12 @@ func NewDefaultKubernetesAPI(cli *servicecatalog.SDK) *ServiceCatalogAPI {
 type ServiceCatalogAPI struct {
 	*servicecatalog.SDK
 	brokersInProgress map[string]bool
-	lock *sync.Mutex
+	lock              *sync.Mutex
+}
+
+// CreateNamespaceServiceBroker creates namespace service broker
+func (sca *ServiceCatalogAPI) CreateNamespaceServiceBroker(broker *v1beta1.ServiceBroker, namespace string) (*v1beta1.ServiceBroker, error) {
+	return sca.ServiceCatalog().ServiceBrokers(namespace).Create(broker)
 }
 
 // CreateClusterServiceBroker creates a cluster service broker
@@ -38,9 +44,19 @@ func (sca *ServiceCatalogAPI) CreateClusterServiceBroker(broker *v1beta1.Cluster
 	return sca.ServiceCatalog().ClusterServiceBrokers().Create(broker)
 }
 
+// DeleteNamespaceServiceBroker deletes a service broker in a namespace
+func (sca *ServiceCatalogAPI) DeleteNamespaceServiceBroker(name string, namespace string, options *v1.DeleteOptions) error {
+	return sca.ServiceCatalog().ServiceBrokers(namespace).Delete(name, options)
+}
+
 // DeleteClusterServiceBroker deletes a cluster service broker
 func (sca *ServiceCatalogAPI) DeleteClusterServiceBroker(name string, options *v1.DeleteOptions) error {
 	return sca.ServiceCatalog().ClusterServiceBrokers().Delete(name, options)
+}
+
+// RetrieveNamespaceServiceBrokers gets all service brokers in a namespace
+func (sca *ServiceCatalogAPI) RetrieveNamespaceServiceBrokers(namespace string) (*v1beta1.ServiceBrokerList, error) {
+	return sca.ServiceCatalog().ServiceBrokers(namespace).List(v1.ListOptions{})
 }
 
 // RetrieveClusterServiceBrokers returns all cluster service brokers
@@ -48,14 +64,37 @@ func (sca *ServiceCatalogAPI) RetrieveClusterServiceBrokers() (*v1beta1.ClusterS
 	return sca.ServiceCatalog().ClusterServiceBrokers().List(v1.ListOptions{})
 }
 
+// RetrieveNamespaceServiceBrokerByName gets a service broker in a namespace
+func (sca *ServiceCatalogAPI) RetrieveNamespaceServiceBrokerByName(name, namespace string) (*v1beta1.ServiceBroker, error) {
+	return sca.ServiceCatalog().ServiceBrokers(namespace).Get(name, v1.GetOptions{})
+}
+
 // RetrieveClusterServiceBrokerByName returns a cluster service broker by name
 func (sca *ServiceCatalogAPI) RetrieveClusterServiceBrokerByName(name string) (*v1beta1.ClusterServiceBroker, error) {
 	return sca.ServiceCatalog().ClusterServiceBrokers().Get(name, v1.GetOptions{})
 }
 
+// UpdateNamespaceServiceBroker updates a service broker in a namespace
+func (sca *ServiceCatalogAPI) UpdateNamespaceServiceBroker(broker *v1beta1.ServiceBroker, namespace string) (*v1beta1.ServiceBroker, error) {
+	return sca.ServiceCatalog().ServiceBrokers(namespace).Update(broker)
+}
+
 // UpdateClusterServiceBroker updates a cluster service broker
 func (sca *ServiceCatalogAPI) UpdateClusterServiceBroker(broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
 	return sca.ServiceCatalog().ClusterServiceBrokers().Update(broker)
+}
+
+// SyncNamespaceServiceBroker synchronize a service broker in a namespace
+func (sca *ServiceCatalogAPI) SyncNamespaceServiceBroker(name, namespace string, retries int) error {
+	if sca.setBrokerInProgress(name) {
+		defer sca.unsetBrokerInProgress(name)
+		err := sca.Sync(name, servicecatalog.ScopeOptions{
+			Scope:     servicecatalog.NamespaceScope,
+			Namespace: namespace,
+		}, retries)
+		return err
+	}
+	return nil
 }
 
 // SyncClusterServiceBroker synchronizes a cluster service broker including its catalog
@@ -70,8 +109,8 @@ func (sca *ServiceCatalogAPI) SyncClusterServiceBroker(name string, retries int)
 	return nil
 }
 
-// UpdateClusterServiceBrokerCredentials updates broker's credentials secret
-func (sca *ServiceCatalogAPI) UpdateClusterServiceBrokerCredentials(secret *v1core.Secret) (*v1core.Secret, error) {
+// UpdateServiceBrokerCredentials updates broker's credentials secret
+func (sca *ServiceCatalogAPI) UpdateServiceBrokerCredentials(secret *v1core.Secret) (*v1core.Secret, error) {
 	_, err := sca.K8sClient.CoreV1().Secrets(secret.Namespace).Get(secret.Name, v1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -92,7 +131,6 @@ func (sca *ServiceCatalogAPI) DeleteSecret(namespace, name string) error {
 	return sca.K8sClient.CoreV1().Secrets(namespace).Delete(name, &v1.DeleteOptions{})
 }
 
-
 func (sca *ServiceCatalogAPI) setBrokerInProgress(name string) bool {
 	sca.lock.Lock()
 	defer sca.lock.Unlock()
@@ -100,7 +138,7 @@ func (sca *ServiceCatalogAPI) setBrokerInProgress(name string) bool {
 		sca.brokersInProgress[name] = true
 		return true
 	}
-	return false;
+	return false
 }
 
 func (sca *ServiceCatalogAPI) unsetBrokerInProgress(name string) {
@@ -111,7 +149,10 @@ func (sca *ServiceCatalogAPI) unsetBrokerInProgress(name string) {
 type PlatformClient struct {
 	platformAPI     api.KubernetesAPI
 	secretNamespace string
+	targetNamespace string
 }
+
+type brokersByUID map[types.UID]servicecatalog.Broker
 
 var _ platform.Client = &PlatformClient{}
 
@@ -127,6 +168,7 @@ func NewClient(settings *config.Settings) (*PlatformClient, error) {
 	return &PlatformClient{
 		platformAPI:     NewDefaultKubernetesAPI(svcatSDK),
 		secretNamespace: settings.K8S.Secret.Namespace,
+		targetNamespace: settings.K8S.TargetNamespace,
 	}, nil
 }
 
@@ -147,33 +189,62 @@ func (pc *PlatformClient) Visibility() platform.VisibilityClient {
 
 // GetBrokers returns all service-brokers currently registered in kubernetes service-catalog.
 func (pc *PlatformClient) GetBrokers(ctx context.Context) ([]*platform.ServiceBroker, error) {
-	brokers, err := pc.platformAPI.RetrieveClusterServiceBrokers()
-	if err != nil {
-		return nil, fmt.Errorf("unable to list cluster-scoped brokers (%s)", err)
-	}
 	var clientBrokers = make([]*platform.ServiceBroker, 0)
-	for _, broker := range brokers.Items {
+	var brokers brokersByUID
+
+	if pc.isClusterScoped() {
+		clusterBrokers, err := pc.platformAPI.RetrieveClusterServiceBrokers()
+		if err != nil {
+			return nil, fmt.Errorf("unable to list cluster-scoped brokers (%s)", err)
+		}
+
+		brokers = clusterBrokersToBrokers(clusterBrokers)
+	} else {
+		namespaceBrokers, err := pc.platformAPI.RetrieveNamespaceServiceBrokers(pc.targetNamespace)
+		if err != nil {
+			return nil, fmt.Errorf("unable to list namespace-scoped brokers (%s)", err)
+		}
+
+		brokers = namespaceBrokersToBrokers(namespaceBrokers)
+	}
+
+	for uid, broker := range brokers {
 		serviceBroker := &platform.ServiceBroker{
-			GUID:      string(broker.ObjectMeta.UID),
-			Name:      broker.Name,
-			BrokerURL: broker.Spec.URL,
+			GUID:      string(uid),
+			Name:      broker.GetName(),
+			BrokerURL: broker.GetURL(),
 		}
 		clientBrokers = append(clientBrokers, serviceBroker)
 	}
+
 	return clientBrokers, nil
 }
 
 // GetBrokerByName returns the service-broker with the specified name currently registered in kubernetes service-catalog with.
 func (pc *PlatformClient) GetBrokerByName(ctx context.Context, name string) (*platform.ServiceBroker, error) {
-	broker, err := pc.platformAPI.RetrieveClusterServiceBrokerByName(name)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get cluster-scoped broker (%s)", err)
+	var broker servicecatalog.Broker
+	var brokerUID types.UID
+
+	if pc.isClusterScoped() {
+		clusterBroker, err := pc.platformAPI.RetrieveClusterServiceBrokerByName(name)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get cluster-scoped broker (%s)", err)
+		}
+
+		broker, brokerUID = clusterBroker, clusterBroker.GetUID()
+	} else {
+		namespaceBroker, err := pc.platformAPI.RetrieveNamespaceServiceBrokerByName(name, pc.targetNamespace)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get namespace-scoped broker (%s)", err)
+		}
+
+		broker, brokerUID = namespaceBroker, namespaceBroker.GetUID()
 	}
 
 	return &platform.ServiceBroker{
-		GUID:      string(broker.ObjectMeta.UID),
-		Name:      broker.Name,
-		BrokerURL: broker.Spec.URL,
+		GUID:      string(brokerUID),
+		Name:      broker.GetName(),
+		BrokerURL: broker.GetURL(),
 	}, nil
 }
 
@@ -182,30 +253,56 @@ func (pc *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateSe
 	if err := pc.updateBrokerPlatformSecret(r.ID, r.Username, r.Password); err != nil {
 		return nil, err
 	}
+	var brokerUID types.UID
 
-	broker := newServiceBroker(r.Name, r.BrokerURL, &v1beta1.ObjectReference{
-		Name:      r.ID,
-		Namespace: pc.secretNamespace,
-	})
-	broker.Spec.CommonServiceBrokerSpec.RelistBehavior = "Manual"
+	if pc.isClusterScoped() {
+		broker := newClusterServiceBroker(r.Name, r.BrokerURL, &v1beta1.ObjectReference{
+			Name:      r.ID,
+			Namespace: pc.secretNamespace,
+		})
 
-	csb, err := pc.platformAPI.CreateClusterServiceBroker(broker)
-	if err != nil {
-		return nil, err
+		broker.Spec.CommonServiceBrokerSpec.RelistBehavior = "Manual"
+
+		csb, err := pc.platformAPI.CreateClusterServiceBroker(broker)
+		if err != nil {
+			return nil, err
+		}
+		brokerUID = csb.GetUID()
+	} else {
+		broker := newNamespaceServiceBroker(r.Name, r.BrokerURL, &v1beta1.LocalObjectReference{
+			Name: r.ID,
+		})
+		broker.Spec.CommonServiceBrokerSpec.RelistBehavior = "Manual"
+
+		csb, err := pc.platformAPI.CreateNamespaceServiceBroker(broker, pc.targetNamespace)
+		if err != nil {
+			return nil, err
+		}
+		brokerUID = csb.GetUID()
 	}
+
 	return &platform.ServiceBroker{
-		GUID:      string(csb.UID),
+		GUID:      string(brokerUID),
 		Name:      r.Name,
 		BrokerURL: r.BrokerURL,
 	}, nil
+
 }
 
 // DeleteBroker deletes an existing broker in from kubernetes service-catalog.
 func (pc *PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteServiceBrokerRequest) error {
-	if err := pc.platformAPI.DeleteSecret(pc.secretNamespace, r.ID); err != nil {
-		return fmt.Errorf("error deleting broker credentials secret: %v", err)
+	if pc.isClusterScoped() {
+		if err := pc.platformAPI.DeleteSecret(pc.secretNamespace, r.ID); err != nil {
+			return fmt.Errorf("error deleting broker credentials secret: %v", err)
+		}
+		return pc.platformAPI.DeleteClusterServiceBroker(r.Name, &v1.DeleteOptions{})
 	}
-	return pc.platformAPI.DeleteClusterServiceBroker(r.Name, &v1.DeleteOptions{})
+
+	if err := pc.platformAPI.DeleteSecret(pc.targetNamespace, r.ID); err != nil {
+		return fmt.Errorf("error deleting broker credentials secret in namespace %s: %v", pc.targetNamespace, err)
+	}
+	return pc.platformAPI.DeleteNamespaceServiceBroker(r.Name, pc.targetNamespace, &v1.DeleteOptions{})
+
 }
 
 // UpdateBroker updates a service broker in the kubernetes service-catalog.
@@ -216,20 +313,40 @@ func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateSe
 		}
 	}
 
-	// Only broker url and secret-references are updateable
-	broker := newServiceBroker(r.Name, r.BrokerURL, &v1beta1.ObjectReference{
-		Name:      r.ID,
-		Namespace: pc.secretNamespace,
-	})
+	var updatedBrokerUID types.UID
+	var updatedBroker servicecatalog.Broker
 
-	updatedBroker, err := pc.platformAPI.UpdateClusterServiceBroker(broker)
-	if err != nil {
-		return nil, err
+	if pc.isClusterScoped() {
+		// Only broker url and secret-references are updateable
+		broker := newClusterServiceBroker(r.Name, r.BrokerURL, &v1beta1.ObjectReference{
+			Name:      r.ID,
+			Namespace: pc.secretNamespace,
+		})
+
+		updatedClusterBroker, err := pc.platformAPI.UpdateClusterServiceBroker(broker)
+		if err != nil {
+			return nil, err
+		}
+
+		updatedBroker, updatedBrokerUID = updatedClusterBroker, updatedClusterBroker.GetUID()
+	} else {
+		// Only broker url and secret-references are updateable
+		broker := newNamespaceServiceBroker(r.Name, r.BrokerURL, &v1beta1.LocalObjectReference{
+			Name: r.ID,
+		})
+
+		updatedNamespaceBroker, err := pc.platformAPI.UpdateNamespaceServiceBroker(broker, pc.targetNamespace)
+		if err != nil {
+			return nil, err
+		}
+
+		updatedBroker, updatedBrokerUID = updatedNamespaceBroker, updatedNamespaceBroker.GetUID()
 	}
+
 	return &platform.ServiceBroker{
-		GUID:      string(updatedBroker.ObjectMeta.UID),
-		Name:      updatedBroker.Name,
-		BrokerURL: updatedBroker.Spec.URL,
+		GUID:      string(updatedBrokerUID),
+		Name:      updatedBroker.GetName(),
+		BrokerURL: updatedBroker.GetURL(),
 	}, nil
 }
 
@@ -241,20 +358,52 @@ func (pc *PlatformClient) Fetch(ctx context.Context, r *platform.UpdateServiceBr
 			return err
 		}
 	}
-	return pc.platformAPI.SyncClusterServiceBroker(r.Name, resyncBrokerRetryCount)
+
+	if pc.isClusterScoped() {
+		return pc.platformAPI.SyncClusterServiceBroker(r.Name, resyncBrokerRetryCount)
+	}
+
+	return pc.platformAPI.SyncNamespaceServiceBroker(r.Name, pc.targetNamespace, resyncBrokerRetryCount)
 }
 
 func (pc *PlatformClient) updateBrokerPlatformSecret(name, username, password string) error {
-	secret := newServiceBrokerCredentialsSecret(pc.secretNamespace, name, username, password)
-	_, err := pc.platformAPI.UpdateClusterServiceBrokerCredentials(secret)
+	var secretNamespace string
+	if pc.isClusterScoped() {
+		secretNamespace = pc.secretNamespace
+	} else {
+		secretNamespace = pc.targetNamespace
+	}
+
+	secret := newServiceBrokerCredentialsSecret(secretNamespace, name, username, password)
+	_, err := pc.platformAPI.UpdateServiceBrokerCredentials(secret)
 	if err != nil {
-		return fmt.Errorf("error updating broker credentials secret %v", err)
+		return fmt.Errorf("error updating broker credentials secret in namespace %s: %v", secretNamespace, err)
 	}
 
 	return nil
 }
 
-func newServiceBroker(name string, url string, secret *v1beta1.ObjectReference) *v1beta1.ClusterServiceBroker {
+func clusterBrokersToBrokers(clusterBrokers *v1beta1.ClusterServiceBrokerList) brokersByUID {
+	brokers := make(brokersByUID, len(clusterBrokers.Items))
+
+	for _, clusterBroker := range clusterBrokers.Items {
+		brokers[clusterBroker.ObjectMeta.UID] = &clusterBroker
+	}
+
+	return brokers
+}
+
+func namespaceBrokersToBrokers(namespaceBrokers *v1beta1.ServiceBrokerList) brokersByUID {
+	brokers := make(brokersByUID, len(namespaceBrokers.Items))
+
+	for _, clusterBroker := range namespaceBrokers.Items {
+		brokers[clusterBroker.ObjectMeta.UID] = &clusterBroker
+	}
+
+	return brokers
+}
+
+func newClusterServiceBroker(name string, url string, secret *v1beta1.ObjectReference) *v1beta1.ClusterServiceBroker {
 	return &v1beta1.ClusterServiceBroker{
 		ObjectMeta: v1.ObjectMeta{
 			Name: name,
@@ -265,6 +414,24 @@ func newServiceBroker(name string, url string, secret *v1beta1.ObjectReference) 
 			},
 			AuthInfo: &v1beta1.ClusterServiceBrokerAuthInfo{
 				Basic: &v1beta1.ClusterBasicAuthConfig{
+					SecretRef: secret,
+				},
+			},
+		},
+	}
+}
+
+func newNamespaceServiceBroker(name string, url string, secret *v1beta1.LocalObjectReference) *v1beta1.ServiceBroker {
+	return &v1beta1.ServiceBroker{
+		ObjectMeta: v1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1beta1.ServiceBrokerSpec{
+			CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
+				URL: url,
+			},
+			AuthInfo: &v1beta1.ServiceBrokerAuthInfo{
+				Basic: &v1beta1.BasicAuthConfig{
 					SecretRef: secret,
 				},
 			},
@@ -285,6 +452,10 @@ func newServiceBrokerCredentialsSecret(namespace, name, username, password strin
 	}
 }
 
+func (pc *PlatformClient) isClusterScoped() bool {
+	return len(pc.targetNamespace) == 0
+}
+
 // GetVisibilitiesByBrokers get currently available visibilities in the platform for specific broker names
 func (pc *PlatformClient) GetVisibilitiesByBrokers(ctx context.Context, brokers []string) ([]*platform.Visibility, error) {
 	// This will cause all brokers to re-fetch their catalogs
@@ -298,10 +469,18 @@ func (pc *PlatformClient) VisibilityScopeLabelKey() string {
 
 // EnableAccessForPlan enables the access for the specified plan
 func (pc *PlatformClient) EnableAccessForPlan(ctx context.Context, request *platform.ModifyPlanAccessRequest) error {
-	return pc.platformAPI.SyncClusterServiceBroker(request.BrokerName, resyncBrokerRetryCount)
+	if pc.isClusterScoped() {
+		return pc.platformAPI.SyncClusterServiceBroker(request.BrokerName, resyncBrokerRetryCount)
+	}
+
+	return pc.platformAPI.SyncNamespaceServiceBroker(request.BrokerName, pc.targetNamespace, resyncBrokerRetryCount)
 }
 
 // DisableAccessForPlan disables the access for the specified plan
 func (pc *PlatformClient) DisableAccessForPlan(ctx context.Context, request *platform.ModifyPlanAccessRequest) error {
-	return pc.platformAPI.SyncClusterServiceBroker(request.BrokerName, resyncBrokerRetryCount)
+	if pc.isClusterScoped() {
+		return pc.platformAPI.SyncClusterServiceBroker(request.BrokerName, resyncBrokerRetryCount)
+	}
+
+	return pc.platformAPI.SyncNamespaceServiceBroker(request.BrokerName, pc.targetNamespace, resyncBrokerRetryCount)
 }
