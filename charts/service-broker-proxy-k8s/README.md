@@ -57,4 +57,5 @@ Parameter | Description | Default
 `config.sm.url` | service manager url | `http://service-manager.dev.cfdev.sh`
 `sm.user` | username for service manager | `admin`
 `sm.password` | password for service manager | `admin`
+`targetNamespace` | namespace in which services will be available, if not specified services will be available in all namespaces | 
 `securityContext` | Custom [security context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/) for server containers | `{}`
