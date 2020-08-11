@@ -31,7 +31,7 @@ helm repo add peripli 'https://peripli.github.io'
 
 ```bash
 kubectl create namespace service-broker-proxy
-helm install service-broker-proxy peripli/service-broker-proxy-k8s \
+helm install sb-proxy peripli/service-broker-proxy-k8s \
   --namespace service-broker-proxy \
   --version <VERSION> \
   --set config.sm.url=<SM_URL> \
@@ -41,6 +41,9 @@ helm install service-broker-proxy peripli/service-broker-proxy-k8s \
 
 **Note:** Make sure you substitute &lt;SM_URL&gt; with the Service Manager url, &lt;USER&gt; and &lt;PASSWORD&gt; with the credentials returned from cluster registration in Service Manager (see above).
 Substitute \<VERSION> with the specific version you require. If this is not set, the latest version is used.
+
+The default configuration will register service brokers as cluster resources, making the services available in all cluster namespaces. To target a specific namespace, you can set the `targetNamespace`
+value to the helm install command, for example: `--set targetNamespace=my-namespace`.
 
 To use your own images you can set `image.repository`, `image.tag` and `image.pullPolicy` to the helm install command. In case your image is pulled from a private repository, you can use
 `image.pullsecret` to name a secret containing the credentials.
@@ -57,4 +60,5 @@ Parameter | Description | Default
 `config.sm.url` | service manager url | `http://service-manager.dev.cfdev.sh`
 `sm.user` | username for service manager | `admin`
 `sm.password` | password for service manager | `admin`
+`targetNamespace` | namespace in which services will be available, if not specified services will be available in all namespaces | 
 `securityContext` | Custom [security context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/) for server containers | `{}`
