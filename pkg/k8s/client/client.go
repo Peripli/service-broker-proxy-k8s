@@ -8,6 +8,7 @@ import (
 	servicecatalog "github.com/kubernetes-sigs/service-catalog/pkg/svcat/service-catalog"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"strings"
 	"sync"
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
@@ -222,6 +223,7 @@ func (pc *PlatformClient) GetBrokers(ctx context.Context) ([]*platform.ServiceBr
 
 // GetBrokerByName returns the service-broker with the specified name currently registered in kubernetes service-catalog with.
 func (pc *PlatformClient) GetBrokerByName(ctx context.Context, name string) (*platform.ServiceBroker, error) {
+	name = strings.ToLower(name)
 	var broker servicecatalog.Broker
 	var brokerUID types.UID
 
@@ -250,6 +252,7 @@ func (pc *PlatformClient) GetBrokerByName(ctx context.Context, name string) (*pl
 
 // CreateBroker registers a new broker in kubernetes service-catalog.
 func (pc *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
+	r.Name = strings.ToLower(r.Name)
 	if err := pc.updateBrokerPlatformSecret(r.ID, r.Username, r.Password); err != nil {
 		return nil, err
 	}
@@ -291,6 +294,7 @@ func (pc *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateSe
 
 // DeleteBroker deletes an existing broker in from kubernetes service-catalog.
 func (pc *PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteServiceBrokerRequest) error {
+	r.Name = strings.ToLower(r.Name)
 	if pc.isClusterScoped() {
 		if err := pc.platformAPI.DeleteSecret(pc.secretNamespace, r.ID); err != nil {
 			return fmt.Errorf("error deleting broker credentials secret: %v", err)
@@ -307,6 +311,7 @@ func (pc *PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteSe
 
 // UpdateBroker updates a service broker in the kubernetes service-catalog.
 func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
+	r.Name = strings.ToLower(r.Name)
 	if r.Username != "" && r.Password != "" {
 		if err := pc.updateBrokerPlatformSecret(r.ID, r.Username, r.Password); err != nil {
 			return nil, err
@@ -353,6 +358,7 @@ func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateSe
 // Fetch the new catalog information from reach service-broker registered in kubernetes,
 // so that it is visible in the kubernetes service-catalog.
 func (pc *PlatformClient) Fetch(ctx context.Context, r *platform.UpdateServiceBrokerRequest) error {
+	r.Name = strings.ToLower(r.Name)
 	if r.Username != "" && r.Password != "" {
 		if err := pc.updateBrokerPlatformSecret(r.ID, r.Username, r.Password); err != nil {
 			return err
