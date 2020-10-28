@@ -225,19 +225,19 @@ func (pc *PlatformClient) GetBrokers(ctx context.Context) ([]*platform.ServiceBr
 
 // GetBrokerByName returns the service-broker with the specified name currently registered in kubernetes service-catalog with.
 func (pc *PlatformClient) GetBrokerByName(ctx context.Context, name string) (*platform.ServiceBroker, error) {
-	name = strings.ToLower(name)
+	lowerCaseBrokerName := strings.ToLower(name)
 	var broker servicecatalog.Broker
 	var brokerUID types.UID
 
 	if pc.isClusterScoped() {
-		clusterBroker, err := pc.platformAPI.RetrieveClusterServiceBrokerByName(name)
+		clusterBroker, err := pc.platformAPI.RetrieveClusterServiceBrokerByName(lowerCaseBrokerName)
 		if err != nil {
 			return nil, fmt.Errorf("unable to get cluster-scoped broker (%s)", err)
 		}
 
 		broker, brokerUID = clusterBroker, clusterBroker.GetUID()
 	} else {
-		namespaceBroker, err := pc.platformAPI.RetrieveNamespaceServiceBrokerByName(name, pc.targetNamespace)
+		namespaceBroker, err := pc.platformAPI.RetrieveNamespaceServiceBrokerByName(lowerCaseBrokerName, pc.targetNamespace)
 		if err != nil {
 			return nil, fmt.Errorf("unable to get namespace-scoped broker (%s)", err)
 		}
@@ -254,14 +254,14 @@ func (pc *PlatformClient) GetBrokerByName(ctx context.Context, name string) (*pl
 
 // CreateBroker registers a new broker in kubernetes service-catalog.
 func (pc *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	r.Name = strings.ToLower(r.Name)
+	lowerCaseBrokerName := strings.ToLower(r.Name)
 	if err := pc.updateBrokerPlatformSecret(r.ID, r.Username, r.Password); err != nil {
 		return nil, err
 	}
 	var brokerUID types.UID
 
 	if pc.isClusterScoped() {
-		broker := newClusterServiceBroker(r.Name, r.BrokerURL, &v1beta1.ObjectReference{
+		broker := newClusterServiceBroker(lowerCaseBrokerName, r.BrokerURL, &v1beta1.ObjectReference{
 			Name:      r.ID,
 			Namespace: pc.secretNamespace,
 		})
@@ -274,7 +274,7 @@ func (pc *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateSe
 		}
 		brokerUID = csb.GetUID()
 	} else {
-		broker := newNamespaceServiceBroker(r.Name, r.BrokerURL, &v1beta1.LocalObjectReference{
+		broker := newNamespaceServiceBroker(lowerCaseBrokerName, r.BrokerURL, &v1beta1.LocalObjectReference{
 			Name: r.ID,
 		})
 		broker.Spec.CommonServiceBrokerSpec.RelistBehavior = "Manual"
@@ -288,7 +288,7 @@ func (pc *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateSe
 
 	return &platform.ServiceBroker{
 		GUID:      string(brokerUID),
-		Name:      r.Name,
+		Name:      lowerCaseBrokerName,
 		BrokerURL: r.BrokerURL,
 	}, nil
 
@@ -296,24 +296,24 @@ func (pc *PlatformClient) CreateBroker(ctx context.Context, r *platform.CreateSe
 
 // DeleteBroker deletes an existing broker in from kubernetes service-catalog.
 func (pc *PlatformClient) DeleteBroker(ctx context.Context, r *platform.DeleteServiceBrokerRequest) error {
-	r.Name = strings.ToLower(r.Name)
+	lowerCaseBrokerName := strings.ToLower(r.Name)
 	if pc.isClusterScoped() {
 		if err := pc.platformAPI.DeleteSecret(pc.secretNamespace, r.ID); err != nil {
 			return fmt.Errorf("error deleting broker credentials secret: %v", err)
 		}
-		return pc.platformAPI.DeleteClusterServiceBroker(r.Name, &v1.DeleteOptions{})
+		return pc.platformAPI.DeleteClusterServiceBroker(lowerCaseBrokerName, &v1.DeleteOptions{})
 	}
 
 	if err := pc.platformAPI.DeleteSecret(pc.targetNamespace, r.ID); err != nil {
 		return fmt.Errorf("error deleting broker credentials secret in namespace %s: %v", pc.targetNamespace, err)
 	}
-	return pc.platformAPI.DeleteNamespaceServiceBroker(r.Name, pc.targetNamespace, &v1.DeleteOptions{})
+	return pc.platformAPI.DeleteNamespaceServiceBroker(lowerCaseBrokerName, pc.targetNamespace, &v1.DeleteOptions{})
 
 }
 
 // UpdateBroker updates a service broker in the kubernetes service-catalog.
 func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateServiceBrokerRequest) (*platform.ServiceBroker, error) {
-	r.Name = strings.ToLower(r.Name)
+	lowerCaseBrokerName := strings.ToLower(r.Name)
 	if r.Username != "" && r.Password != "" {
 		if err := pc.updateBrokerPlatformSecret(r.ID, r.Username, r.Password); err != nil {
 			return nil, err
@@ -325,7 +325,7 @@ func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateSe
 
 	if pc.isClusterScoped() {
 		// Only broker url and secret-references are updateable
-		broker := newClusterServiceBroker(r.Name, r.BrokerURL, &v1beta1.ObjectReference{
+		broker := newClusterServiceBroker(lowerCaseBrokerName, r.BrokerURL, &v1beta1.ObjectReference{
 			Name:      r.ID,
 			Namespace: pc.secretNamespace,
 		})
@@ -338,7 +338,7 @@ func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateSe
 		updatedBroker, updatedBrokerUID = updatedClusterBroker, updatedClusterBroker.GetUID()
 	} else {
 		// Only broker url and secret-references are updateable
-		broker := newNamespaceServiceBroker(r.Name, r.BrokerURL, &v1beta1.LocalObjectReference{
+		broker := newNamespaceServiceBroker(lowerCaseBrokerName, r.BrokerURL, &v1beta1.LocalObjectReference{
 			Name: r.ID,
 		})
 
@@ -360,7 +360,7 @@ func (pc *PlatformClient) UpdateBroker(ctx context.Context, r *platform.UpdateSe
 // Fetch the new catalog information from reach service-broker registered in kubernetes,
 // so that it is visible in the kubernetes service-catalog.
 func (pc *PlatformClient) Fetch(ctx context.Context, r *platform.UpdateServiceBrokerRequest) error {
-	r.Name = strings.ToLower(r.Name)
+	lowerCaseBrokerName := strings.ToLower(r.Name)
 	if r.Username != "" && r.Password != "" {
 		if err := pc.updateBrokerPlatformSecret(r.ID, r.Username, r.Password); err != nil {
 			return err
@@ -368,10 +368,10 @@ func (pc *PlatformClient) Fetch(ctx context.Context, r *platform.UpdateServiceBr
 	}
 
 	if pc.isClusterScoped() {
-		return pc.platformAPI.SyncClusterServiceBroker(r.Name, resyncBrokerRetryCount)
+		return pc.platformAPI.SyncClusterServiceBroker(lowerCaseBrokerName, resyncBrokerRetryCount)
 	}
 
-	return pc.platformAPI.SyncNamespaceServiceBroker(r.Name, pc.targetNamespace, resyncBrokerRetryCount)
+	return pc.platformAPI.SyncNamespaceServiceBroker(lowerCaseBrokerName, pc.targetNamespace, resyncBrokerRetryCount)
 }
 
 func (pc *PlatformClient) updateBrokerPlatformSecret(name, username, password string) error {
