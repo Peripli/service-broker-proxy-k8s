@@ -143,6 +143,8 @@ func (sca *ServiceCatalogAPI) setBrokerInProgress(name string) bool {
 }
 
 func (sca *ServiceCatalogAPI) unsetBrokerInProgress(name string) {
+	sca.lock.Lock()
+	defer sca.lock.Unlock()
 	delete(sca.brokersInProgress, name)
 }
 
