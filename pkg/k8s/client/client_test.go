@@ -30,18 +30,16 @@ func TestClient(t *testing.T) {
 }
 
 var _ = Describe("Kubernetes Broker Proxy", func() {
-	const fakeBrokerNameLowerCase = "fake-broker"
-	const fakeBrokerNameUpperCase = "Fake-Broker"
+	const fakeBrokerName = "fake-broker"
 	const fakeBrokerUrl = "http://fake.broker.url"
 
 	var (
-		expectedError          = errors.New("expected")
-		clientConfig           *config.ClientConfiguration
-		proxySettings          *sbproxy.Settings
-		settings               *config.Settings
-		ctx                    context.Context
-		k8sApi                 *apifakes.FakeKubernetesAPI
-		brokerNameInK8SRequest string
+		expectedError = errors.New("expected")
+		clientConfig  *config.ClientConfiguration
+		proxySettings *sbproxy.Settings
+		settings      *config.Settings
+		ctx           context.Context
+		k8sApi        *apifakes.FakeKubernetesAPI
 	)
 
 	newDefaultPlatformClient := func() *PlatformClient {
@@ -81,8 +79,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 		}
 		ctx = context.TODO()
 		k8sApi = &apifakes.FakeKubernetesAPI{}
-
-		brokerNameInK8SRequest = ""
 	})
 
 	Describe("New Client", func() {
@@ -147,7 +143,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 					requestBroker := &platform.CreateServiceBrokerRequest{
 						ID:        "id-in-sm",
-						Name:      fakeBrokerNameLowerCase,
+						Name:      fakeBrokerName,
 						BrokerURL: fakeBrokerUrl,
 						Username:  "admin",
 						Password:  "admin",
@@ -163,7 +159,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 					Expect(err).To(BeNil())
 					Expect(createdBroker.GUID).To(Equal("1234"))
-					Expect(createdBroker.Name).To(Equal(fakeBrokerNameLowerCase))
+					Expect(createdBroker.Name).To(Equal(fakeBrokerName))
 					Expect(createdBroker.BrokerURL).To(Equal(fakeBrokerUrl))
 				})
 			})
@@ -186,35 +182,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Expect(err).To(Equal(errors.New("error from service-catalog")))
 				})
 			})
-
-			Context("upper case name", func() {
-				It("returns broker name with lower case", func() {
-					platformClient := newDefaultPlatformClient()
-
-					k8sApi.CreateClusterServiceBrokerStub = func(broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
-						brokerNameInK8SRequest = broker.Name
-						return &v1beta1.ClusterServiceBroker{}, nil
-					}
-
-					requestBroker := &platform.CreateServiceBrokerRequest{
-						ID:        "id-in-sm",
-						Name:      fakeBrokerNameUpperCase,
-						BrokerURL: fakeBrokerUrl,
-						Username:  "admin",
-						Password:  "admin",
-					}
-
-					k8sApi.CreateSecretStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
-						Expect(secret2.Name).To(Equal(requestBroker.ID))
-						Expect(string(secret2.Data["username"])).To(Equal(requestBroker.Username))
-						Expect(string(secret2.Data["password"])).To(Equal(requestBroker.Password))
-						return secret2, nil
-					}
-					_, err := platformClient.CreateBroker(ctx, requestBroker)
-					Expect(err).To(BeNil())
-					Expect(brokerNameInK8SRequest).To(Equal(fakeBrokerNameLowerCase))
-				})
-			})
 		})
 
 		Describe("Delete a service broker", func() {
@@ -229,7 +196,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					requestBroker := &platform.DeleteServiceBrokerRequest{
 						ID:   "id-in-sm",
 						GUID: "1234",
-						Name: fakeBrokerNameLowerCase,
+						Name: fakeBrokerName,
 					}
 
 					err := platformClient.DeleteBroker(ctx, requestBroker)
@@ -251,27 +218,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Expect(err).To(Equal(errors.New("error deleting clusterservicebroker")))
 				})
 			})
-
-			Context("upper case name", func() {
-				It("sends the delete request with lower case name", func() {
-					platformClient := newDefaultPlatformClient()
-
-					k8sApi.DeleteClusterServiceBrokerStub = func(name string, options *v1.DeleteOptions) error {
-						brokerNameInK8SRequest = name
-						return nil
-					}
-
-					requestBroker := &platform.DeleteServiceBrokerRequest{
-						ID:   "id-in-sm",
-						GUID: "1234",
-						Name: fakeBrokerNameUpperCase,
-					}
-
-					err := platformClient.DeleteBroker(ctx, requestBroker)
-					Expect(err).To(BeNil())
-					Expect(brokerNameInK8SRequest).To(Equal(fakeBrokerNameLowerCase))
-				})
-			})
 		})
 
 		Describe("Get all service brokers", func() {
@@ -284,7 +230,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 						brokers = append(brokers, v1beta1.ClusterServiceBroker{
 							ObjectMeta: v1.ObjectMeta{
 								UID:  "1234",
-								Name: fakeBrokerNameLowerCase,
+								Name: fakeBrokerName,
 							},
 							Spec: v1beta1.ClusterServiceBrokerSpec{
 								CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
@@ -303,7 +249,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Expect(brokers).ToNot(BeNil())
 					Expect(len(brokers)).To(Equal(1))
 					Expect(brokers[0].GUID).To(Equal("1234"))
-					Expect(brokers[0].Name).To(Equal(fakeBrokerNameLowerCase))
+					Expect(brokers[0].Name).To(Equal(fakeBrokerName))
 					Expect(brokers[0].BrokerURL).To(Equal(fakeBrokerUrl))
 				})
 			})
@@ -353,7 +299,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 						return &v1beta1.ClusterServiceBroker{
 							ObjectMeta: v1.ObjectMeta{
 								UID:  "1234",
-								Name: fakeBrokerNameLowerCase,
+								Name: fakeBrokerName,
 							},
 							Spec: v1beta1.ClusterServiceBrokerSpec{
 								CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
@@ -363,11 +309,11 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 						}, nil
 					}
 
-					broker, err := platformClient.GetBrokerByName(ctx, fakeBrokerNameLowerCase)
+					broker, err := platformClient.GetBrokerByName(ctx, fakeBrokerName)
 
 					Expect(err).To(BeNil())
 					Expect(broker).ToNot(BeNil())
-					Expect(broker.Name).To(Equal(fakeBrokerNameLowerCase))
+					Expect(broker.Name).To(Equal(fakeBrokerName))
 				})
 			})
 
@@ -384,21 +330,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Expect(broker).To(BeNil())
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("error getting clusterservicebroker"))
-				})
-			})
-
-			Context("upper case name", func() {
-				It("sends the request with lower case name", func() {
-					platformClient := newDefaultPlatformClient()
-
-					k8sApi.RetrieveClusterServiceBrokerByNameStub = func(name string) (*v1beta1.ClusterServiceBroker, error) {
-						brokerNameInK8SRequest = name
-						return &v1beta1.ClusterServiceBroker{}, nil
-					}
-
-					_, err := platformClient.GetBrokerByName(ctx, fakeBrokerNameUpperCase)
-					Expect(err).To(BeNil())
-					Expect(brokerNameInK8SRequest).To(Equal(fakeBrokerNameLowerCase))
 				})
 			})
 		})
@@ -427,7 +358,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					requestBroker := &platform.UpdateServiceBrokerRequest{
 						ID:        "id-in-sm",
 						GUID:      "1234",
-						Name:      fakeBrokerNameLowerCase,
+						Name:      fakeBrokerName,
 						BrokerURL: fakeBrokerUrl,
 						Username:  "admin",
 						Password:  "admin",
@@ -444,7 +375,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 					Expect(err).To(BeNil())
 					Expect(broker.GUID).To(Equal("1234"))
-					Expect(broker.Name).To(Equal(fakeBrokerNameLowerCase + "-updated"))
+					Expect(broker.Name).To(Equal(fakeBrokerName + "-updated"))
 					Expect(broker.BrokerURL).To(Equal(fakeBrokerUrl + "-updated"))
 				})
 			})
@@ -468,37 +399,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Expect(err).To(Equal(errors.New("error updating clusterservicebroker")))
 				})
 			})
-
-			Context("upper case name", func() {
-				It("returns updated broker name with lower case", func() {
-					platformClient := newDefaultPlatformClient()
-
-					k8sApi.UpdateClusterServiceBrokerStub = func(broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
-						brokerNameInK8SRequest = broker.Name
-						return &v1beta1.ClusterServiceBroker{}, nil
-					}
-
-					requestBroker := &platform.UpdateServiceBrokerRequest{
-						ID:        "id-in-sm",
-						GUID:      "1234",
-						Name:      fakeBrokerNameUpperCase,
-						BrokerURL: fakeBrokerUrl,
-						Username:  "admin",
-						Password:  "admin",
-					}
-
-					k8sApi.UpdateServiceBrokerCredentialsStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
-						Expect(secret2.Name).To(Equal(requestBroker.ID))
-						Expect(string(secret2.Data["username"])).To(Equal(requestBroker.Username))
-						Expect(string(secret2.Data["password"])).To(Equal(requestBroker.Password))
-						return secret2, nil
-					}
-
-					_, err := platformClient.UpdateBroker(ctx, requestBroker)
-					Expect(err).To(BeNil())
-					Expect(brokerNameInK8SRequest).To(Equal(fakeBrokerNameLowerCase))
-				})
-			})
 		})
 
 		Describe("Fetch the catalog information of a service broker", func() {
@@ -509,7 +409,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					requestBroker := &platform.UpdateServiceBrokerRequest{
 						ID:        "id-in-sm",
 						GUID:      "1234",
-						Name:      fakeBrokerNameLowerCase,
+						Name:      fakeBrokerName,
 						BrokerURL: fakeBrokerUrl,
 						Username:  "admin",
 						Password:  "admin",
@@ -546,36 +446,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					err := platformClient.Fetch(ctx, requestBroker)
 
 					Expect(err).To(Equal(errors.New("error syncing service broker")))
-				})
-			})
-
-			Context("upper case name", func() {
-				It("uses broker name with lower case", func() {
-					platformClient := newDefaultPlatformClient()
-					requestBroker := &platform.UpdateServiceBrokerRequest{
-						ID:        "id-in-sm",
-						GUID:      "1234",
-						Name:      fakeBrokerNameUpperCase,
-						BrokerURL: fakeBrokerUrl,
-						Username:  "admin",
-						Password:  "admin",
-					}
-
-					k8sApi.UpdateServiceBrokerCredentialsStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
-						Expect(secret2.Name).To(Equal(requestBroker.ID))
-						Expect(string(secret2.Data["username"])).To(Equal(requestBroker.Username))
-						Expect(string(secret2.Data["password"])).To(Equal(requestBroker.Password))
-						return secret2, nil
-					}
-					k8sApi.SyncClusterServiceBrokerStub = func(name string, retries int) error {
-						brokerNameInK8SRequest = name
-						return nil
-					}
-
-					err := platformClient.Fetch(ctx, requestBroker)
-					Expect(err).To(BeNil())
-					Expect(brokerNameInK8SRequest).To(Equal(fakeBrokerNameLowerCase))
-
 				})
 			})
 		})
@@ -641,7 +511,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 					requestBroker := &platform.CreateServiceBrokerRequest{
 						ID:        "id-in-sm",
-						Name:      fakeBrokerNameLowerCase,
+						Name:      fakeBrokerName,
 						BrokerURL: fakeBrokerUrl,
 						Username:  "admin",
 						Password:  "admin",
@@ -657,7 +527,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 					Expect(err).To(BeNil())
 					Expect(createdBroker.GUID).To(Equal("1234"))
-					Expect(createdBroker.Name).To(Equal(fakeBrokerNameLowerCase))
+					Expect(createdBroker.Name).To(Equal(fakeBrokerName))
 					Expect(createdBroker.BrokerURL).To(Equal(fakeBrokerUrl))
 				})
 			})
@@ -680,35 +550,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Expect(err).To(Equal(errors.New("error from service-catalog")))
 				})
 			})
-
-			Context("upper case name", func() {
-				It("uses broker name with lower case", func() {
-					platformClient := newDefaultPlatformClient()
-
-					k8sApi.CreateNamespaceServiceBrokerStub = func(broker *v1beta1.ServiceBroker, namespace string) (*v1beta1.ServiceBroker, error) {
-						brokerNameInK8SRequest = broker.Name
-						return &v1beta1.ServiceBroker{}, nil
-					}
-
-					requestBroker := &platform.CreateServiceBrokerRequest{
-						ID:        "id-in-sm",
-						Name:      fakeBrokerNameUpperCase,
-						BrokerURL: fakeBrokerUrl,
-						Username:  "admin",
-						Password:  "admin",
-					}
-
-					k8sApi.CreateSecretStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
-						Expect(secret2.Name).To(Equal(requestBroker.ID))
-						Expect(string(secret2.Data["username"])).To(Equal(requestBroker.Username))
-						Expect(string(secret2.Data["password"])).To(Equal(requestBroker.Password))
-						return secret2, nil
-					}
-					_, err := platformClient.CreateBroker(ctx, requestBroker)
-					Expect(err).To(BeNil())
-					Expect(brokerNameInK8SRequest).To(Equal(fakeBrokerNameLowerCase))
-				})
-			})
 		})
 
 		Describe("Delete a service broker", func() {
@@ -723,7 +564,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					requestBroker := &platform.DeleteServiceBrokerRequest{
 						ID:   "id-in-sm",
 						GUID: "1234",
-						Name: fakeBrokerNameLowerCase,
+						Name: fakeBrokerName,
 					}
 
 					err := platformClient.DeleteBroker(ctx, requestBroker)
@@ -747,27 +588,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Expect(err).To(Equal(errors.New("error deleting servicebroker")))
 				})
 			})
-
-			Context("upper case name", func() {
-				It("sends the delete request with lower case name", func() {
-					platformClient := newDefaultPlatformClient()
-
-					k8sApi.DeleteNamespaceServiceBrokerStub = func(name, namespace string, options *v1.DeleteOptions) error {
-						brokerNameInK8SRequest = name
-						return nil
-					}
-
-					requestBroker := &platform.DeleteServiceBrokerRequest{
-						ID:   "id-in-sm",
-						GUID: "1234",
-						Name: fakeBrokerNameUpperCase,
-					}
-
-					err := platformClient.DeleteBroker(ctx, requestBroker)
-					Expect(err).To(BeNil())
-					Expect(brokerNameInK8SRequest).To(Equal(fakeBrokerNameLowerCase))
-				})
-			})
 		})
 
 		Describe("Get all service brokers", func() {
@@ -780,7 +600,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 						brokers = append(brokers, v1beta1.ServiceBroker{
 							ObjectMeta: v1.ObjectMeta{
 								UID:  "1234",
-								Name: fakeBrokerNameLowerCase,
+								Name: fakeBrokerName,
 							},
 							Spec: v1beta1.ServiceBrokerSpec{
 								CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
@@ -799,7 +619,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Expect(brokers).ToNot(BeNil())
 					Expect(len(brokers)).To(Equal(1))
 					Expect(brokers[0].GUID).To(Equal("1234"))
-					Expect(brokers[0].Name).To(Equal(fakeBrokerNameLowerCase))
+					Expect(brokers[0].Name).To(Equal(fakeBrokerName))
 					Expect(brokers[0].BrokerURL).To(Equal(fakeBrokerUrl))
 				})
 			})
@@ -849,7 +669,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 						return &v1beta1.ServiceBroker{
 							ObjectMeta: v1.ObjectMeta{
 								UID:  "1234",
-								Name: fakeBrokerNameLowerCase,
+								Name: fakeBrokerName,
 							},
 							Spec: v1beta1.ServiceBrokerSpec{
 								CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
@@ -859,11 +679,11 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 						}, nil
 					}
 
-					broker, err := platformClient.GetBrokerByName(ctx, fakeBrokerNameLowerCase)
+					broker, err := platformClient.GetBrokerByName(ctx, fakeBrokerName)
 
 					Expect(err).To(BeNil())
 					Expect(broker).ToNot(BeNil())
-					Expect(broker.Name).To(Equal(fakeBrokerNameLowerCase))
+					Expect(broker.Name).To(Equal(fakeBrokerName))
 				})
 			})
 
@@ -880,21 +700,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Expect(broker).To(BeNil())
 					Expect(err).To(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("error getting servicebroker"))
-				})
-			})
-
-			Context("upper case name", func() {
-				It("sends the request with lower case name", func() {
-					platformClient := newDefaultPlatformClient()
-
-					k8sApi.RetrieveNamespaceServiceBrokerByNameStub = func(name, namespace string) (*v1beta1.ServiceBroker, error) {
-						brokerNameInK8SRequest = name
-						return &v1beta1.ServiceBroker{}, nil
-					}
-
-					_, err := platformClient.GetBrokerByName(ctx, fakeBrokerNameUpperCase)
-					Expect(err).To(BeNil())
-					Expect(brokerNameInK8SRequest).To(Equal(fakeBrokerNameLowerCase))
 				})
 			})
 		})
@@ -923,7 +728,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					requestBroker := &platform.UpdateServiceBrokerRequest{
 						ID:        "id-in-sm",
 						GUID:      "1234",
-						Name:      fakeBrokerNameLowerCase,
+						Name:      fakeBrokerName,
 						BrokerURL: fakeBrokerUrl,
 						Username:  "admin",
 						Password:  "admin",
@@ -940,7 +745,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 					Expect(err).To(BeNil())
 					Expect(broker.GUID).To(Equal("1234"))
-					Expect(broker.Name).To(Equal(fakeBrokerNameLowerCase + "-updated"))
+					Expect(broker.Name).To(Equal(fakeBrokerName + "-updated"))
 					Expect(broker.BrokerURL).To(Equal(fakeBrokerUrl + "-updated"))
 				})
 			})
@@ -964,37 +769,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Expect(err).To(Equal(errors.New("error updating servicebroker")))
 				})
 			})
-
-			Context("upper case name", func() {
-				It("returns updated broker name with lower case", func() {
-					platformClient := newDefaultPlatformClient()
-
-					k8sApi.UpdateNamespaceServiceBrokerStub = func(broker *v1beta1.ServiceBroker, namespace string) (*v1beta1.ServiceBroker, error) {
-						brokerNameInK8SRequest = broker.Name
-						return &v1beta1.ServiceBroker{}, nil
-					}
-
-					requestBroker := &platform.UpdateServiceBrokerRequest{
-						ID:        "id-in-sm",
-						GUID:      "1234",
-						Name:      fakeBrokerNameUpperCase,
-						BrokerURL: fakeBrokerUrl,
-						Username:  "admin",
-						Password:  "admin",
-					}
-
-					k8sApi.UpdateServiceBrokerCredentialsStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
-						Expect(secret2.Name).To(Equal(requestBroker.ID))
-						Expect(string(secret2.Data["username"])).To(Equal(requestBroker.Username))
-						Expect(string(secret2.Data["password"])).To(Equal(requestBroker.Password))
-						return secret2, nil
-					}
-
-					_, err := platformClient.UpdateBroker(ctx, requestBroker)
-					Expect(err).To(BeNil())
-					Expect(brokerNameInK8SRequest).To(Equal(fakeBrokerNameLowerCase))
-				})
-			})
 		})
 
 		Describe("Fetch the catalog information of a service broker", func() {
@@ -1005,7 +779,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					requestBroker := &platform.UpdateServiceBrokerRequest{
 						ID:        "id-in-sm",
 						GUID:      "1234",
-						Name:      fakeBrokerNameLowerCase,
+						Name:      fakeBrokerName,
 						BrokerURL: fakeBrokerUrl,
 						Username:  "admin",
 						Password:  "admin",
@@ -1042,35 +816,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					err := platformClient.Fetch(ctx, requestBroker)
 
 					Expect(err).To(Equal(errors.New("error syncing service broker")))
-				})
-			})
-
-			Context("upper case name", func() {
-				It("uses broker name with lower case", func() {
-					platformClient := newDefaultPlatformClient()
-					requestBroker := &platform.UpdateServiceBrokerRequest{
-						ID:        "id-in-sm",
-						GUID:      "1234",
-						Name:      fakeBrokerNameUpperCase,
-						BrokerURL: fakeBrokerUrl,
-						Username:  "admin",
-						Password:  "admin",
-					}
-
-					k8sApi.UpdateServiceBrokerCredentialsStub = func(secret2 *v1core.Secret) (secret *v1core.Secret, err error) {
-						Expect(secret2.Name).To(Equal(requestBroker.ID))
-						Expect(string(secret2.Data["username"])).To(Equal(requestBroker.Username))
-						Expect(string(secret2.Data["password"])).To(Equal(requestBroker.Password))
-						return secret2, nil
-					}
-					k8sApi.SyncNamespaceServiceBrokerStub = func(name, namespace string, retries int) error {
-						brokerNameInK8SRequest = name
-						return nil
-					}
-
-					err := platformClient.Fetch(ctx, requestBroker)
-					Expect(err).To(BeNil())
-					Expect(brokerNameInK8SRequest).To(Equal(fakeBrokerNameLowerCase))
 				})
 			})
 		})
@@ -1125,4 +870,12 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 		})
 	})
 
+	Describe("Platform Broker Name", func() {
+		It("returns lower case and replaces underscores to hyphens", func() {
+			brokerNameWithUnderscoreAndCaps := "Fake_Broker-Name_1234"
+			expectedBrokerName := "fake-broker-name-1234"
+			platformClient := newDefaultPlatformClient()
+			Expect(platformClient.GetBrokerPlatformName(brokerNameWithUnderscoreAndCaps)).To(Equal(expectedBrokerName))
+		})
+	})
 })

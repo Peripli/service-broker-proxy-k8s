@@ -10,7 +10,8 @@
 
 [[constraint]]
   name = "github.com/Peripli/service-broker-proxy"
-  version = "=0.10.0"
+  # TODO: chanhe to master before merge
+  branch = "add-platform-name-provider"
 
 [[constraint]]
   name = "github.com/onsi/ginkgo"
