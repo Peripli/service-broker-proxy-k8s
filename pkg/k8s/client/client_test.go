@@ -30,12 +30,17 @@ func TestClient(t *testing.T) {
 }
 
 var _ = Describe("Kubernetes Broker Proxy", func() {
-	var expectedError = errors.New("expected")
-	var clientConfig *config.ClientConfiguration
-	var proxySettings *sbproxy.Settings
-	var settings *config.Settings
-	var ctx context.Context
-	var k8sApi *apifakes.FakeKubernetesAPI
+	const fakeBrokerName = "fake-broker"
+	const fakeBrokerUrl = "http://fake.broker.url"
+
+	var (
+		expectedError = errors.New("expected")
+		clientConfig  *config.ClientConfiguration
+		proxySettings *sbproxy.Settings
+		settings      *config.Settings
+		ctx           context.Context
+		k8sApi        *apifakes.FakeKubernetesAPI
+	)
 
 	newDefaultPlatformClient := func() *PlatformClient {
 		client, err := NewClient(settings)
@@ -138,8 +143,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 					requestBroker := &platform.CreateServiceBrokerRequest{
 						ID:        "id-in-sm",
-						Name:      "fake-broker",
-						BrokerURL: "http://fake.broker.url",
+						Name:      fakeBrokerName,
+						BrokerURL: fakeBrokerUrl,
 						Username:  "admin",
 						Password:  "admin",
 					}
@@ -154,8 +159,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 					Expect(err).To(BeNil())
 					Expect(createdBroker.GUID).To(Equal("1234"))
-					Expect(createdBroker.Name).To(Equal("fake-broker"))
-					Expect(createdBroker.BrokerURL).To(Equal("http://fake.broker.url"))
+					Expect(createdBroker.Name).To(Equal(fakeBrokerName))
+					Expect(createdBroker.BrokerURL).To(Equal(fakeBrokerUrl))
 				})
 			})
 
@@ -191,11 +196,10 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					requestBroker := &platform.DeleteServiceBrokerRequest{
 						ID:   "id-in-sm",
 						GUID: "1234",
-						Name: "fake-broker",
+						Name: fakeBrokerName,
 					}
 
 					err := platformClient.DeleteBroker(ctx, requestBroker)
-
 					Expect(err).To(BeNil())
 				})
 			})
@@ -211,7 +215,6 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					requestBroker := &platform.DeleteServiceBrokerRequest{}
 
 					err := platformClient.DeleteBroker(ctx, requestBroker)
-
 					Expect(err).To(Equal(errors.New("error deleting clusterservicebroker")))
 				})
 			})
@@ -227,11 +230,11 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 						brokers = append(brokers, v1beta1.ClusterServiceBroker{
 							ObjectMeta: v1.ObjectMeta{
 								UID:  "1234",
-								Name: "fake-broker",
+								Name: fakeBrokerName,
 							},
 							Spec: v1beta1.ClusterServiceBrokerSpec{
 								CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
-									URL: "http://fake.broker.url",
+									URL: fakeBrokerUrl,
 								},
 							},
 						})
@@ -246,8 +249,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Expect(brokers).ToNot(BeNil())
 					Expect(len(brokers)).To(Equal(1))
 					Expect(brokers[0].GUID).To(Equal("1234"))
-					Expect(brokers[0].Name).To(Equal("fake-broker"))
-					Expect(brokers[0].BrokerURL).To(Equal("http://fake.broker.url"))
+					Expect(brokers[0].Name).To(Equal(fakeBrokerName))
+					Expect(brokers[0].BrokerURL).To(Equal(fakeBrokerUrl))
 				})
 			})
 
@@ -291,27 +294,26 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			Context("with no error", func() {
 				It("returns the service broker", func() {
 					platformClient := newDefaultPlatformClient()
-					brokerName := "brokerName"
 
 					k8sApi.RetrieveClusterServiceBrokerByNameStub = func(name string) (*v1beta1.ClusterServiceBroker, error) {
 						return &v1beta1.ClusterServiceBroker{
 							ObjectMeta: v1.ObjectMeta{
 								UID:  "1234",
-								Name: brokerName,
+								Name: fakeBrokerName,
 							},
 							Spec: v1beta1.ClusterServiceBrokerSpec{
 								CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
-									URL: "http://fake.broker.url",
+									URL: fakeBrokerUrl,
 								},
 							},
 						}, nil
 					}
 
-					broker, err := platformClient.GetBrokerByName(ctx, brokerName)
+					broker, err := platformClient.GetBrokerByName(ctx, fakeBrokerName)
 
 					Expect(err).To(BeNil())
 					Expect(broker).ToNot(BeNil())
-					Expect(broker.Name).To(Equal(brokerName))
+					Expect(broker.Name).To(Equal(fakeBrokerName))
 				})
 			})
 
@@ -356,8 +358,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					requestBroker := &platform.UpdateServiceBrokerRequest{
 						ID:        "id-in-sm",
 						GUID:      "1234",
-						Name:      "fake-broker",
-						BrokerURL: "http://fake.broker.url",
+						Name:      fakeBrokerName,
+						BrokerURL: fakeBrokerUrl,
 						Username:  "admin",
 						Password:  "admin",
 					}
@@ -373,8 +375,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 					Expect(err).To(BeNil())
 					Expect(broker.GUID).To(Equal("1234"))
-					Expect(broker.Name).To(Equal("fake-broker-updated"))
-					Expect(broker.BrokerURL).To(Equal("http://fake.broker.url-updated"))
+					Expect(broker.Name).To(Equal(fakeBrokerName + "-updated"))
+					Expect(broker.BrokerURL).To(Equal(fakeBrokerUrl + "-updated"))
 				})
 			})
 
@@ -407,8 +409,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					requestBroker := &platform.UpdateServiceBrokerRequest{
 						ID:        "id-in-sm",
 						GUID:      "1234",
-						Name:      "fake-broker",
-						BrokerURL: "http://fake.broker.url",
+						Name:      fakeBrokerName,
+						BrokerURL: fakeBrokerUrl,
 						Username:  "admin",
 						Password:  "admin",
 					}
@@ -509,8 +511,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 					requestBroker := &platform.CreateServiceBrokerRequest{
 						ID:        "id-in-sm",
-						Name:      "fake-broker",
-						BrokerURL: "http://fake.broker.url",
+						Name:      fakeBrokerName,
+						BrokerURL: fakeBrokerUrl,
 						Username:  "admin",
 						Password:  "admin",
 					}
@@ -525,8 +527,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 					Expect(err).To(BeNil())
 					Expect(createdBroker.GUID).To(Equal("1234"))
-					Expect(createdBroker.Name).To(Equal("fake-broker"))
-					Expect(createdBroker.BrokerURL).To(Equal("http://fake.broker.url"))
+					Expect(createdBroker.Name).To(Equal(fakeBrokerName))
+					Expect(createdBroker.BrokerURL).To(Equal(fakeBrokerUrl))
 				})
 			})
 
@@ -562,7 +564,7 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					requestBroker := &platform.DeleteServiceBrokerRequest{
 						ID:   "id-in-sm",
 						GUID: "1234",
-						Name: "fake-broker",
+						Name: fakeBrokerName,
 					}
 
 					err := platformClient.DeleteBroker(ctx, requestBroker)
@@ -598,11 +600,11 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 						brokers = append(brokers, v1beta1.ServiceBroker{
 							ObjectMeta: v1.ObjectMeta{
 								UID:  "1234",
-								Name: "fake-broker",
+								Name: fakeBrokerName,
 							},
 							Spec: v1beta1.ServiceBrokerSpec{
 								CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
-									URL: "http://fake.broker.url",
+									URL: fakeBrokerUrl,
 								},
 							},
 						})
@@ -617,8 +619,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					Expect(brokers).ToNot(BeNil())
 					Expect(len(brokers)).To(Equal(1))
 					Expect(brokers[0].GUID).To(Equal("1234"))
-					Expect(brokers[0].Name).To(Equal("fake-broker"))
-					Expect(brokers[0].BrokerURL).To(Equal("http://fake.broker.url"))
+					Expect(brokers[0].Name).To(Equal(fakeBrokerName))
+					Expect(brokers[0].BrokerURL).To(Equal(fakeBrokerUrl))
 				})
 			})
 
@@ -662,27 +664,26 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 			Context("with no error", func() {
 				It("returns the service broker", func() {
 					platformClient := newDefaultPlatformClient()
-					brokerName := "brokerName"
 
 					k8sApi.RetrieveNamespaceServiceBrokerByNameStub = func(name, namespace string) (*v1beta1.ServiceBroker, error) {
 						return &v1beta1.ServiceBroker{
 							ObjectMeta: v1.ObjectMeta{
 								UID:  "1234",
-								Name: brokerName,
+								Name: fakeBrokerName,
 							},
 							Spec: v1beta1.ServiceBrokerSpec{
 								CommonServiceBrokerSpec: v1beta1.CommonServiceBrokerSpec{
-									URL: "http://fake.broker.url",
+									URL: fakeBrokerUrl,
 								},
 							},
 						}, nil
 					}
 
-					broker, err := platformClient.GetBrokerByName(ctx, brokerName)
+					broker, err := platformClient.GetBrokerByName(ctx, fakeBrokerName)
 
 					Expect(err).To(BeNil())
 					Expect(broker).ToNot(BeNil())
-					Expect(broker.Name).To(Equal(brokerName))
+					Expect(broker.Name).To(Equal(fakeBrokerName))
 				})
 			})
 
@@ -727,8 +728,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					requestBroker := &platform.UpdateServiceBrokerRequest{
 						ID:        "id-in-sm",
 						GUID:      "1234",
-						Name:      "fake-broker",
-						BrokerURL: "http://fake.broker.url",
+						Name:      fakeBrokerName,
+						BrokerURL: fakeBrokerUrl,
 						Username:  "admin",
 						Password:  "admin",
 					}
@@ -744,8 +745,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 
 					Expect(err).To(BeNil())
 					Expect(broker.GUID).To(Equal("1234"))
-					Expect(broker.Name).To(Equal("fake-broker-updated"))
-					Expect(broker.BrokerURL).To(Equal("http://fake.broker.url-updated"))
+					Expect(broker.Name).To(Equal(fakeBrokerName + "-updated"))
+					Expect(broker.BrokerURL).To(Equal(fakeBrokerUrl + "-updated"))
 				})
 			})
 
@@ -778,8 +779,8 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 					requestBroker := &platform.UpdateServiceBrokerRequest{
 						ID:        "id-in-sm",
 						GUID:      "1234",
-						Name:      "fake-broker",
-						BrokerURL: "http://fake.broker.url",
+						Name:      fakeBrokerName,
+						BrokerURL: fakeBrokerUrl,
 						Username:  "admin",
 						Password:  "admin",
 					}
@@ -869,4 +870,12 @@ var _ = Describe("Kubernetes Broker Proxy", func() {
 		})
 	})
 
+	Describe("Platform Broker Name", func() {
+		It("returns lower case and replaces underscores to hyphens", func() {
+			brokerNameWithUnderscoreAndCaps := "Fake_Broker-Name_1234"
+			expectedBrokerName := "fake-broker-name-1234"
+			platformClient := newDefaultPlatformClient()
+			Expect(platformClient.GetBrokerPlatformName(brokerNameWithUnderscoreAndCaps)).To(Equal(expectedBrokerName))
+		})
+	})
 })

@@ -8,6 +8,7 @@ import (
 	servicecatalog "github.com/kubernetes-sigs/service-catalog/pkg/svcat/service-catalog"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"strings"
 	"sync"
 
 	"github.com/Peripli/service-broker-proxy/pkg/platform"
@@ -366,6 +367,12 @@ func (pc *PlatformClient) Fetch(ctx context.Context, r *platform.UpdateServiceBr
 	}
 
 	return pc.platformAPI.SyncNamespaceServiceBroker(r.Name, pc.targetNamespace, resyncBrokerRetryCount)
+}
+
+// GetBrokerPlatformName enforces broker names to be as k8s requires.
+// Name will be later prefixed an suffixed by allowed strings, so we only make sure lowercase and replace underscore with hyphen.
+func (pc *PlatformClient) GetBrokerPlatformName(name string) string {
+	return strings.ReplaceAll(strings.ToLower(name), "_", "-")
 }
 
 func (pc *PlatformClient) updateBrokerPlatformSecret(name, username, password string) error {
