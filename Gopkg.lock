@@ -24,7 +24,15 @@
   version = "v1.0.1"
 
 [[projects]]
-  digest = "1:a9038396ad1196fb78a26a43f073f6c66005bf7923aae371b72956c660a8786b"
+  digest = "1:de1c2f0af309f0a401c5d4acfd001882a3051de9d921222dd8d39fe38ffd750e"
+  name = "github.com/Kount/pq-timeouts"
+  packages = ["."]
+  pruneopts = ""
+  revision = "079ba81f56daf25f2c22b7b2c224f5a9ba38840c"
+  version = "v1.0.0"
+
+[[projects]]
+  digest = "1:a189b2fd9b9dce53fc869819589b5e9af4b6c018fc6324d327d84ba80cad57b5"
   name = "github.com/Peripli/service-broker-proxy"
   packages = [
     "pkg/authn",
@@ -38,11 +46,11 @@
     "pkg/util",
   ]
   pruneopts = ""
-  revision = "aa8d0fa44134ab65f6a82223cb1cfe36b940f440"
-  version = "v0.10.0"
+  revision = "917c25ffb90419929af585ab80090f4b2456ba90"
+  version = "v0.11.9"
 
 [[projects]]
-  digest = "1:7b7bae3462654a33ac9f1fa3496637bb90344c10f80096e7a7e601018631ddfa"
+  digest = "1:4c83d809553ee9f90590883f11f8728fb6c2611eeb7f1bc9765b005f600f756d"
   name = "github.com/Peripli/service-manager"
   packages = [
     "api",
@@ -87,8 +95,8 @@
     "storage/service_plans",
   ]
   pruneopts = ""
-  revision = "e82055cd99aa853f58b2203d8cfcfdd4d629e4de"
-  version = "v0.14.0"
+  revision = "700d4b92ac9159ce165c6faea87a1fd5009f75c8"
+  version = "v0.16.10"
 
 [[projects]]
   digest = "1:fc70ddbcaf8a43101a79cb0a19f8fe6a2792a5280b90e083140de008139f0db0"
