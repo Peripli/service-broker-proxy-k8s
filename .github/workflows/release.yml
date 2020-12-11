@@ -8,7 +8,7 @@ jobs:
     env:
       TAG_NAME: ${{ github.event.release.tag_name }}
       CHART_NAME: service-broker-proxy-k8s-${{ github.event.release.tag_name }}
-      CHART_TGZ_NAME: ${{ env.CHART_NAME }}.tgz"
+      CHART_TGZ_NAME: ${{ env.CHART_NAME }}.tgz
       CHART_URL: https://github.com/Peripli/service-broker-proxy-k8s/releases/download/${{ github.event.release.tag_name }}/${{ env.CHART_TGZ_NAME }}
     steps:
       - name: Checkout
