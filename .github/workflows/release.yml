@@ -28,7 +28,7 @@ jobs:
           sed -i "s|${CHART_TGZ_NAME}|${CHART_URL}|g" ./out/index.yaml | sh
           mv ./out/index.yaml ./out/${CHART_NAME}.yaml
 
-      name: Upload binaries to release
+      - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
