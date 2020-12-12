@@ -32,10 +32,8 @@ jobs:
     
     - name: Test
       working-directory: ${{ env.GOPATH }}/src/github.com/${{ github.repository }}
-      run: |
-        make test
-        goveralls -coverprofile profile.cov
-
+      run: make test
+        
     - name: Coveralls
       uses: coverallsapp/github-action@master
       with:
