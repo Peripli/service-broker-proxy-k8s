@@ -1,6 +1,6 @@
 # service-broker-proxy-k8s
 
-[![Build Status](https://github.com/Peripli/service-broker-proxy-k8s/workflows/Go/badge.svg)
+[![Build Status](https://github.com/Peripli/service-broker-proxy-k8s/workflows/Go/badge.svg)]
 [![Coverage Status](https://coveralls.io/repos/github/Peripli/service-broker-proxy-k8s/badge.svg?branch=master)](https://coveralls.io/github/Peripli/service-broker-proxy-k8s?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Peripli/service-broker-proxy-k8s)](https://goreportcard.com/report/github.com/Peripli/service-broker-proxy-k8s)
 [![Docker Repository on Quay](https://quay.io/repository/service-manager/sb-proxy-k8s/status "Docker Repository on Quay")](https://quay.io/repository/service-manager/sb-proxy-k8s)
