@@ -36,8 +36,8 @@ jobs:
         make test
         goveralls -coverprofile profile.cov
 
-      - name: Coveralls
-          uses: coverallsapp/github-action@master
-          with:
-            path-to-lcov: ./profile.cov
-            github-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          path-to-lcov: ./profile.cov
+          github-token: ${{ secrets.GITHUB_TOKEN }}
