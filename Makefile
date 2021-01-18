@@ -41,7 +41,7 @@ GO_BUILD = env CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) \
 #
 #dep-reload: dep-check clean-vendor dep
 
-build: .init dep-vendor k8s-sbproxy
+build: .init gomod-vendor k8s-sbproxy
 
 gomod-vendor:
 	@go mod vendor
