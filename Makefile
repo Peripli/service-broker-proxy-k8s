@@ -28,18 +28,23 @@ BUILD_LDFLAGS =
 GO_BUILD = env CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) \
            go build $(GO_FLAGS) -ldflags '-s -w $(BUILD_LDFLAGS)'
 
+#build: .init dep-vendor k8s-sbproxy
+#
+#dep-check:
+#	@which dep 2>/dev/null || (echo dep is required to build the project; exit 1)
+#
+#dep: dep-check
+#	@dep ensure -v
+#
+#dep-vendor: dep-check
+#	@dep ensure --vendor-only -v
+#
+#dep-reload: dep-check clean-vendor dep
+
 build: .init dep-vendor k8s-sbproxy
 
-dep-check:
-	@which dep 2>/dev/null || (echo dep is required to build the project; exit 1)
-
-dep: dep-check
-	@dep ensure -v
-
-dep-vendor: dep-check
-	@dep ensure --vendor-only -v
-
-dep-reload: dep-check clean-vendor dep
+gomod-vendor:
+	@go mod vendor
 
 k8s-sbproxy: $(BINDIR)/k8s-sbproxy
 
