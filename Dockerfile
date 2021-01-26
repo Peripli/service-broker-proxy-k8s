@@ -7,7 +7,6 @@ FROM golang:1.12.7-alpine3.10 AS builder
 
 # We need so that dep can fetch it's dependencies
 RUN apk --no-cache add git
-#RUN go get github.com/golang/dep/cmd/dep
 
 # Directory in workspace
 WORKDIR "/go/src/github.com/Peripli/service-broker-proxy-k8s"
