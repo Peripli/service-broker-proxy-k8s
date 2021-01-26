@@ -12,7 +12,6 @@ env:
     - CHART_URL="https://github.com/Peripli/service-broker-proxy-k8s/releases/download/${TRAVIS_TAG:-\"0.0.0\"}/${CHART_TGZ_NAME}"
 
 before_install:
-   - go get -u github.com/golang/dep/cmd/dep
    - make dep-vendor
 
 install:
