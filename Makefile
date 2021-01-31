@@ -28,10 +28,7 @@ BUILD_LDFLAGS =
 GO_BUILD = env CGO_ENABLED=0 GOOS=$(PLATFORM) GOARCH=$(ARCH) \
            go build $(GO_FLAGS) -ldflags '-s -w $(BUILD_LDFLAGS)'
 
-build: .init gomod-vendor k8s-sbproxy
-
-gomod-vendor:
-	@go mod vendor
+build: .init k8s-sbproxy
 
 k8s-sbproxy: $(BINDIR)/k8s-sbproxy
 
@@ -65,4 +62,4 @@ clean-coverage:
 
 clean-vendor:
 	rm -rf vendor
-	@echo > go.mod
+	@echo > go.sum

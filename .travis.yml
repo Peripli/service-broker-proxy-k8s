@@ -11,9 +11,6 @@ env:
     - CHART_TGZ_NAME="${CHART_NAME}.tgz"
     - CHART_URL="https://github.com/Peripli/service-broker-proxy-k8s/releases/download/${TRAVIS_TAG:-\"0.0.0\"}/${CHART_TGZ_NAME}"
 
-before_install:
-   - make dep-vendor
-
 install:
   - go get github.com/alecthomas/gometalinter
   # - go get github.com/GoASTScanner/gas/cmd/gas/...
