@@ -14,7 +14,6 @@ WORKDIR "/go/src/github.com/Peripli/service-broker-proxy-k8s"
 # Copy and build source code
 COPY . ./
 ENV GO111MODULE=on
-RUN go mod vendor
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o /main main.go
 
 ########################################################
