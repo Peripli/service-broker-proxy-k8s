@@ -37,52 +37,52 @@ type ServiceCatalogAPI struct {
 
 // CreateNamespaceServiceBroker creates namespace service broker
 func (sca *ServiceCatalogAPI) CreateNamespaceServiceBroker(broker *v1beta1.ServiceBroker, namespace string) (*v1beta1.ServiceBroker, error) {
-	return sca.ServiceCatalog().ServiceBrokers(namespace).Create(broker)
+	return sca.ServiceCatalog().ServiceBrokers(namespace).Create(context.Background(), broker, v1.CreateOptions{})
 }
 
 // CreateClusterServiceBroker creates a cluster service broker
 func (sca *ServiceCatalogAPI) CreateClusterServiceBroker(broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
-	return sca.ServiceCatalog().ClusterServiceBrokers().Create(broker)
+	return sca.ServiceCatalog().ClusterServiceBrokers().Create(context.Background(), broker, v1.CreateOptions{})
 }
 
 // DeleteNamespaceServiceBroker deletes a service broker in a namespace
 func (sca *ServiceCatalogAPI) DeleteNamespaceServiceBroker(name string, namespace string, options *v1.DeleteOptions) error {
-	return sca.ServiceCatalog().ServiceBrokers(namespace).Delete(name, options)
+	return sca.ServiceCatalog().ServiceBrokers(namespace).Delete(context.Background(), name, *options)
 }
 
 // DeleteClusterServiceBroker deletes a cluster service broker
 func (sca *ServiceCatalogAPI) DeleteClusterServiceBroker(name string, options *v1.DeleteOptions) error {
-	return sca.ServiceCatalog().ClusterServiceBrokers().Delete(name, options)
+	return sca.ServiceCatalog().ClusterServiceBrokers().Delete(context.Background(), name, *options)
 }
 
 // RetrieveNamespaceServiceBrokers gets all service brokers in a namespace
 func (sca *ServiceCatalogAPI) RetrieveNamespaceServiceBrokers(namespace string) (*v1beta1.ServiceBrokerList, error) {
-	return sca.ServiceCatalog().ServiceBrokers(namespace).List(v1.ListOptions{})
+	return sca.ServiceCatalog().ServiceBrokers(namespace).List(context.Background(), v1.ListOptions{})
 }
 
 // RetrieveClusterServiceBrokers returns all cluster service brokers
 func (sca *ServiceCatalogAPI) RetrieveClusterServiceBrokers() (*v1beta1.ClusterServiceBrokerList, error) {
-	return sca.ServiceCatalog().ClusterServiceBrokers().List(v1.ListOptions{})
+	return sca.ServiceCatalog().ClusterServiceBrokers().List(context.Background(), v1.ListOptions{})
 }
 
 // RetrieveNamespaceServiceBrokerByName gets a service broker in a namespace
 func (sca *ServiceCatalogAPI) RetrieveNamespaceServiceBrokerByName(name, namespace string) (*v1beta1.ServiceBroker, error) {
-	return sca.ServiceCatalog().ServiceBrokers(namespace).Get(name, v1.GetOptions{})
+	return sca.ServiceCatalog().ServiceBrokers(namespace).Get(context.Background(), name, v1.GetOptions{})
 }
 
 // RetrieveClusterServiceBrokerByName returns a cluster service broker by name
 func (sca *ServiceCatalogAPI) RetrieveClusterServiceBrokerByName(name string) (*v1beta1.ClusterServiceBroker, error) {
-	return sca.ServiceCatalog().ClusterServiceBrokers().Get(name, v1.GetOptions{})
+	return sca.ServiceCatalog().ClusterServiceBrokers().Get(context.Background(), name, v1.GetOptions{})
 }
 
 // UpdateNamespaceServiceBroker updates a service broker in a namespace
 func (sca *ServiceCatalogAPI) UpdateNamespaceServiceBroker(broker *v1beta1.ServiceBroker, namespace string) (*v1beta1.ServiceBroker, error) {
-	return sca.ServiceCatalog().ServiceBrokers(namespace).Update(broker)
+	return sca.ServiceCatalog().ServiceBrokers(namespace).Update(context.Background(), broker, v1.UpdateOptions{})
 }
 
 // UpdateClusterServiceBroker updates a cluster service broker
 func (sca *ServiceCatalogAPI) UpdateClusterServiceBroker(broker *v1beta1.ClusterServiceBroker) (*v1beta1.ClusterServiceBroker, error) {
-	return sca.ServiceCatalog().ClusterServiceBrokers().Update(broker)
+	return sca.ServiceCatalog().ClusterServiceBrokers().Update(context.Background(), broker, v1.UpdateOptions{})
 }
 
 // SyncNamespaceServiceBroker synchronize a service broker in a namespace
@@ -112,24 +112,24 @@ func (sca *ServiceCatalogAPI) SyncClusterServiceBroker(name string, retries int)
 
 // UpdateServiceBrokerCredentials updates broker's credentials secret
 func (sca *ServiceCatalogAPI) UpdateServiceBrokerCredentials(secret *v1core.Secret) (*v1core.Secret, error) {
-	_, err := sca.K8sClient.CoreV1().Secrets(secret.Namespace).Get(secret.Name, v1.GetOptions{})
+	_, err := sca.K8sClient.CoreV1().Secrets(secret.Namespace).Get(context.Background(), secret.Name, v1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return sca.CreateSecret(secret)
 		}
 		return nil, err
 	}
-	return sca.K8sClient.CoreV1().Secrets(secret.Namespace).Update(secret)
+	return sca.K8sClient.CoreV1().Secrets(secret.Namespace).Update(context.Background(), secret, v1.UpdateOptions{})
 }
 
 // CreateSecret creates a secret for broker's credentials
 func (sca *ServiceCatalogAPI) CreateSecret(secret *v1core.Secret) (*v1core.Secret, error) {
-	return sca.K8sClient.CoreV1().Secrets(secret.Namespace).Create(secret)
+	return sca.K8sClient.CoreV1().Secrets(secret.Namespace).Create(context.Background(), secret, v1.CreateOptions{})
 }
 
 // DeleteSecret deletes broker credentials secret
 func (sca *ServiceCatalogAPI) DeleteSecret(namespace, name string) error {
-	return sca.K8sClient.CoreV1().Secrets(namespace).Delete(name, &v1.DeleteOptions{})
+	return sca.K8sClient.CoreV1().Secrets(namespace).Delete(context.Background(), name, v1.DeleteOptions{})
 }
 
 func (sca *ServiceCatalogAPI) setBrokerInProgress(name string) bool {
