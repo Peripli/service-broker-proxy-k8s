@@ -8,11 +8,11 @@ require (
 	github.com/InVisionApp/go-logger v1.0.1 // indirect
 	github.com/Kount/pq-timeouts v1.0.0 // indirect
 	github.com/Microsoft/go-winio v0.4.16 // indirect
-	github.com/Peripli/service-broker-proxy v0.11.13
-	github.com/Peripli/service-manager v0.18.7-0.20210131140341-a199050d9407
+	github.com/Peripli/service-broker-proxy v0.11.15
+	github.com/Peripli/service-manager v0.18.8
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/ajg/form v1.5.1 // indirect
-	github.com/antlr/antlr4 v0.0.0-20210129115459-e50ecf496158 // indirect
+	github.com/antlr/antlr4 v0.0.0-20210203043838-a60c32d36933 // indirect
 	github.com/benjamintf1/unmarshalledmatchers v1.0.0 // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b // indirect
@@ -27,8 +27,14 @@ require (
 	github.com/go-redis/redis v6.15.9+incompatible // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-migrate/migrate v3.5.4+incompatible // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
+	github.com/google/gofuzz v1.2.0 // indirect
+	github.com/googleapis/gnostic v0.5.4 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.0 // indirect
+	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/imkira/go-interpol v1.1.0 // indirect
 	github.com/jmoiron/sqlx v1.3.1 // indirect
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
@@ -36,7 +42,7 @@ require (
 	github.com/lib/pq v1.9.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/onrik/logrus v0.8.0 // indirect
-	github.com/onsi/ginkgo v1.14.2
+	github.com/onsi/ginkgo v1.15.0
 	github.com/onsi/gomega v1.10.4
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
@@ -52,8 +58,13 @@ require (
 	github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 // indirect
 	github.com/yudai/pp v2.0.1+incompatible // indirect
 	github.com/zaffka/mongodb-boltdb-mock v0.0.0-20180816124423-49954d88fa3e // indirect
-	k8s.io/api v0.18.2
-	k8s.io/apimachinery v0.18.2
-	k8s.io/client-go v0.18.2
+	golang.org/x/oauth2 v0.0.0-20210210192628-66670185b0cd // indirect
+	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
+	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
+	k8s.io/api v0.20.2
+	k8s.io/apiextensions-apiserver v0.20.2 // indirect
+	k8s.io/apimachinery v0.20.2
+	k8s.io/client-go v11.0.0+incompatible
 	moul.io/http2curl v1.0.0 // indirect
+	sigs.k8s.io/controller-runtime v0.8.2 // indirect
 )
