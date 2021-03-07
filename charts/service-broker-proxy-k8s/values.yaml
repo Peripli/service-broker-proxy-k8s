@@ -34,6 +34,7 @@ config:
   app:
     legacy_url:
     url:
+    broker_credentials_enabled: true
   server:
     port: 8081
     request_timeout: 2m
