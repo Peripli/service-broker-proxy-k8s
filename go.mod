@@ -3,8 +3,8 @@ module github.com/Peripli/service-broker-proxy-k8s
 go 1.14
 
 require (
-	github.com/Peripli/service-broker-proxy v0.11.15
-	github.com/Peripli/service-manager v0.18.8
+	github.com/Peripli/service-broker-proxy v0.11.17
+	github.com/Peripli/service-manager v0.19.3
 	github.com/gavv/httpexpect v1.1.3 // indirect
 	github.com/gbrlsnchs/jwt v1.1.0 // indirect
 	github.com/kubernetes-sigs/service-catalog v0.3.1
