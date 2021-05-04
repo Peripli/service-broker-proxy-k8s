@@ -58,8 +58,12 @@ github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46/go.mod h1:3wb0
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/Peripli/service-broker-proxy v0.11.15 h1:6EmKkOcm9EltbRiB1FaG8viiHNPBHma2kuDhLIGwkr4=
 github.com/Peripli/service-broker-proxy v0.11.15/go.mod h1:0cpiFfqM3TsYc4qKZzs1IeqHnFxuPyC29nLAV8h0+Zg=
+github.com/Peripli/service-broker-proxy v0.11.17 h1:KaOeTywf6Ca/Di8qo6+cwq9gXijj7yMXakMCn4t7K9U=
+github.com/Peripli/service-broker-proxy v0.11.17/go.mod h1:qBRuXb6PjNLA/f+uJoJv3EyFpViXZRCDhbMCSKC8PY8=
 github.com/Peripli/service-manager v0.18.8 h1:uSA3E4PdOZ5MPJrxkABB6RvteKGVRUNumNqwI99YPjM=
 github.com/Peripli/service-manager v0.18.8/go.mod h1:FtRJlibH3yLD1v/JCp6yTBx+m2GDpodxnwmawl756Fo=
+github.com/Peripli/service-manager v0.19.3 h1:n7khqBL8+EgPD593xIyF7svicNSmr50R3v/eqDUBwK4=
+github.com/Peripli/service-manager v0.19.3/go.mod h1:FtRJlibH3yLD1v/JCp6yTBx+m2GDpodxnwmawl756Fo=
 github.com/PuerkitoBio/purell v1.0.0/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/purell v1.1.0/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
