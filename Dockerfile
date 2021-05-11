@@ -19,7 +19,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o /mai
 ########################################################
 # Build the runtime container
 ########################################################
-FROM alpine:3.13.2
+FROM alpine:3.13.5
 
 # required to use x.509 certs (HTTPS)
 RUN apk add --no-cache ca-certificates
