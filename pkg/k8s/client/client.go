@@ -396,7 +396,8 @@ func clusterBrokersToBrokers(clusterBrokers *v1beta1.ClusterServiceBrokerList) b
 	brokers := make(brokersByUID, len(clusterBrokers.Items))
 
 	for _, clusterBroker := range clusterBrokers.Items {
-		brokers[clusterBroker.ObjectMeta.UID] = &clusterBroker
+		broker := clusterBroker
+		brokers[broker.ObjectMeta.UID] = &broker
 	}
 
 	return brokers
@@ -406,7 +407,8 @@ func namespaceBrokersToBrokers(namespaceBrokers *v1beta1.ServiceBrokerList) brok
 	brokers := make(brokersByUID, len(namespaceBrokers.Items))
 
 	for _, clusterBroker := range namespaceBrokers.Items {
-		brokers[clusterBroker.ObjectMeta.UID] = &clusterBroker
+		broker := clusterBroker
+		brokers[broker.ObjectMeta.UID] = &broker
 	}
 
 	return brokers
