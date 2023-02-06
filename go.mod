@@ -14,8 +14,8 @@ require (
 	github.com/tidwall/gjson v1.11.0 // indirect
 	github.com/valyala/fasthttp v1.19.0 // indirect
 	github.com/yudai/gojsondiff v1.0.0 // indirect
-	k8s.io/api v0.18.2
-	k8s.io/apimachinery v0.18.2
-	k8s.io/client-go v0.18.2
+	k8s.io/api v0.20.0
+	k8s.io/apimachinery v0.20.0
+	k8s.io/client-go v0.20.0
 	moul.io/http2curl v1.0.0 // indirect
 )
